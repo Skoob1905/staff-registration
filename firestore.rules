@@ -1,0 +1,109 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return userDoc().data.role;
+    }
+
+    function userAgencyId() {
+      return userDoc().data.agencyId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == "admin";
+    }
+
+    function sameAgency(resourceAgencyId) {
+      return isSignedIn() && resourceAgencyId == userAgencyId();
+    }
+
+    // Agencies
+    match /agencies/{agencyId} {
+      allow read: if isSignedIn() && agencyId == userAgencyId();
+      allow write: if isAdmin() && agencyId == userAgencyId();
+    }
+
+    // User profiles
+    match /users/{uid} {
+      // User can read own profile; admin can read profiles in same agency
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid ||
+        (isAdmin() && sameAgency(resource.data.agencyId))
+      );
+
+      // Admin manages users in own agency
+      allow create: if isAdmin() &&
+        request.resource.data.agencyId == userAgencyId();
+
+      allow update, delete: if isAdmin() &&
+        resource.data.agencyId == userAgencyId();
+    }
+
+    // Unsigned contracts (admin creates/manages, staff reads own pending)
+    match /unsigned_contracts/{docId} {
+      allow read: if isSignedIn() && (
+        (resource.data.targetUserId == request.auth.uid &&
+         sameAgency(resource.data.agencyId)) ||
+        (isAdmin() && sameAgency(resource.data.agencyId))
+      );
+
+      allow create, update, delete: if isAdmin() &&
+        request.resource.data.agencyId == userAgencyId();
+    }
+
+    // Signed contracts (staff creates own; admin reads agency records)
+    match /signed_contracts/{docId} {
+      allow read: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid &&
+         sameAgency(resource.data.agencyId)) ||
+        (isAdmin() && sameAgency(resource.data.agencyId))
+      );
+
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.agencyId == userAgencyId();
+
+      // Optional: admin can update/delete within agency
+      allow update, delete: if isAdmin() &&
+        resource.data.agencyId == userAgencyId();
+    }
+
+    // Payslips (admin writes, staff reads own)
+    match /payslips/{docId} {
+      allow read: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid &&
+         sameAgency(resource.data.agencyId)) ||
+        (isAdmin() && sameAgency(resource.data.agencyId))
+      );
+
+      allow create, update, delete: if isAdmin() &&
+        request.resource.data.agencyId == userAgencyId();
+    }
+
+    // Manual staff uploads to agency
+    match /staff_uploads/{docId} {
+      allow read: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid &&
+         sameAgency(resource.data.agencyId)) ||
+        (isAdmin() && sameAgency(resource.data.agencyId))
+      );
+
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.agencyId == userAgencyId();
+
+      allow update, delete: if isAdmin() &&
+        resource.data.agencyId == userAgencyId();
+    }
+  }
+}
