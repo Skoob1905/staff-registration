@@ -62,7 +62,10 @@ export const invitePortalUser = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Caller profile missing.");
   }
 
-  const caller = callerSnap.data() as { role?: string; agencyId?: string };
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+  };
   if (caller.role !== "admin") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
