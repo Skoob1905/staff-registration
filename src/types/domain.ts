@@ -5,6 +5,11 @@ export interface AppUser {
   email: string;
   role: UserRole;
   agencyId: string;
+  registrationStatus?: "awaiting" | "registered";
+  firstName?: string;
+  lastName?: string;
+  birthday?: string;
+  address?: string;
 }
 
 export interface Agency {

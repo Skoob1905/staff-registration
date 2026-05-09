@@ -1,9 +1,13 @@
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocFromServer, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Agency, AppUser, AwaitingRegistration, UserRole } from "../types/domain";
 
-export const getUserProfile = async (uid: string): Promise<AppUser | null> => {
-  const snap = await getDoc(doc(db, "users", uid));
+export const getUserProfile = async (
+  uid: string,
+  options?: { fromServer?: boolean },
+): Promise<AppUser | null> => {
+  const ref = doc(db, "users", uid);
+  const snap = options?.fromServer ? await getDocFromServer(ref) : await getDoc(ref);
   if (!snap.exists()) {
     return null;
   }
@@ -47,6 +51,35 @@ export const getAwaitingRegistrationsByAgency = async (
     id: d.id,
     ...(d.data() as Omit<AwaitingRegistration, "id">),
   }));
+};
+
+export const getAwaitingRegistrationByUid = async (
+  uid: string,
+): Promise<AwaitingRegistration | null> => {
+  const snap = await getDocFromServer(doc(db, "unregistered_staff", uid));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as Omit<AwaitingRegistration, "id">) };
+};
+
+export const getStatus = async (
+  uid: string,
+): Promise<"awaiting" | "registered"> => {
+  try {
+    const profile = await getUserProfile(uid, { fromServer: true });
+    if (profile?.registrationStatus === "awaiting") {
+      return "awaiting";
+    }
+
+    const awaitingSnap = await getDocFromServer(doc(db, "unregistered_staff", uid));
+    if (awaitingSnap.exists()) {
+      const awaitingData = awaitingSnap.data() as AwaitingRegistration;
+      if (awaitingData.status === "awaiting") return "awaiting";
+    }
+    return "registered";
+  } catch (error) {
+    console.error("getStatus failed", { uid, error });
+    return "registered";
+  }
 };
 
 export const checkEmailStatus = async (

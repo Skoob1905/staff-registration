@@ -47,6 +47,7 @@ const normalizeEmail = (value: unknown): string =>
     .trim()
     .toLowerCase();
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const namePattern = /^[A-Za-z' -]+$/;
 
 export const invitePortalUser = onCall(async (request) => {
   const callerUid = request.auth?.uid;
@@ -246,4 +247,100 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
   }
 
   return {ok: true, uid};
+});
+
+export const registerStaffProfile = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const firstName = String(request.data?.firstName || "")
+    .trim()
+    .replace(/\s+/g, " ");
+  const lastName = String(request.data?.lastName || "")
+    .trim()
+    .replace(/\s+/g, " ");
+  const birthday = String(request.data?.birthday || "").trim();
+  const address = String(request.data?.address || "")
+    .trim()
+    .replace(/\s+/g, " ");
+  const honestyConfirmed = Boolean(request.data?.honestyConfirmed);
+
+  if (!firstName || !lastName || !birthday || !address) {
+    throw new HttpsError(
+      "invalid-argument",
+      "All registration fields are required.",
+    );
+  }
+  if (!honestyConfirmed) {
+    throw new HttpsError(
+      "invalid-argument",
+      "You must confirm that your answers are honest.",
+    );
+  }
+  if (firstName.length < 2 || !namePattern.test(firstName)) {
+    throw new HttpsError("invalid-argument", "First name is invalid.");
+  }
+  if (lastName.length < 2 || !namePattern.test(lastName)) {
+    throw new HttpsError("invalid-argument", "Last name is invalid.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+    throw new HttpsError("invalid-argument", "Birthday format is invalid.");
+  }
+  const birthdayDate = new Date(birthday);
+  if (
+    Number.isNaN(birthdayDate.getTime()) ||
+    birthdayDate.getTime() > Date.now()
+  ) {
+    throw new HttpsError("invalid-argument", "Birthday must be in the past.");
+  }
+  if (address.length < 8) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Address must be at least 8 characters.",
+    );
+  }
+
+  const db = getFirestore();
+  const awaitingRef = db.collection("unregistered_staff").doc(callerUid);
+  const awaitingSnap = await awaitingRef.get();
+  if (!awaitingSnap.exists) {
+    throw new HttpsError(
+      "failed-precondition",
+      "No awaiting registration record found.",
+    );
+  }
+
+  const awaiting = awaitingSnap.data() as {
+    agencyId?: string;
+    email?: string;
+  };
+  if (!awaiting.agencyId || !awaiting.email) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Awaiting registration record is incomplete.",
+    );
+  }
+
+  await db.collection("users").doc(callerUid).set(
+    {
+      uid: callerUid,
+      email: awaiting.email,
+      role: "user",
+      agencyId: awaiting.agencyId,
+      registrationStatus: "registered",
+      firstName,
+      lastName,
+      birthday,
+      address,
+      honestyConfirmed: true,
+      registeredAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+
+  await awaitingRef.delete();
+
+  return {ok: true};
 });
