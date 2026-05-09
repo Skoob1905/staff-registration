@@ -52,3 +52,13 @@ export interface StaffUpload {
   category?: string;
   uploadedAt?: Date;
 }
+
+export interface AwaitingRegistration {
+  id: string;
+  uid: string;
+  email: string;
+  agencyId: string;
+  invitedByUid: string;
+  status: "awaiting";
+  invitedAt?: Date;
+}

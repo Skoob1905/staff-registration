@@ -105,5 +105,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin() &&
         resource.data.agencyId == userAgencyId();
     }
+
+    // Holds invited staff records before they complete registration and
+    // are promoted into the users collection.
+    match /unregistered_staff/{docId} {
+      allow read: if isAdmin() && sameAgency(resource.data.agencyId);
+      allow create, update, delete: if isAdmin() &&
+        request.resource.data.agencyId == userAgencyId();
+    }
   }
 }

@@ -35,20 +35,23 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {defineString} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
-import {getFirestore} from "firebase-admin/firestore";
+import {FieldValue, getFirestore} from "firebase-admin/firestore";
 
 initializeApp();
 
 const WEB_API_KEY = defineString("WEB_API_KEY");
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL"); // e.g. http://localhost:5173/login
 
+const normalizeEmail = (value: unknown): string =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
 export const invitePortalUser = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
 
-  const email = String(request.data?.email || "")
-    .trim()
-    .toLowerCase();
+  const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
   const db = getFirestore();
@@ -67,31 +70,52 @@ export const invitePortalUser = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
+  const existingRegistered = await db
+    .collection("users")
+    .where("email", "==", email)
+    .where("agencyId", "==", caller.agencyId)
+    .limit(1)
+    .get();
+  if (!existingRegistered.empty) {
+    throw new HttpsError("already-exists", "Email is already registered.");
+  }
+
+  const existingAwaiting = await db
+    .collection("unregistered_staff")
+    .where("email", "==", email)
+    .where("agencyId", "==", caller.agencyId)
+    .limit(1)
+    .get();
+  if (!existingAwaiting.empty) {
+    throw new HttpsError(
+      "already-exists",
+      "Email is already awaiting registration.",
+    );
+  }
+
   let user;
   try {
     user = await adminAuth.getUserByEmail(email);
-  } catch (err: any) {
-    if (err?.code === "auth/user-not-found") {
+  } catch (err: unknown) {
+    const authErr = err as { code?: string };
+    if (authErr.code === "auth/user-not-found") {
       user = await adminAuth.createUser({email});
     } else {
       throw err;
     }
   }
 
-  await db.collection("users").doc(user.uid).set(
+  await db.collection("unregistered_staff").doc(user.uid).set(
     {
       uid: user.uid,
       email,
-      role: "user",
       agencyId: caller.agencyId,
+      invitedByUid: callerUid,
+      status: "awaiting",
+      invitedAt: FieldValue.serverTimestamp(),
     },
     {merge: true},
   );
-
-  console.log({
-    webApiKey: WEB_API_KEY.value(),
-    resetContinueUrl: RESET_CONTINUE_URL.value(),
-  });
 
   // Triggers Firebase password-reset email template
   // (used as set-password invite).
@@ -123,5 +147,5 @@ export const invitePortalUser = onCall(async (request) => {
     );
   }
 
-  return {ok: true};
+  return {ok: true, userId: user.uid};
 });

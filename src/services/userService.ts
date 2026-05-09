@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Agency, AppUser, UserRole } from "../types/domain";
+import type { Agency, AppUser, AwaitingRegistration, UserRole } from "../types/domain";
 
 export const getUserProfile = async (uid: string): Promise<AppUser | null> => {
   const snap = await getDoc(doc(db, "users", uid));
@@ -37,23 +37,48 @@ export const getStaffUsersByAgency = async (agencyId: string): Promise<AppUser[]
   return snaps.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<AppUser, "uid">) }));
 };
 
+export const getAwaitingRegistrationsByAgency = async (
+  agencyId: string,
+): Promise<AwaitingRegistration[]> => {
+  const ref = collection(db, "unregistered_staff");
+  const q = query(ref, where("agencyId", "==", agencyId));
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<AwaitingRegistration, "id">),
+  }));
+};
+
 export const checkEmailStatus = async (
   email: string,
   agencyId: string,
-): Promise<{ exists: boolean; role?: UserRole }> => {
+): Promise<{ exists: boolean; role?: UserRole; state?: "staff" | "awaiting" }> => {
   const normalizedEmail = email.trim().toLowerCase();
-  const usersRef = collection(db, "users");
-  const q = query(
-    usersRef,
+  const usersQuery = query(
+    collection(db, "users"),
     where("email", "==", normalizedEmail),
     where("agencyId", "==", agencyId),
   );
-  const snaps = await getDocs(q);
+  const usersSnaps = await getDocs(usersQuery);
 
-  if (snaps.empty) {
-    return { exists: false };
+  if (!usersSnaps.empty) {
+    const role = usersSnaps.docs[0].data().role as UserRole | undefined;
+    return {
+      exists: true,
+      role: role === "admin" ? "admin" : "user",
+      state: "staff",
+    };
   }
 
-  const role = snaps.docs[0].data().role as UserRole | undefined;
-  return { exists: true, role: role === "admin" ? "admin" : "user" };
+  const awaitingQuery = query(
+    collection(db, "unregistered_staff"),
+    where("email", "==", normalizedEmail),
+    where("agencyId", "==", agencyId),
+  );
+  const awaitingSnaps = await getDocs(awaitingQuery);
+  if (!awaitingSnaps.empty) {
+    return { exists: true, role: "user", state: "awaiting" };
+  }
+
+  return { exists: false };
 };

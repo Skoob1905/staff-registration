@@ -5,8 +5,8 @@ import { useAuth } from "../../context/AuthProvider";
 import { getPendingContracts, getSignedContractsForAdmin } from "../../services/contractService";
 import { functions } from "../../services/firebase";
 import { getPayslipsForUser } from "../../services/payslipService";
-import { checkEmailStatus, getStaffUsersByAgency } from "../../services/userService";
-import type { AppUser } from "../../types/domain";
+import { checkEmailStatus, getAwaitingRegistrationsByAgency, getStaffUsersByAgency } from "../../services/userService";
+import type { AppUser, AwaitingRegistration } from "../../types/domain";
 
 export const AdminStaffPage = () => {
   const { appUser } = useAuth();
@@ -14,12 +14,17 @@ export const AdminStaffPage = () => {
   const [inviteStatus, setInviteStatus] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [staff, setStaff] = useState<AppUser[]>([]);
+  const [awaiting, setAwaiting] = useState<AwaitingRegistration[]>([]);
 
   useEffect(() => {
     const run = async () => {
       if (!appUser?.agencyId) return;
-      const users = await getStaffUsersByAgency(appUser.agencyId);
+      const [users, awaitingList] = await Promise.all([
+        getStaffUsersByAgency(appUser.agencyId),
+        getAwaitingRegistrationsByAgency(appUser.agencyId),
+      ]);
       setStaff(users);
+      setAwaiting(awaitingList);
     };
     void run();
   }, [appUser?.agencyId]);
@@ -50,9 +55,11 @@ export const AdminStaffPage = () => {
         appUser.agencyId,
       );
       if (emailStatus.exists) {
-        setInviteStatus(
-          `This email is already registered as ${emailStatus.role ?? "user"}. Invite blocked.`,
-        );
+        if (emailStatus.state === "awaiting") {
+          setInviteStatus("This email is already in Awaiting Registration.");
+          return;
+        }
+        setInviteStatus(`This email is already registered as ${emailStatus.role ?? "user"}. Invite blocked.`);
         return;
       }
 
@@ -60,6 +67,8 @@ export const AdminStaffPage = () => {
       await callable({ email: normalizedEmail, role: "user" });
       setInviteStatus("Invite sent successfully.");
       setEmail("");
+      const awaitingList = await getAwaitingRegistrationsByAgency(appUser.agencyId);
+      setAwaiting(awaitingList);
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&
@@ -75,6 +84,7 @@ export const AdminStaffPage = () => {
   };
 
   const staffCount = useMemo(() => staff.length, [staff]);
+  const awaitingCount = useMemo(() => awaiting.length, [awaiting]);
 
   return (
     <div className="space-y-4">
@@ -93,7 +103,19 @@ export const AdminStaffPage = () => {
       </Card>
 
       <Card>
-        <h2 className="text-lg font-bold">Current Staff ({staffCount})</h2>
+        <h2 className="text-lg font-bold">Awaiting Registration ({awaitingCount})</h2>
+        <div className="mt-3 space-y-2">
+          {awaiting.map((person) => (
+            <div key={person.id} className="rounded-xl border border-[var(--border)] bg-white p-3 text-sm text-zinc-700">
+              {person.email}
+            </div>
+          ))}
+          {!awaiting.length ? <p className="text-sm text-zinc-500">No pending registrations.</p> : null}
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-bold">Staff ({staffCount})</h2>
         <div className="mt-3">
           <AccordionRoot type="single" collapsible className="space-y-2">
             {staff.map((member) => (
