@@ -125,8 +125,24 @@ export const invitePortalUser = onCall(async (request) => {
       uid: user.uid,
       email,
       agencyId: caller.agencyId,
+      role: "user",
       invitedByUid: callerUid,
       status: "awaiting",
+      invitedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+
+  // Ensure invited staff can authenticate into the app
+  // with a role-aware profile.
+  await db.collection("users").doc(user.uid).set(
+    {
+      uid: user.uid,
+      email,
+      role: "user",
+      agencyId: caller.agencyId,
+      registrationStatus: "awaiting",
+      invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
     {merge: true},
