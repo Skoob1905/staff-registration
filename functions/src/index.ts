@@ -46,6 +46,7 @@ const normalizeEmail = (value: unknown): string =>
   String(value || "")
     .trim()
     .toLowerCase();
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const invitePortalUser = onCall(async (request) => {
   const callerUid = request.auth?.uid;
@@ -53,6 +54,12 @@ export const invitePortalUser = onCall(async (request) => {
 
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
+  if (!emailPattern.test(email)) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Please enter a valid email address.",
+    );
+  }
 
   const db = getFirestore();
   const adminAuth = getAuth();
@@ -103,6 +110,11 @@ export const invitePortalUser = onCall(async (request) => {
     const authErr = err as { code?: string };
     if (authErr.code === "auth/user-not-found") {
       user = await adminAuth.createUser({email});
+    } else if (authErr.code === "auth/invalid-email") {
+      throw new HttpsError(
+        "invalid-argument",
+        "Please enter a valid email address.",
+      );
     } else {
       throw err;
     }
@@ -151,4 +163,71 @@ export const invitePortalUser = onCall(async (request) => {
   }
 
   return {ok: true, userId: user.uid};
+});
+
+export const removeUnregisteredStaffUser = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const uid = String(request.data?.uid || "").trim();
+  if (!uid) {
+    throw new HttpsError("invalid-argument", "A target uid is required.");
+  }
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {role?: string; agencyId?: string};
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  if (!caller.agencyId) {
+    throw new HttpsError("failed-precondition", "Admin has no agencyId.");
+  }
+
+  const awaitingRef = db.collection("unregistered_staff").doc(uid);
+  const awaitingSnap = await awaitingRef.get();
+  if (!awaitingSnap.exists) {
+    throw new HttpsError(
+      "not-found",
+      "Awaiting registration record not found.",
+    );
+  }
+
+  const awaitingData = awaitingSnap.data() as {agencyId?: string};
+  if (awaitingData.agencyId !== caller.agencyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Cannot remove users from another agency.",
+    );
+  }
+
+  try {
+    await adminAuth.deleteUser(uid);
+  } catch (err: unknown) {
+    const authErr = err as {code?: string};
+    if (authErr.code !== "auth/user-not-found") {
+      throw err;
+    }
+  }
+
+  await awaitingRef.delete();
+
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (userSnap.exists) {
+    const userData = userSnap.data() as {agencyId?: string; role?: string};
+    if (userData.agencyId === caller.agencyId && userData.role === "user") {
+      await userRef.delete();
+    }
+  }
+
+  return {ok: true, uid};
 });

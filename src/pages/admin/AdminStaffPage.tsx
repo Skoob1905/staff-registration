@@ -33,6 +33,7 @@ export const AdminStaffPage = () => {
   const [email, setEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [removeLoadingUid, setRemoveLoadingUid] = useState<string | null>(null);
   const [staff, setStaff] = useState<AppUser[]>([]);
   const [awaiting, setAwaiting] = useState<AwaitingRegistrationView[]>([]);
 
@@ -112,6 +113,28 @@ export const AdminStaffPage = () => {
   const staffCount = useMemo(() => staff.length, [staff]);
   const awaitingCount = useMemo(() => awaiting.length, [awaiting]);
 
+  const onRemoveAwaiting = async (uid: string) => {
+    setInviteStatus("");
+    setRemoveLoadingUid(uid);
+    try {
+      const callable = httpsCallable(functions, "removeUnregisteredStaffUser");
+      await callable({ uid });
+      setAwaiting((prev) => prev.filter((item) => item.uid !== uid));
+      setInviteStatus("Awaiting registration user removed.");
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: string }).message === "string"
+          ? (error as { message: string }).message
+          : "Unable to remove awaiting user right now.";
+      setInviteStatus(message);
+    } finally {
+      setRemoveLoadingUid(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -143,12 +166,27 @@ export const AdminStaffPage = () => {
           {awaiting.map((person) => (
             <div
               key={person.id}
-              className="rounded-xl  border-[var(--border)] bg-white p-0.5 text-sm text-zinc-700"
+              className="bg-white px-1 py-1 text-sm text-zinc-700"
             >
-              <span className="font-bold">{person.email}</span>
-              <span className="mx-4">
-                {person.requesterEmail} @ {person.invitedAtFormatted}
-              </span>
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <button
+                  type="button"
+                  aria-label={`Remove ${person.email}`}
+                  disabled={removeLoadingUid === person.uid}
+                  onClick={() => void onRemoveAwaiting(person.uid)}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-600 text-red-600 opacity-50 transition hover:bg-red-600 hover:text-white hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  ×
+                </button>
+                <div className="flex w-full items-center justify-between">
+                  <span className="font-bold">{person.email}</span>
+                  <div className="flex items-center gap-3 text-zinc-600">
+                    <span>{person.requesterEmail}</span>
+                    <span className="text-zinc-400">•</span>
+                    <span>{person.invitedAtFormatted}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
           {!awaiting.length ? (
