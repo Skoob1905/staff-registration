@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
+import { FileText } from "lucide-react";
 import {
   AccordionItem,
   AccordionRoot,
@@ -11,11 +12,13 @@ import {
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import {
+  getContractsForUser,
   getPendingContracts,
   getSignedContractsForAdmin,
+  uploadUnsignedContract,
 } from "../../services/contractService";
 import { functions } from "../../services/firebase";
-import { getPayslipsForUser } from "../../services/payslipService";
+import { getPayslipsForUser, uploadPayslip } from "../../services/payslipService";
 import {
   checkEmailStatus,
   getAwaitingRegistrationsByAgency,
@@ -232,6 +235,7 @@ export const AdminStaffPage = () => {
                 key={member.uid}
                 member={member}
                 agencyId={appUser?.agencyId ?? ""}
+                adminUid={appUser?.uid ?? ""}
               />
             ))}
           </AccordionRoot>
@@ -287,35 +291,179 @@ const toDate = (value: unknown): Date | null => {
 const StaffAccordion = ({
   member,
   agencyId,
+  adminUid,
 }: {
   member: AppUser;
   agencyId: string;
+  adminUid: string;
 }) => {
   const [summary, setSummary] = useState(
     "Load to view contract/payslip status.",
   );
+  const [latestContractLine, setLatestContractLine] = useState("No contract sent yet.");
+  const [latestPayslipLine, setLatestPayslipLine] = useState("No payslip sent yet.");
+  const [uploadingContract, setUploadingContract] = useState(false);
+  const [uploadingPayslip, setUploadingPayslip] = useState(false);
+  const contractFileInputRef = useRef<HTMLInputElement | null>(null);
+  const payslipFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadSummary = async () => {
     try {
-      const [pending, signed, payslips] = await Promise.all([
+      const [pending, signed, payslips, allContracts] = await Promise.all([
         getPendingContracts(member.uid, agencyId),
         getSignedContractsForAdmin(agencyId),
         getPayslipsForUser(member.uid, agencyId),
+        getContractsForUser(member.uid, agencyId),
       ]);
       const signedForUser = signed.filter((s) => s.userId === member.uid);
       setSummary(
         `Pending contracts: ${pending.length} | Signed contracts: ${signedForUser.length} | Payslips: ${payslips.length}`,
       );
+
+      const [latestContract, latestPayslip] = await Promise.all([
+        buildLatestContractLine(allContracts[0]),
+        buildLatestPayslipLine(payslips[0]),
+      ]);
+      setLatestContractLine(latestContract);
+      setLatestPayslipLine(latestPayslip);
     } catch {
       setSummary("Unable to load status.");
+      setLatestContractLine("Unable to load contract history.");
+      setLatestPayslipLine("Unable to load payslip history.");
+    }
+  };
+
+  const onContractPicked = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !agencyId || !adminUid) return;
+
+    setUploadingContract(true);
+    try {
+      await uploadUnsignedContract(file, member.uid, agencyId, adminUid);
+      await loadSummary();
+    } finally {
+      setUploadingContract(false);
+      event.target.value = "";
+    }
+  };
+
+  const onPayslipPicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !agencyId || !adminUid) return;
+
+    setUploadingPayslip(true);
+    try {
+      await uploadPayslip(file, member.uid, agencyId, "N/A", adminUid);
+      await loadSummary();
+    } finally {
+      setUploadingPayslip(false);
+      event.target.value = "";
     }
   };
 
   return (
     <div onClick={() => void loadSummary()}>
-      <AccordionItem value={member.uid} title={member.email}>
-        <p>{summary}</p>
+      <AccordionItem
+        value={member.uid}
+        title={
+          <div className="flex w-full items-center justify-between gap-4 pr-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{member.email}</span>
+              {member.contractSigned === false ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+                  <FileText className="h-3.5 w-3.5" />
+                  Not Signed
+                </span>
+              ) : member.contractSigned === true ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                  <FileText className="h-3.5 w-3.5" />
+                  Signed
+                </span>
+              ) : null}
+            </div>
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                className="px-3 py-1 text-xs"
+                disabled={uploadingContract}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  contractFileInputRef.current?.click();
+                }}
+              >
+                {uploadingContract ? "Sending..." : "Send Contract"}
+              </Button>
+              <Button
+                type="button"
+                className="px-3 py-1 text-xs"
+                disabled={uploadingPayslip}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  payslipFileInputRef.current?.click();
+                }}
+              >
+                {uploadingPayslip ? "Sending..." : "Send Payslip"}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p>{summary}</p>
+          <div className="space-y-1 text-zinc-600">
+            <p>{latestContractLine}</p>
+            <p>{latestPayslipLine}</p>
+          </div>
+        </div>
       </AccordionItem>
+      <input
+        ref={contractFileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => void onContractPicked(e)}
+      />
+      <input
+        ref={payslipFileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => void onPayslipPicked(e)}
+      />
     </div>
   );
+};
+
+const buildLatestContractLine = async (
+  contract:
+    | {
+        fileName: string;
+        createdAt?: unknown;
+        uploadedByUid?: string;
+      }
+    | undefined,
+): Promise<string> => {
+  if (!contract) return "No contract sent yet.";
+  const sender = contract.uploadedByUid
+    ? (await getUserProfile(contract.uploadedByUid))?.email ?? "Unknown"
+    : "Unknown";
+  return `${contract.fileName} sent by ${sender} at ${formatInvitedAt(contract.createdAt)}`;
+};
+
+const buildLatestPayslipLine = async (
+  payslip:
+    | {
+        fileName: string;
+        uploadedAt?: unknown;
+        uploadedByUid?: string;
+      }
+    | undefined,
+): Promise<string> => {
+  if (!payslip) return "No payslip sent yet.";
+  const sender = payslip.uploadedByUid
+    ? (await getUserProfile(payslip.uploadedByUid))?.email ?? "Unknown"
+    : "Unknown";
+  return `${payslip.fileName} sent by ${sender} at ${formatInvitedAt(payslip.uploadedAt)}`;
 };

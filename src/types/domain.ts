@@ -6,6 +6,7 @@ export interface AppUser {
   role: UserRole;
   agencyId: string;
   registrationStatus?: "awaiting" | "registered";
+  contractSigned?: boolean;
   firstName?: string;
   lastName?: string;
   birthday?: string;
@@ -24,6 +25,7 @@ export interface UnsignedContract {
   fileName: string;
   fileUrl: string;
   agencyId: string;
+  uploadedByUid?: string;
   status: "pending" | "completed";
   createdAt?: Date;
   completedAt?: Date;
@@ -45,6 +47,7 @@ export interface Payslip {
   fileUrl: string;
   periodLabel: string;
   agencyId: string;
+  uploadedByUid?: string;
   uploadedAt?: Date;
 }
 

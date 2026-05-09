@@ -31,6 +31,7 @@ export const uploadUnsignedContract = async (
   file: File,
   targetUserId: string,
   agencyId: string,
+  uploadedByUid?: string,
   onProgress?: (pct: number) => void,
 ): Promise<void> => {
   const path = `contracts/unsigned/${targetUserId}/${file.name}`;
@@ -44,6 +45,7 @@ export const uploadUnsignedContract = async (
     agencyId,
     fileName: file.name,
     fileUrl,
+    uploadedByUid: uploadedByUid ?? null,
     status: "pending",
     createdAt: serverTimestamp(),
   });
@@ -84,6 +86,17 @@ export const getPendingContracts = async (userId: string, agencyId: string): Pro
     where("targetUserId", "==", userId),
     where("agencyId", "==", agencyId),
     where("status", "==", "pending"),
+    orderBy("createdAt", "desc"),
+  );
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }));
+};
+
+export const getContractsForUser = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
+  const q = query(
+    collection(db, "unsigned_contracts"),
+    where("targetUserId", "==", userId),
+    where("agencyId", "==", agencyId),
     orderBy("createdAt", "desc"),
   );
   const snaps = await getDocs(q);

@@ -36,9 +36,22 @@ export const AdminUploadPage = () => {
 
     try {
       if (uploadType === "contract") {
-        await uploadUnsignedContract(file, selectedUserId, appUser.agencyId, setProgress);
+        await uploadUnsignedContract(
+          file,
+          selectedUserId,
+          appUser.agencyId,
+          appUser.uid,
+          setProgress,
+        );
       } else {
-        await uploadPayslip(file, selectedUserId, appUser.agencyId, periodLabel || "N/A", setProgress);
+        await uploadPayslip(
+          file,
+          selectedUserId,
+          appUser.agencyId,
+          periodLabel || "N/A",
+          appUser.uid,
+          setProgress,
+        );
       }
       setStatus("Upload complete.");
       setFile(null);

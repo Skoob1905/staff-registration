@@ -22,6 +22,7 @@ export const uploadPayslip = async (
   userId: string,
   agencyId: string,
   periodLabel: string,
+  uploadedByUid?: string,
   onProgress?: (pct: number) => void,
 ): Promise<void> => {
   const path = `payslips/${userId}/${file.name}`;
@@ -36,6 +37,7 @@ export const uploadPayslip = async (
     fileName: file.name,
     fileUrl,
     periodLabel,
+    uploadedByUid: uploadedByUid ?? null,
     uploadedAt: serverTimestamp(),
   });
 };
