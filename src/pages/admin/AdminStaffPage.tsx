@@ -9,6 +9,7 @@ import {
   Label,
 } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
+import { useToast } from "../../context/ToastProvider";
 import {
   getPendingContracts,
   getSignedContractsForAdmin,
@@ -30,8 +31,8 @@ type AwaitingRegistrationView = AwaitingRegistration & {
 
 export const AdminStaffPage = () => {
   const { appUser } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
-  const [inviteStatus, setInviteStatus] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [removeLoadingUid, setRemoveLoadingUid] = useState<string | null>(null);
   const [staff, setStaff] = useState<AppUser[]>([]);
@@ -53,22 +54,33 @@ export const AdminStaffPage = () => {
 
   const onInvite = async (event: React.FormEvent) => {
     event.preventDefault();
-    setInviteStatus("");
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setInviteStatus("Please enter an email address.");
+      toast({
+        title: "Email required",
+        description: "Please enter an email address.",
+        variant: "error",
+      });
       return;
     }
     if (!/.+@.+\..+/.test(normalizedEmail)) {
-      setInviteStatus("Please enter a valid email address.");
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "error",
+      });
       return;
     }
 
     setInviteLoading(true);
     try {
       if (!appUser?.agencyId) {
-        setInviteStatus("Your admin profile is missing agency information.");
+        toast({
+          title: "Profile issue",
+          description: "Your admin profile is missing agency information.",
+          variant: "error",
+        });
         return;
       }
 
@@ -78,18 +90,27 @@ export const AdminStaffPage = () => {
       );
       if (emailStatus.exists) {
         if (emailStatus.state === "awaiting") {
-          setInviteStatus("This email is already in Awaiting Registration.");
+          toast({
+            title: "Already awaiting",
+            description: "This email is already in Awaiting Registration.",
+            variant: "error",
+          });
           return;
         }
-        setInviteStatus(
-          `This email is already registered as ${emailStatus.role ?? "user"}. Invite blocked.`,
-        );
+        toast({
+          title: "Invite blocked",
+          description: `This email is already registered as ${emailStatus.role ?? "user"}.`,
+          variant: "error",
+        });
         return;
       }
 
       const callable = httpsCallable(functions, "invitePortalUser");
       await callable({ email: normalizedEmail, role: "user" });
-      setInviteStatus("Invite sent successfully.");
+      toast({
+        title: "Invite sent",
+        description: "Staff registration invite has been sent.",
+      });
       setEmail("");
       const awaitingList = await getAwaitingRegistrationsByAgency(
         appUser.agencyId,
@@ -104,7 +125,11 @@ export const AdminStaffPage = () => {
         typeof (error as { message?: string }).message === "string"
           ? (error as { message: string }).message
           : "Unable to send invite right now.";
-      setInviteStatus(message);
+      toast({
+        title: "Invite failed",
+        description: message,
+        variant: "error",
+      });
     } finally {
       setInviteLoading(false);
     }
@@ -114,13 +139,15 @@ export const AdminStaffPage = () => {
   const awaitingCount = useMemo(() => awaiting.length, [awaiting]);
 
   const onRemoveAwaiting = async (uid: string) => {
-    setInviteStatus("");
     setRemoveLoadingUid(uid);
     try {
       const callable = httpsCallable(functions, "removeUnregisteredStaffUser");
       await callable({ uid });
       setAwaiting((prev) => prev.filter((item) => item.uid !== uid));
-      setInviteStatus("Awaiting registration user removed.");
+      toast({
+        title: "User removed",
+        description: "Awaiting Registration user removed",
+      });
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&
@@ -129,7 +156,11 @@ export const AdminStaffPage = () => {
         typeof (error as { message?: string }).message === "string"
           ? (error as { message: string }).message
           : "Unable to remove awaiting user right now.";
-      setInviteStatus(message);
+      toast({
+        title: "Remove failed",
+        description: message,
+        variant: "error",
+      });
     } finally {
       setRemoveLoadingUid(null);
     }
@@ -153,9 +184,6 @@ export const AdminStaffPage = () => {
             {inviteLoading ? "Sending..." : "Send Invite"}
           </Button>
         </form>
-        {inviteStatus ? (
-          <p className="mt-2 text-sm text-zinc-600">{inviteStatus}</p>
-        ) : null}
       </Card>
 
       <Card>
@@ -174,7 +202,7 @@ export const AdminStaffPage = () => {
                   aria-label={`Remove ${person.email}`}
                   disabled={removeLoadingUid === person.uid}
                   onClick={() => void onRemoveAwaiting(person.uid)}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-600 text-red-600 opacity-50 transition hover:bg-red-600 hover:text-white hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 text-red-400 opacity-80 transition duration-200 hover:border-red-400 hover:bg-red-400 hover:text-white hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ×
                 </button>
