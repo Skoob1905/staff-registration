@@ -60,13 +60,14 @@ export const ProgressBar = ({ value }: { value: number }) => (
 
 export const AccordionRoot = Accordion.Root;
 
-export const AccordionItem = ({ value, title, children }: { value: string; title: ReactNode; children: ReactNode }) => (
+export const AccordionItem = ({ value, title, children, actions }: { value: string; title: ReactNode; children: ReactNode; actions?: ReactNode }) => (
   <Accordion.Item value={value} className="rounded-xl border border-[var(--border)] bg-white shadow-[0_4px_18px_rgba(24,24,27,0.04)]">
-    <Accordion.Header>
-      <Accordion.Trigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-zinc-800">
+    <Accordion.Header className="flex items-center">
+      <Accordion.Trigger className="flex flex-1 items-center px-4 py-3 text-left text-sm font-semibold text-zinc-800">
         {title}
-        <ChevronDown className="h-4 w-4" />
       </Accordion.Trigger>
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      <ChevronDown className="mr-4 h-4 w-4 shrink-0" />
     </Accordion.Header>
     <Accordion.Content className="px-4 pb-4 text-sm text-zinc-600">{children}</Accordion.Content>
   </Accordion.Item>

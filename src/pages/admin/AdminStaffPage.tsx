@@ -315,6 +315,7 @@ const StaffAccordion = ({
     [],
   );
   const [senderNames, setSenderNames] = useState<Record<string, string>>({});
+  const [deletingContract, setDeletingContract] = useState<string | null>(null);
   const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const payslipFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
@@ -409,6 +410,29 @@ const StaffAccordion = ({
     }
   };
 
+  const onDeleteContract = async () => {
+    setDeletingContract("all");
+    try {
+      const deleteFn = httpsCallable(functions, "deleteContract");
+      await deleteFn({ targetUserId: member.uid, contractId: pendingContracts[0].id });
+      await onStaffUpdated?.();
+      toast({
+        title: "Contract Deleted",
+        description: "Contract has been deleted successfully.",
+        variant: "default",
+      });
+      await loadSummary();
+    } catch {
+      toast({
+        title: "Failed to Delete Contract",
+        description: "Something went wrong. Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setDeletingContract(null);
+    }
+  };
+
   const onPayslipPicked = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -430,56 +454,70 @@ const StaffAccordion = ({
       <AccordionItem
         value={member.uid}
         title={
-          <div className="w-full pr-2">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate">
-                  {[member.firstName, member.lastName]
-                    .filter(Boolean)
-                    .join(" ") || member.email}
-                </span>
-                {member.contractSigned === false ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
-                    <FileText className="h-3.5 w-3.5" />
-                    Not Signed
-                  </span>
-                ) : member.contractSigned === true ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                    <FileText className="h-3.5 w-3.5" />
-                    Signed
-                  </span>
-                ) : null}
-              </div>
-              {member.registrationStatus === "registered" ? (
-                <div className="ml-auto flex shrink-0 items-center gap-2">
-                  <Button
-                    type="button"
-                    className="px-3 py-1 text-xs"
-                    disabled={uploadingContract}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      contractFileInputRef.current?.click();
-                    }}
-                  >
-                    {uploadingContract ? "Sending..." : "Send Contract"}
-                  </Button>
-                  <Button
-                    type="button"
-                    className="px-3 py-1 text-xs"
-                    disabled={uploadingPayslip}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      payslipFileInputRef.current?.click();
-                    }}
-                  >
-                    {uploadingPayslip ? "Sending..." : "Send Payslip"}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate">
+              {[member.firstName, member.lastName]
+                .filter(Boolean)
+                .join(" ") || member.email}
+            </span>
+            {member.contractSigned === false ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+                <FileText className="h-3.5 w-3.5" />
+                Not Signed
+              </span>
+            ) : member.contractSigned === true ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                <FileText className="h-3.5 w-3.5" />
+                Signed
+              </span>
+            ) : null}
           </div>
+        }
+        actions={
+          member.registrationStatus === "registered" ? (
+            <>
+              {pendingContracts[0]?.fileUrl && (
+                <a
+                  href={pendingContracts[0].fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button type="button" className="px-3 py-1 text-xs">
+                    <Download className="h-3.5 w-3.5" /> Download
+                  </Button>
+                </a>
+              )}
+              {member.contractSigned === false ? (
+                <Button
+                  type="button"
+                  className="px-3 py-1 text-xs"
+                  disabled={deletingContract === "all"}
+                  onClick={() => void onDeleteContract()}
+                >
+                  {deletingContract === "all"
+                    ? "Deleting..."
+                    : "Delete Contract"}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="px-3 py-1 text-xs"
+                  disabled={uploadingContract}
+                  onClick={() => contractFileInputRef.current?.click()}
+                >
+                  {uploadingContract ? "Sending..." : "Send Contract"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                className="px-3 py-1 text-xs"
+                disabled={uploadingPayslip}
+                onClick={() => payslipFileInputRef.current?.click()}
+              >
+                {uploadingPayslip ? "Sending..." : "Send Payslip"}
+              </Button>
+            </>
+          ) : undefined
         }
       >
         <div className="space-y-3">
@@ -498,22 +536,14 @@ const StaffAccordion = ({
                 {formatInvitedAt(member.contractSent)}
               </p>
             ) : null}
-            {pendingContracts.map((c) => (
-              <div key={c.id} className="flex items-center gap-2">
-                <a
-                  href={c.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex"
-                >
-                  <Download className="h-4 w-4 text-zinc-500 hover:text-zinc-800" />
-                </a>
+            {pendingContracts[0] && (
+              <div className="flex items-center gap-2">
                 <span>
-                  <b>Contract Sent</b>: {c.fileName} at{" "}
-                  {formatInvitedAt(c.createdAt)}
+                  <b>Contract Sent</b>: {pendingContracts[0].fileName} at{" "}
+                  {formatInvitedAt(pendingContracts[0].createdAt)}
                 </span>
               </div>
-            ))}
+            )}
             {latestContractLine ? <p>{latestContractLine}</p> : null}
             {latestPayslipLine ? <p>{latestPayslipLine}</p> : null}
           </div>
