@@ -179,7 +179,7 @@ export const UserHomePage = () => {
       const pngDims = pngImage.scale(0.35);
       lastPage.drawImage(pngImage, {
         x: Math.max(40, lastPage.getWidth() - pngDims.width - 40),
-        y: 40,
+        y: lastPage.getHeight() / 2,
         width: pngDims.width,
         height: pngDims.height,
       });
@@ -397,17 +397,6 @@ export const UserHomePage = () => {
           ) : null}
           </div>
         </div>
-        <div className="mt-3 space-y-3">
-          {contracts.map((contract) => (
-            <ContractRow
-              key={contract.id}
-              contract={contract}
-            />
-          ))}
-          {!contracts.length && !contracts[0]?.fileUrl && !signedContracts[0]?.fileUrl ? (
-            <p className="text-sm text-zinc-500">No pending contracts.</p>
-          ) : null}
-        </div>
       </Card>
 
       <Card>
@@ -441,7 +430,7 @@ export const UserHomePage = () => {
                   </div>
                 }
               >
-                <div className="space-y-1 text-xs text-zinc-500">
+                <div className="space-y-1 text-sm text-zinc-600">
                   <p>
                     <b>Sent By:</b> {payslip.sentBy ?? "Unknown"}
                   </p>
@@ -610,26 +599,3 @@ export const UserHomePage = () => {
   );
 };
 
-const ContractRow = ({
-  contract,
-}: {
-  contract: UnsignedContract;
-}) => {
-  return (
-    <div className="rounded-xl border border-[var(--border)] p-3">
-      <a
-        href={contract.fileUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="text-sm font-semibold text-zinc-800 underline"
-      >
-        {contract.fileName}
-      </a>
-      <div className="mt-2 flex items-center gap-2">
-        <a href={contract.fileUrl} download={contract.fileName}>
-          <Button type="button">Download Contract</Button>
-        </a>
-      </div>
-    </div>
-  );
-};
