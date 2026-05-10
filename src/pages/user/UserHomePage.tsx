@@ -28,7 +28,6 @@ export const UserHomePage = () => {
   const { toast } = useToast();
   const [contracts, setContracts] = useState<UnsignedContract[]>([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
-  const [status, setStatus] = useState("");
   const [registrationStatus, setRegistrationStatus] = useState<
     "awaiting" | "registered" | undefined
   >();
@@ -86,28 +85,6 @@ export const UserHomePage = () => {
     ? {}
     : parsedRegistration.errors;
   const isRegistrationValid = parsedRegistration.success;
-
-  const onUploadSigned = async (contractId: string, file: File | null) => {
-    if (!appUser || !file) return;
-    try {
-      const uploaded = await uploadSignedContract(
-        file,
-        appUser.uid,
-        appUser.agencyId,
-      );
-      const markSigned = httpsCallable(functions, "markContractSigned");
-      await markSigned({
-        contractId,
-        signedFileName: uploaded.fileName,
-        signedFileUrl: uploaded.fileUrl,
-      });
-      setStatus("Signed contract uploaded.");
-      const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
-      setContracts(pending);
-    } catch {
-      setStatus("Could not upload signed contract.");
-    }
-  };
 
   const onRegisterNow = async () => {
     if (!isRegistrationValid || !appUser) return;
@@ -340,8 +317,6 @@ export const UserHomePage = () => {
             <ContractRow
               key={contract.id}
               contract={contract}
-              onUploadSigned={onUploadSigned}
-              onSignContract={onOpenSignModal}
             />
           ))}
           {!contracts.length ? (
@@ -369,8 +344,6 @@ export const UserHomePage = () => {
           ) : null}
         </div>
       </Card>
-
-      {status ? <p className="text-sm text-zinc-600">{status}</p> : null}
 
       <DialogRoot
         open={showRegistrationModal}
@@ -527,15 +500,9 @@ export const UserHomePage = () => {
 
 const ContractRow = ({
   contract,
-  onUploadSigned,
-  onSignContract,
 }: {
   contract: UnsignedContract;
-  onUploadSigned: (contractId: string, file: File | null) => Promise<void>;
-  onSignContract: (contract: UnsignedContract) => void;
 }) => {
-  const [file, setFile] = useState<File | null>(null);
-
   return (
     <div className="rounded-xl border border-[var(--border)] p-3">
       <a
@@ -547,20 +514,9 @@ const ContractRow = ({
         {contract.fileName}
       </a>
       <div className="mt-2 flex items-center gap-2">
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-sm"
-        />
-        <Button
-          type="button"
-          onClick={() => void onUploadSigned(contract.id, file)}
-        >
-          Upload Signed
-        </Button>
-        <Button type="button" onClick={() => onSignContract(contract)}>
-          Sign Contract
-        </Button>
+        <a href={contract.fileUrl} download={contract.fileName}>
+          <Button type="button">Download Contract</Button>
+        </a>
       </div>
     </div>
   );
