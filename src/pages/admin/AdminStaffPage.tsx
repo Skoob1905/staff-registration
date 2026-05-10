@@ -185,10 +185,9 @@ export const AdminStaffPage = () => {
   return (
     <div className="space-y-4">
       <Card>
-        <h2 className="text-lg font-bold">Register Member of Staff</h2>
+        <h2 className="text-lg font-bold">Register</h2>
         <form className="mt-3 flex gap-2" onSubmit={onInvite}>
           <div className="flex-1 space-y-1">
-            <Label htmlFor="staffEmail">Staff Email</Label>
             <Input
               id="staffEmail"
               value={email}
