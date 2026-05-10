@@ -66,15 +66,15 @@ export const getStatus = async (
 ): Promise<"awaiting" | "registered"> => {
   try {
     const profile = await getUserProfile(uid, { fromServer: true });
-    if (profile?.registrationStatus === "awaiting") {
+    if (!profile) {
       return "awaiting";
     }
 
-    const awaitingSnap = await getDocFromServer(doc(db, "unregistered_staff", uid));
-    if (awaitingSnap.exists()) {
-      const awaitingData = awaitingSnap.data() as AwaitingRegistration;
-      if (awaitingData.status === "awaiting") return "awaiting";
+    if (profile.registrationStatus === "awaiting") {
+      return "awaiting";
     }
+
+    // For existing registered profiles, no need to read unregistered_staff.
     return "registered";
   } catch (error) {
     console.error("getStatus failed", { uid, error });

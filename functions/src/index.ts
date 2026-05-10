@@ -37,6 +37,7 @@ import {defineString} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
+import {getStorage} from "firebase-admin/storage";
 
 initializeApp();
 
@@ -397,4 +398,69 @@ export const markContractSent = onCall(async (request) => {
     );
 
   return {ok: true};
+});
+
+export const markContractSigned = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const userRef = db.collection("users").doc(callerUid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  await userRef.set(
+    {
+      contractSigned: true,
+      contractSignedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+
+  return {ok: true};
+});
+
+export const completeUnsignedContract = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const contractId = String(request.data?.contractId || "").trim();
+  if (!contractId) {
+    throw new HttpsError("invalid-argument", "contractId is required.");
+  }
+
+  const db = getFirestore();
+  const contractRef = db.collection("unsigned_contracts").doc(contractId);
+  const contractSnap = await contractRef.get();
+  if (!contractSnap.exists) {
+    throw new HttpsError("not-found", "Unsigned contract not found.");
+  }
+
+  const contract = contractSnap.data() as {
+    targetUserId?: string;
+    fileName?: string;
+  };
+  if (contract.targetUserId !== callerUid) {
+    throw new HttpsError("permission-denied", "Not your unsigned contract.");
+  }
+
+  const fileName = contract.fileName || "";
+  if (fileName) {
+    const bucket = getStorage().bucket();
+    const objectPath = `contracts/unsigned/${callerUid}/${fileName}`;
+    try {
+      await bucket.file(objectPath).delete({ignoreNotFound: true});
+    } catch (error) {
+      console.error("Failed to delete unsigned contract object", {
+        contractId,
+        objectPath,
+        error,
+      });
+    }
+  }
+
+  await contractRef.delete();
+  return {ok: true, contractId};
 });

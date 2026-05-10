@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 export const DialogRoot = Dialog.Root;
 export const DialogTrigger = Dialog.Trigger;
+export const DialogTitle = Dialog.Title;
 
 export const DialogContent = ({
   children,

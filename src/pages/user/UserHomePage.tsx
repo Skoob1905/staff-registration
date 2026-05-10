@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { FileText } from "lucide-react";
+import { PDFDocument } from "pdf-lib";
+import SignatureCanvas from "react-signature-canvas";
+import { SignModal } from "../../components/SignModal";
 import { Button, Card } from "../../components/ui";
-import { DialogContent, DialogRoot } from "../../components/ui/dialog";
+import { DialogContent, DialogRoot, DialogTitle } from "../../components/ui/dialog";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import {
+  getLatestUnsignedContract,
   getPendingContracts,
   uploadSignedContract,
 } from "../../services/contractService";
@@ -29,6 +33,14 @@ export const UserHomePage = () => {
     "awaiting" | "registered" | undefined
   >();
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [activeContract, setActiveContract] = useState<UnsignedContract | null>(
+    null,
+  );
+  const signaturePadRef = useRef<SignatureCanvas | null>(null);
+  const [signingLoading, setSigningLoading] = useState(false);
+  const [showDrawPad, setShowDrawPad] = useState(false);
+  const [openingSignModal, setOpeningSignModal] = useState(false);
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [formData, setFormData] = useState<RegistrationFormInput>({
     firstName: "",
@@ -37,7 +49,9 @@ export const UserHomePage = () => {
     address: "",
     honestyConfirmed: false,
   });
-  const [touched, setTouched] = useState<Record<keyof RegistrationFormInput, boolean>>({
+  const [touched, setTouched] = useState<
+    Record<keyof RegistrationFormInput, boolean>
+  >({
     firstName: false,
     lastName: false,
     birthday: false,
@@ -80,8 +94,9 @@ export const UserHomePage = () => {
         file,
         appUser.uid,
         appUser.agencyId,
-        contractId,
       );
+      const completeUnsigned = httpsCallable(functions, "completeUnsignedContract");
+      await completeUnsigned({ contractId });
       setStatus("Signed contract uploaded.");
       const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
       setContracts(pending);
@@ -129,6 +144,102 @@ export const UserHomePage = () => {
     }
   };
 
+  const onOpenSignModal = (contract: UnsignedContract) => {
+    setActiveContract(contract);
+    setShowDrawPad(false);
+    setShowSignModal(true);
+  };
+
+  const onApplySignature = async () => {
+    if (!appUser || !activeContract || !signaturePadRef.current) return;
+    if (registrationStatus !== "registered" || appUser.contractSigned === true) {
+      toast({
+        title: "Signing not allowed",
+        description: "Only registered users with an unsigned contract can sign.",
+        variant: "error",
+      });
+      return;
+    }
+    if (signaturePadRef.current.isEmpty()) {
+      toast({
+        title: "Signature required",
+        description: "Please draw your signature before submitting.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setSigningLoading(true);
+    try {
+      const signatureDataUrl = signaturePadRef.current.toDataURL("image/png");
+      const existingPdfBytes = await fetch(activeContract.fileUrl).then((r) =>
+        r.arrayBuffer(),
+      );
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+      const pages = pdfDoc.getPages();
+      const lastPage = pages[pages.length - 1];
+      const pngImage = await pdfDoc.embedPng(signatureDataUrl);
+      const pngDims = pngImage.scale(0.35);
+      lastPage.drawImage(pngImage, {
+        x: Math.max(40, lastPage.getWidth() - pngDims.width - 40),
+        y: 40,
+        width: pngDims.width,
+        height: pngDims.height,
+      });
+      const signedPdfBytes = await pdfDoc.save();
+      const signedPdfBuffer = signedPdfBytes.buffer.slice(
+        signedPdfBytes.byteOffset,
+        signedPdfBytes.byteOffset + signedPdfBytes.byteLength,
+      ) as ArrayBuffer;
+      const signedFile = new File(
+        [signedPdfBuffer],
+        `signed-${activeContract.fileName}`,
+        {
+          type: "application/pdf",
+        },
+      );
+
+      await uploadSignedContract(
+        signedFile,
+        appUser.uid,
+        appUser.agencyId,
+      );
+
+      // Primary action succeeded, so close the modal immediately.
+      setShowSignModal(false);
+      setActiveContract(null);
+      setShowDrawPad(false);
+      signaturePadRef.current.clear();
+
+      const markSigned = httpsCallable(functions, "markContractSigned");
+      await markSigned({});
+      const completeUnsigned = httpsCallable(functions, "completeUnsignedContract");
+      await completeUnsigned({ contractId: activeContract.id });
+      await refreshProfile();
+      const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
+      setContracts(pending);
+      toast({
+        title: "Contract signed",
+        description: "Your signed contract was uploaded successfully.",
+      });
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: string }).message === "string"
+          ? (error as { message: string }).message
+          : "Could not sign and upload the contract.";
+      toast({
+        title: "Signing failed",
+        description: message,
+        variant: "error",
+      });
+    } finally {
+      setSigningLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -172,12 +283,35 @@ export const UserHomePage = () => {
           <Button
             type="button"
             className="mt-3"
-            onClick={() => {
-              const el = document.getElementById("contracts-section");
-              el?.scrollIntoView({ behavior: "smooth" });
+            disabled={openingSignModal}
+            onClick={async () => {
+              if (!appUser) return;
+              setOpeningSignModal(true);
+              try {
+                const freshContracts = await getPendingContracts(
+                  appUser.uid,
+                  appUser.agencyId,
+                );
+                setContracts(freshContracts);
+                const latest = await getLatestUnsignedContract(
+                  appUser.uid,
+                  appUser.agencyId,
+                );
+                if (!latest) {
+                  toast({
+                    title: "No contract found",
+                    description: "Please refresh and try again.",
+                    variant: "error",
+                  });
+                  return;
+                }
+                onOpenSignModal(latest);
+              } finally {
+                setOpeningSignModal(false);
+              }
             }}
           >
-            Sign Contract
+            {openingSignModal ? "Opening..." : "Sign Contract"}
           </Button>
         ) : null}
       </Card>
@@ -191,6 +325,7 @@ export const UserHomePage = () => {
               key={contract.id}
               contract={contract}
               onUploadSigned={onUploadSigned}
+              onSignContract={onOpenSignModal}
             />
           ))}
           {!contracts.length ? (
@@ -226,7 +361,7 @@ export const UserHomePage = () => {
         onOpenChange={setShowRegistrationModal}
       >
         <DialogContent onClose={() => setShowRegistrationModal(false)}>
-          <h3 className="text-lg font-bold">Complete Registration</h3>
+          <DialogTitle className="text-lg font-bold">Complete Registration</DialogTitle>
           <p className="mt-1 text-sm text-zinc-600">
             Please provide your details to complete onboarding.
           </p>
@@ -288,9 +423,7 @@ export const UserHomePage = () => {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, birthday: e.target.value }))
               }
-              onBlur={() =>
-                setTouched((prev) => ({ ...prev, birthday: true }))
-              }
+              onBlur={() => setTouched((prev) => ({ ...prev, birthday: true }))}
               className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
             />
             {touched.birthday && "birthday" in formErrors ? (
@@ -305,9 +438,7 @@ export const UserHomePage = () => {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, address: e.target.value }))
               }
-              onBlur={() =>
-                setTouched((prev) => ({ ...prev, address: true }))
-              }
+              onBlur={() => setTouched((prev) => ({ ...prev, address: true }))}
               className="mt-1 min-h-24 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
             />
             {touched.address && "address" in formErrors ? (
@@ -358,6 +489,22 @@ export const UserHomePage = () => {
           </div>
         </DialogContent>
       </DialogRoot>
+
+      <SignModal
+        open={showSignModal}
+        contract={activeContract}
+        showDrawPad={showDrawPad}
+        signingLoading={signingLoading}
+        signaturePadRef={signaturePadRef}
+        onClose={() => {
+          setShowSignModal(false);
+          setActiveContract(null);
+          setShowDrawPad(false);
+        }}
+        onStartSign={() => setShowDrawPad(true)}
+        onClearSignature={() => signaturePadRef.current?.clear()}
+        onSubmitSignature={onApplySignature}
+      />
     </div>
   );
 };
@@ -365,9 +512,11 @@ export const UserHomePage = () => {
 const ContractRow = ({
   contract,
   onUploadSigned,
+  onSignContract,
 }: {
   contract: UnsignedContract;
   onUploadSigned: (contractId: string, file: File | null) => Promise<void>;
+  onSignContract: (contract: UnsignedContract) => void;
 }) => {
   const [file, setFile] = useState<File | null>(null);
 
@@ -392,6 +541,9 @@ const ContractRow = ({
           onClick={() => void onUploadSigned(contract.id, file)}
         >
           Upload Signed
+        </Button>
+        <Button type="button" onClick={() => onSignContract(contract)}>
+          Sign Contract
         </Button>
       </div>
     </div>

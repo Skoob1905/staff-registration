@@ -41,6 +41,7 @@ export const AdminUploadPage = () => {
           selectedUserId,
           appUser.agencyId,
           appUser.uid,
+          undefined,
           setProgress,
         );
       } else {

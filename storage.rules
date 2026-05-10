@@ -1,10 +1,45 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return firestore.get(
+        /databases/(default)/documents/users/$(request.auth.uid)
+      );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userDoc().data.role == "admin";
+    }
+
+    // Unsigned contracts assigned by admin to a staff member.
+    match /contracts/unsigned/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Signed contracts uploaded by staff (or admin if needed).
+    match /contracts/signed/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Payslips uploaded by admin for staff.
+    match /payslips/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Staff-initiated uploads back to agency.
+    match /uploads/from_staff/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -14,7 +14,7 @@ export interface AppToast {
 export const ToastProviderRoot = ToastPrimitive.Provider;
 
 export const ToastViewport = () => (
-  <ToastPrimitive.Viewport className="fixed left-1/2 top-4 z-50 flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
+  <ToastPrimitive.Viewport className="fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
 );
 
 export const ToastItem = ({
@@ -31,7 +31,7 @@ export const ToastItem = ({
       open
       onOpenChange={onOpenChange}
       duration={5000}
-      className={`group rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${
+      className={`group z-[9999] rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${
         isError
           ? "border-red-300 bg-red-50/90"
           : "border-emerald-300 bg-emerald-50/90"
@@ -57,5 +57,5 @@ export const ToastItem = ({
 };
 
 export const ToastRegion = ({ children }: { children: ReactNode }) => (
-  <div className="pointer-events-none fixed inset-0 z-50">{children}</div>
+  <div className="pointer-events-none fixed inset-0 z-[9999]">{children}</div>
 );

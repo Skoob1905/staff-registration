@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
 import { db, storage } from "./firebase";
 import type { Payslip } from "../types/domain";
@@ -47,8 +47,13 @@ export const getPayslipsForUser = async (userId: string, agencyId: string): Prom
     collection(db, "payslips"),
     where("userId", "==", userId),
     where("agencyId", "==", agencyId),
-    orderBy("uploadedAt", "desc"),
   );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Payslip, "id">) }));
+  return snaps.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Payslip, "id">) }))
+    .sort((a, b) => {
+      const aMs = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : 0;
+      const bMs = b.uploadedAt instanceof Date ? b.uploadedAt.getTime() : 0;
+      return bMs - aMs;
+    });
 };

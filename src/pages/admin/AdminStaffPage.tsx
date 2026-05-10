@@ -314,7 +314,6 @@ const StaffAccordion = ({
   const [pendingContracts, setPendingContracts] = useState<UnsignedContract[]>(
     [],
   );
-  const [senderNames, setSenderNames] = useState<Record<string, string>>({});
   const [deletingContract, setDeletingContract] = useState<string | null>(null);
   const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const payslipFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -335,20 +334,6 @@ const StaffAccordion = ({
       contracts = await getUnsignedContractInfo(member.uid, agencyId);
       setPendingContracts(contracts);
 
-      const senderUids = Array.from(
-        new Set(contracts.map((c) => c.uploadedByUid).filter(Boolean)),
-      );
-      const senderEntries = await Promise.all(
-        senderUids.map(async (uid) => {
-          const profile = await getUserProfile(uid);
-          const name =
-            [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
-            profile?.email ||
-            "Unknown";
-          return [uid, name] as const;
-        }),
-      );
-      setSenderNames(Object.fromEntries(senderEntries));
     } catch {
       setPendingContracts([]);
     }

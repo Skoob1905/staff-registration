@@ -1,0 +1,17 @@
+[
+    {
+        "origin": [
+            "https://localhost:5000"
+        ],
+        "method": [
+            "GET",
+            "HEAD",
+            "OPTIONS"
+        ],
+        "responseHeader": [
+            "Content-Type",
+            "Authorization"
+        ],
+        "maxAgeSeconds": 3600
+    }
+]

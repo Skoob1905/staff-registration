@@ -1,12 +1,9 @@
 import {
   addDoc,
   collection,
-  doc,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
@@ -57,7 +54,6 @@ export const uploadSignedContract = async (
   file: File,
   currentUserId: string,
   agencyId: string,
-  unsignedContractId?: string,
   onProgress?: (pct: number) => void,
 ): Promise<void> => {
   const path = `contracts/signed/${currentUserId}/${file.name}`;
@@ -73,13 +69,6 @@ export const uploadSignedContract = async (
     fileUrl,
     signedAt: serverTimestamp(),
   });
-
-  if (unsignedContractId) {
-    await updateDoc(doc(db, "unsigned_contracts", unsignedContractId), {
-      status: "completed",
-      completedAt: serverTimestamp(),
-    });
-  }
 };
 
 export const getUnsignedContractInfo = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
@@ -88,10 +77,15 @@ export const getUnsignedContractInfo = async (userId: string, agencyId: string):
     where("targetUserId", "==", userId),
     where("agencyId", "==", agencyId),
     where("status", "==", "pending"),
-    orderBy("createdAt", "desc"),
   );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }));
+  return snaps.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }))
+    .sort((a, b) => {
+      const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return bMs - aMs;
+    });
 };
 
 export const getPendingContracts = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
@@ -100,10 +94,23 @@ export const getPendingContracts = async (userId: string, agencyId: string): Pro
     where("targetUserId", "==", userId),
     where("agencyId", "==", agencyId),
     where("status", "==", "pending"),
-    orderBy("createdAt", "desc"),
   );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }));
+  return snaps.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }))
+    .sort((a, b) => {
+      const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return bMs - aMs;
+    });
+};
+
+export const getLatestUnsignedContract = async (
+  userId: string,
+  agencyId: string,
+): Promise<UnsignedContract | null> => {
+  const pending = await getPendingContracts(userId, agencyId);
+  return pending[0] ?? null;
 };
 
 export const getContractsForUser = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
@@ -111,18 +118,28 @@ export const getContractsForUser = async (userId: string, agencyId: string): Pro
     collection(db, "unsigned_contracts"),
     where("targetUserId", "==", userId),
     where("agencyId", "==", agencyId),
-    orderBy("createdAt", "desc"),
   );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }));
+  return snaps.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }))
+    .sort((a, b) => {
+      const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return bMs - aMs;
+    });
 };
 
 export const getSignedContractsForAdmin = async (agencyId: string): Promise<SignedContract[]> => {
   const q = query(
     collection(db, "signed_contracts"),
     where("agencyId", "==", agencyId),
-    orderBy("signedAt", "desc"),
   );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SignedContract, "id">) }));
+  return snaps.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<SignedContract, "id">) }))
+    .sort((a, b) => {
+      const aMs = a.signedAt instanceof Date ? a.signedAt.getTime() : 0;
+      const bMs = b.signedAt instanceof Date ? b.signedAt.getTime() : 0;
+      return bMs - aMs;
+    });
 };
