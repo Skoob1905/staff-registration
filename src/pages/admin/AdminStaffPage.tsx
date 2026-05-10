@@ -563,7 +563,7 @@ const StaffAccordion = ({
             Are you sure you want to delete this contract?
           </p>
           <p className="mt-2 text-sm font-medium text-zinc-700">
-            The user must have a new contract resent and re-signed before returning to work.
+            The user must have a new contract resent and re-signed before going to work.
           </p>
           <div className="mt-4 flex justify-end">
             <Button

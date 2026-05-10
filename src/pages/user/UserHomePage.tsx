@@ -4,8 +4,17 @@ import { Download, FileText } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import SignatureCanvas from "react-signature-canvas";
 import { SignModal } from "../../components/SignModal";
-import { AccordionItem, AccordionRoot, Button, Card } from "../../components/ui";
-import { DialogContent, DialogRoot, DialogTitle } from "../../components/ui/dialog";
+import {
+  AccordionItem,
+  AccordionRoot,
+  Button,
+  Card,
+} from "../../components/ui";
+import {
+  DialogContent,
+  DialogRoot,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import {
@@ -15,7 +24,10 @@ import {
   uploadSignedContract,
 } from "../../services/contractService";
 import { functions } from "../../services/firebase";
-import { getPayslipsForUser, markPayslipDownloaded } from "../../services/payslipService";
+import {
+  getPayslipsForUser,
+  markPayslipDownloaded,
+} from "../../services/payslipService";
 import {
   parseRegistrationForm,
   type RegistrationFormInput,
@@ -149,10 +161,14 @@ export const UserHomePage = () => {
 
   const onApplySignature = async () => {
     if (!appUser || !activeContract || !signaturePadRef.current) return;
-    if (registrationStatus !== "registered" || appUser.contractSigned === true) {
+    if (
+      registrationStatus !== "registered" ||
+      appUser.contractSigned === true
+    ) {
       toast({
         title: "Signing not allowed",
-        description: "Only registered users with an unsigned contract can sign.",
+        description:
+          "Only registered users with an unsigned contract can sign.",
         variant: "error",
       });
       return;
@@ -210,7 +226,10 @@ export const UserHomePage = () => {
       await refreshProfile();
       const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
       setContracts(pending);
-      const signed = await getSignedContractsForUser(appUser.uid, appUser.agencyId);
+      const signed = await getSignedContractsForUser(
+        appUser.uid,
+        appUser.agencyId,
+      );
       setSignedContracts(
         signed.map((s) => ({
           fileName: s.fileName,
@@ -344,7 +363,8 @@ export const UserHomePage = () => {
           >
             {openingSignModal ? "Opening..." : "Sign Contract"}
           </Button>
-        ) : registrationStatus === "registered" && !latestUndownloadedPayslip ? (
+        ) : registrationStatus === "registered" &&
+          !latestUndownloadedPayslip ? (
           <p className="mt-3 text-sm text-zinc-600">
             Relax! There is nothing to do
           </p>
@@ -367,34 +387,37 @@ export const UserHomePage = () => {
         <div id="contracts-section" />
         <h2 className="text-lg font-bold">Contracts</h2>
         <div className="mt-3 rounded-xl border border-[var(--border)] bg-zinc-50/50 p-3">
-          <div className="mt-2 space-y-1 text-sm text-zinc-600">
-          {appUser?.contractSent ? (
-            <p>
-              <b>Sent By:</b> {appUser.contractSentBy ?? "Unknown"} at{" "}
-              {formatInvitedAt(appUser.contractSent)}
-            </p>
-          ) : null}
-          {(contracts[0] || signedContracts[0]) ? (
-            <div className="flex items-center gap-2">
-              <b>Contract:</b> {contracts[0]?.fileName ?? signedContracts[0]?.fileName}
-              {(contracts[0]?.fileUrl || signedContracts[0]?.fileUrl) ? (
-                <a
-                  href={contracts[0]?.fileUrl ?? signedContracts[0]?.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Download contract"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                </a>
-              ) : null}
-            </div>
-          ) : null}
-          {appUser?.contractSignedAt ? (
-            <p>
-              <b>Signed At:</b> {formatInvitedAt(appUser.contractSignedAt)}
-            </p>
-          ) : null}
+          <div className="space-y-1 text-sm text-zinc-600">
+            {appUser?.contractSent ? (
+              <p>
+                <b>Sent By:</b> {appUser.contractSentBy ?? "Unknown"} at{" "}
+                {formatInvitedAt(appUser.contractSent)}
+              </p>
+            ) : null}
+            {contracts[0] || signedContracts[0] ? (
+              <div className="flex items-center gap-2">
+                <b>Contract:</b>{" "}
+                {contracts[0]?.fileName ?? signedContracts[0]?.fileName}
+                {contracts[0]?.fileUrl || signedContracts[0]?.fileUrl ? (
+                  <a
+                    href={contracts[0]?.fileUrl ?? signedContracts[0]?.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Download contract"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+            {appUser?.contractSignedAt ? (
+              <p>
+                <b>Signed At:</b> {formatInvitedAt(appUser.contractSignedAt)}
+              </p>
+            ) : appUser?.contractSigned === undefined ? (
+              <p className="text-sm text-zinc-500">No contracts signed.</p>
+            ) : null}
           </div>
         </div>
       </Card>
@@ -451,7 +474,9 @@ export const UserHomePage = () => {
         onOpenChange={setShowRegistrationModal}
       >
         <DialogContent onClose={() => setShowRegistrationModal(false)}>
-          <DialogTitle className="text-lg font-bold">Complete Registration</DialogTitle>
+          <DialogTitle className="text-lg font-bold">
+            Complete Registration
+          </DialogTitle>
           <p className="mt-1 text-sm text-zinc-600">
             Please provide your details to complete onboarding.
           </p>
@@ -598,4 +623,3 @@ export const UserHomePage = () => {
     </div>
   );
 };
-
