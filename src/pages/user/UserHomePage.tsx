@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
+import { FileText } from "lucide-react";
 import { Button, Card } from "../../components/ui";
 import { DialogContent, DialogRoot } from "../../components/ui/dialog";
 import { useAuth } from "../../context/AuthProvider";
@@ -16,6 +17,7 @@ import {
 } from "../../services/registrationValidation";
 import { getStatus } from "../../services/userService";
 import type { Payslip, UnsignedContract } from "../../types/domain";
+import { formatInvitedAt } from "../../utils/date";
 
 export const UserHomePage = () => {
   const { appUser, refreshProfile } = useAuth();
@@ -139,19 +141,25 @@ export const UserHomePage = () => {
               ? "Not Registered"
               : "Registered"}
           </span>
+          {appUser?.contractSigned === false ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+              <FileText className="h-3.5 w-3.5" />
+              Not Signed
+            </span>
+          ) : appUser?.contractSigned === true ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              <FileText className="h-3.5 w-3.5" />
+              Signed
+            </span>
+          ) : null}
         </div>
-        {registrationStatus !== "awaiting" ? (
-          <>
-            <p className="mt-2 text-sm text-zinc-600">
-              {contracts.length
-                ? "Contract to Sign"
-                : "No contracts pending signature."}
-            </p>
-            <p className="mt-1 text-sm text-zinc-600">
-              {payslips.length ? "Payslip Received" : "No payslips yet."}
-            </p>
-          </>
+        {appUser?.contractSigned === false && appUser?.contractSentBy ? (
+          <p className="mt-1 text-xs text-zinc-500">
+            Sent By: {appUser.contractSentBy} at{" "}
+            {formatInvitedAt(appUser.contractSent)}
+          </p>
         ) : null}
+
         {registrationStatus === "awaiting" ? (
           <Button
             type="button"
@@ -160,10 +168,22 @@ export const UserHomePage = () => {
           >
             Register Now
           </Button>
+        ) : appUser?.contractSigned === false ? (
+          <Button
+            type="button"
+            className="mt-3"
+            onClick={() => {
+              const el = document.getElementById("contracts-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            Sign Contract
+          </Button>
         ) : null}
       </Card>
 
       <Card>
+        <div id="contracts-section" />
         <h2 className="text-lg font-bold">Contracts</h2>
         <div className="mt-3 space-y-3">
           {contracts.map((contract) => (

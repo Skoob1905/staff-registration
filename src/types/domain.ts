@@ -7,10 +7,13 @@ export interface AppUser {
   agencyId: string;
   registrationStatus?: "awaiting" | "registered";
   contractSigned?: boolean;
+  contractSent?: Date;
+  contractSentBy?: string;
   firstName?: string;
   lastName?: string;
   birthday?: string;
   address?: string;
+  registeredAt?: Date;
 }
 
 export interface Agency {
@@ -22,6 +25,7 @@ export interface Agency {
 export interface UnsignedContract {
   id: string;
   targetUserId: string;
+  targetUserName?: string;
   fileName: string;
   fileUrl: string;
   agencyId: string;

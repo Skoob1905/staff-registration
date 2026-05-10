@@ -32,6 +32,7 @@ setGlobalOptions({maxInstances: 10, region: "europe-west2"});
 // });
 
 import {onCall, HttpsError} from "firebase-functions/v2/https";
+
 import {defineString} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
@@ -143,7 +144,6 @@ export const invitePortalUser = onCall(async (request) => {
       role: "user",
       agencyId: caller.agencyId,
       registrationStatus: "awaiting",
-      contractSigned: false,
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
@@ -202,7 +202,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Caller profile missing.");
   }
 
-  const caller = callerSnap.data() as {role?: string; agencyId?: string};
+  const caller = callerSnap.data() as { role?: string; agencyId?: string };
   if (caller.role !== "admin") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
@@ -219,7 +219,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
     );
   }
 
-  const awaitingData = awaitingSnap.data() as {agencyId?: string};
+  const awaitingData = awaitingSnap.data() as { agencyId?: string };
   if (awaitingData.agencyId !== caller.agencyId) {
     throw new HttpsError(
       "permission-denied",
@@ -230,7 +230,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
   try {
     await adminAuth.deleteUser(uid);
   } catch (err: unknown) {
-    const authErr = err as {code?: string};
+    const authErr = err as { code?: string };
     if (authErr.code !== "auth/user-not-found") {
       throw err;
     }
@@ -241,7 +241,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
   const userRef = db.collection("users").doc(uid);
   const userSnap = await userRef.get();
   if (userSnap.exists) {
-    const userData = userSnap.data() as {agencyId?: string; role?: string};
+    const userData = userSnap.data() as { agencyId?: string; role?: string };
     if (userData.agencyId === caller.agencyId && userData.role === "user") {
       await userRef.delete();
     }
@@ -331,7 +331,6 @@ export const registerStaffProfile = onCall(async (request) => {
       role: "user",
       agencyId: awaiting.agencyId,
       registrationStatus: "registered",
-      contractSigned: false,
       firstName,
       lastName,
       birthday,
@@ -343,6 +342,59 @@ export const registerStaffProfile = onCall(async (request) => {
   );
 
   await awaitingRef.delete();
+
+  return {ok: true};
+});
+
+export const markContractSent = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const targetUserId = String(request.data?.targetUserId || "").trim();
+  if (!targetUserId) {
+    throw new HttpsError("invalid-argument", "targetUserId is required.");
+  }
+
+  const db = getFirestore();
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+    email?: string;
+  };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const targetSnap = await db.collection("users").doc(targetUserId).get();
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "Target user not found.");
+  }
+
+  const target = targetSnap.data() as { agencyId?: string };
+  if (target.agencyId !== caller.agencyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Target user is not in your agency.",
+    );
+  }
+
+  await db
+    .collection("users")
+    .doc(targetUserId)
+    .set(
+      {
+        contractSigned: false,
+        contractSent: FieldValue.serverTimestamp(),
+        contractSentBy: caller.email ?? "Unknown",
+      },
+      {merge: true},
+    );
 
   return {ok: true};
 });

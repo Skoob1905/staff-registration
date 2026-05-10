@@ -32,11 +32,12 @@ export const uploadUnsignedContract = async (
   targetUserId: string,
   agencyId: string,
   uploadedByUid?: string,
+  targetUserName?: string,
   onProgress?: (pct: number) => void,
 ): Promise<void> => {
   const path = `contracts/unsigned/${targetUserId}/${file.name}`;
   const storageRef = ref(storage, path);
-  const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
+  const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId, targetUserId, targetUserName: targetUserName ?? "" } });
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
 
@@ -46,6 +47,7 @@ export const uploadUnsignedContract = async (
     fileName: file.name,
     fileUrl,
     uploadedByUid: uploadedByUid ?? null,
+    targetUserName: targetUserName ?? null,
     status: "pending",
     createdAt: serverTimestamp(),
   });
@@ -78,6 +80,18 @@ export const uploadSignedContract = async (
       completedAt: serverTimestamp(),
     });
   }
+};
+
+export const getUnsignedContractInfo = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
+  const q = query(
+    collection(db, "unsigned_contracts"),
+    where("targetUserId", "==", userId),
+    where("agencyId", "==", agencyId),
+    where("status", "==", "pending"),
+    orderBy("createdAt", "desc"),
+  );
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }));
 };
 
 export const getPendingContracts = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
