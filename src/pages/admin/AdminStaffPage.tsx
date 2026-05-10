@@ -10,6 +10,7 @@ import {
   Input,
   Label,
 } from "../../components/ui";
+import { DialogContent, DialogRoot, DialogTitle } from "../../components/ui/dialog";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import {
@@ -28,11 +29,7 @@ import {
   getStaffUsersByAgency,
   getUserProfile,
 } from "../../services/userService";
-import type {
-  AppUser,
-  AwaitingRegistration,
-  UnsignedContract,
-} from "../../types/domain";
+import type { AppUser, AwaitingRegistration } from "../../types/domain";
 import { formatInvitedAt } from "../../utils/date";
 
 type AwaitingRegistrationView = AwaitingRegistration & {
@@ -304,12 +301,12 @@ const StaffAccordion = ({
   onStaffUpdated?: () => Promise<void | null>;
 }) => {
   const [latestPayslipLine, setLatestPayslipLine] = useState("");
+  const [displayContractFileName, setDisplayContractFileName] = useState("");
+  const [displayContractFileUrl, setDisplayContractFileUrl] = useState("");
   const [uploadingContract, setUploadingContract] = useState(false);
   const [uploadingPayslip, setUploadingPayslip] = useState(false);
-  const [pendingContracts, setPendingContracts] = useState<UnsignedContract[]>(
-    [],
-  );
   const [deletingContract, setDeletingContract] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const payslipFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
@@ -324,13 +321,11 @@ const StaffAccordion = ({
   }, [open]);
 
   const loadSummary = async () => {
-    let contracts: UnsignedContract[] = [];
+    let contracts: Array<{ fileName: string; fileUrl?: string }> = [];
     try {
       contracts = await getUnsignedContractInfo(member.uid, agencyId);
-      setPendingContracts(contracts);
-
     } catch {
-      setPendingContracts([]);
+      contracts = [];
     }
 
     try {
@@ -338,13 +333,20 @@ const StaffAccordion = ({
         getSignedContractsForAdmin(agencyId),
         getPayslipsForUser(member.uid, agencyId),
       ]);
-      void signed;
+      const signedForUser = signed.filter((s) => s.userId === member.uid);
+      const latestSignedFileName = signedForUser[0]?.fileName ?? "";
+      const latestSignedFileUrl = signedForUser[0]?.fileUrl ?? "";
+      const latestUnsignedFileName = contracts[0]?.fileName ?? "";
+      const latestUnsignedFileUrl = contracts[0]?.fileUrl ?? "";
+      setDisplayContractFileName(latestUnsignedFileName || latestSignedFileName);
+      setDisplayContractFileUrl(latestUnsignedFileUrl || latestSignedFileUrl);
       void payslips;
-      void contracts;
 
       const latestPayslip = await buildLatestPayslipLine(payslips[0]);
       setLatestPayslipLine(latestPayslip);
     } catch {
+      setDisplayContractFileName("");
+      setDisplayContractFileUrl("");
       setLatestPayslipLine("");
     }
   };
@@ -456,32 +458,7 @@ const StaffAccordion = ({
         actions={
           member.registrationStatus === "registered" ? (
             <>
-              {pendingContracts[0]?.fileUrl && (
-                <a
-                  href={pendingContracts[0].fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button type="button" className="px-3 py-1 text-xs leading-none">
-                    <span className="inline-flex items-center gap-1 leading-none">
-                      <Download className="h-3.5 w-3.5 shrink-0" />
-                      <span className="leading-none">Download</span>
-                    </span>
-                  </Button>
-                </a>
-              )}
-              {member.contractSent ? (
-                <Button
-                  type="button"
-                  className="px-3 py-1 text-xs"
-                  disabled={deletingContract === "all"}
-                  onClick={() => void onDeleteContract()}
-                >
-                  {deletingContract === "all"
-                    ? "Deleting..."
-                    : "Delete Contract"}
-                </Button>
-              ) : (
+              {!member.contractSent ? (
                 <Button
                   type="button"
                   className="px-3 py-1 text-xs"
@@ -490,7 +467,7 @@ const StaffAccordion = ({
                 >
                   {uploadingContract ? "Sending..." : "Send Contract"}
                 </Button>
-              )}
+              ) : null}
               <Button
                 type="button"
                 className="px-3 py-1 text-xs"
@@ -517,11 +494,30 @@ const StaffAccordion = ({
                 {formatInvitedAt(member.contractSent)}
               </p>
             ) : null}
-            {member.contractSent && pendingContracts[0] && (
+            {member.contractSent && displayContractFileName && (
               <div className="flex items-center gap-2">
                 <span>
-                  <b>Contract Sent</b>: {pendingContracts[0].fileName}
+                  <b>Contract</b>: {displayContractFileName}
                 </span>
+                {displayContractFileUrl ? (
+                  <a
+                    href={displayContractFileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Download contract"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  aria-label="Delete contract"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 text-red-500 opacity-80 transition hover:bg-red-500 hover:text-white hover:opacity-100"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  ×
+                </button>
               </div>
             )}
             {member.contractSignedAt ? (
@@ -545,6 +541,31 @@ const StaffAccordion = ({
         className="hidden"
         onChange={(e) => void onPayslipPicked(e)}
       />
+
+      <DialogRoot open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent onClose={() => setShowDeleteModal(false)}>
+          <DialogTitle className="text-lg font-bold">Delete Contract</DialogTitle>
+          <p className="mt-2 text-sm text-zinc-600">
+            Are you sure you want to delete this contract?
+          </p>
+          <p className="mt-2 text-sm font-medium text-zinc-700">
+            The user must have a new contract resent and re-signed before returning to work.
+          </p>
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deletingContract === "all"}
+              onClick={async () => {
+                await onDeleteContract();
+                setShowDeleteModal(false);
+              }}
+            >
+              {deletingContract === "all" ? "Deleting..." : "Confirm"}
+            </Button>
+          </div>
+        </DialogContent>
+      </DialogRoot>
     </div>
   );
 };
