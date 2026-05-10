@@ -218,7 +218,7 @@ export const AdminStaffPage = () => {
                   aria-label={`Remove ${person.email}`}
                   disabled={removeLoadingUid === person.uid}
                   onClick={() => void onRemoveAwaiting(person.uid)}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 text-red-400 opacity-80 transition duration-200 hover:border-red-400 hover:bg-red-400 hover:text-white hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 text-red-500 opacity-80 transition hover:bg-red-500 hover:text-white hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ×
                 </button>

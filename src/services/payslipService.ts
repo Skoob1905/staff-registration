@@ -61,9 +61,8 @@ export const getPayslipsForUser = async (userId: string, agencyId: string): Prom
   return snaps.docs
     .map((d) => ({ id: d.id, ...(d.data() as Omit<Payslip, "id">) }))
     .sort((a, b) => {
-      const aMs = a.timestamp?.toDate?.()?.getTime() ?? 0;
-      const bMs = b.timestamp?.toDate?.()?.getTime() ?? 0;
-      return bMs - aMs;
+      const toMs = (ts: unknown) => (ts as { toDate: () => Date } | null)?.toDate?.()?.getTime() ?? 0;
+      return toMs(b.timestamp) - toMs(a.timestamp);
     });
 };
 

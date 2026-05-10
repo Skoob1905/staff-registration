@@ -1,18 +1,25 @@
 import { useState } from "react";
+import { z } from "zod";
 import { Alert, Button, Card, Input, Label, Separator, SecondaryButton } from "../components/ui";
+import { DialogRoot, DialogContent, DialogTitle } from "../components/ui/dialog";
 import { loginWithEmail, sendForgotPassword } from "../services/authService";
+import { useToast } from "../context/ToastProvider";
+
+const emailSchema = z.string().email("Enter a valid email address.");
 
 export const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const { toast } = useToast();
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    setNotice("");
 
     if (!email || !password) {
       setError("Please enter both email and password.");
@@ -33,14 +40,39 @@ export const LoginPage = () => {
     }
   };
 
-  const onForgot = async () => {
+  const openForgotModal = () => {
     setError("");
-    if (!email) {
-      setError("Enter your email first to reset your password.");
+    setForgotEmail(email);
+    setShowForgotModal(true);
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setEmail(forgotEmail);
+  };
+
+  const onConfirmForgot = async () => {
+    const result = emailSchema.safeParse(forgotEmail.trim());
+    if (!result.success) {
+      toast({ title: result.error.issues[0].message, variant: "error" });
       return;
     }
-    await sendForgotPassword(email.trim());
-    setNotice("If that account exists, reset instructions were sent.");
+
+    setSending(true);
+    try {
+      await sendForgotPassword(result.data);
+    } catch {
+      // Silently ignore – we always show success for security
+    } finally {
+      setSending(false);
+    }
+    setShowForgotModal(false);
+    setEmail(result.data);
+    toast({
+      title: "Reset email sent",
+      description: "If an account with that email exists, instructions have been sent.",
+      variant: "default",
+    });
   };
 
   return (
@@ -68,17 +100,43 @@ export const LoginPage = () => {
           </div>
 
           {error ? <Alert>{error}</Alert> : null}
-          {notice ? <div className="rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-800">{notice}</div> : null}
 
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Signing in..." : "Login"}
           </Button>
 
-          <SecondaryButton type="button" onClick={() => void onForgot()} className="w-full">
+          <SecondaryButton type="button" onClick={openForgotModal} className="w-full">
             Forgot password?
           </SecondaryButton>
         </form>
       </Card>
+
+      <DialogRoot open={showForgotModal} onOpenChange={(open) => { if (!open) closeForgotModal(); }}>
+        <DialogContent onClose={closeForgotModal}>
+          <DialogTitle className="text-lg font-bold">Reset Password</DialogTitle>
+          <div className="mt-4 space-y-3">
+            <Label htmlFor="forgot-email">Email</Label>
+            <Input
+              id="forgot-email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="you@agency.com"
+            />
+            <div className="flex justify-end gap-2">
+              <SecondaryButton type="button" onClick={closeForgotModal}>
+                Cancel
+              </SecondaryButton>
+              <Button
+                type="button"
+                disabled={sending}
+                onClick={() => void onConfirmForgot()}
+              >
+                {sending ? "Sending..." : "Confirm"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </DialogRoot>
     </div>
   );
 };
