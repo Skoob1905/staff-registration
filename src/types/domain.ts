@@ -7,6 +7,7 @@ export interface AppUser {
   agencyId: string;
   registrationStatus?: "awaiting" | "registered";
   contractSigned?: boolean;
+  contractSignedAt?: Date;
   contractSent?: Date;
   contractSentBy?: string;
   firstName?: string;

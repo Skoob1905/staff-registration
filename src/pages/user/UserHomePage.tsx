@@ -90,13 +90,17 @@ export const UserHomePage = () => {
   const onUploadSigned = async (contractId: string, file: File | null) => {
     if (!appUser || !file) return;
     try {
-      await uploadSignedContract(
+      const uploaded = await uploadSignedContract(
         file,
         appUser.uid,
         appUser.agencyId,
       );
-      const completeUnsigned = httpsCallable(functions, "completeUnsignedContract");
-      await completeUnsigned({ contractId });
+      const markSigned = httpsCallable(functions, "markContractSigned");
+      await markSigned({
+        contractId,
+        signedFileName: uploaded.fileName,
+        signedFileUrl: uploaded.fileUrl,
+      });
       setStatus("Signed contract uploaded.");
       const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
       setContracts(pending);
@@ -199,7 +203,7 @@ export const UserHomePage = () => {
         },
       );
 
-      await uploadSignedContract(
+      const uploaded = await uploadSignedContract(
         signedFile,
         appUser.uid,
         appUser.agencyId,
@@ -212,9 +216,11 @@ export const UserHomePage = () => {
       signaturePadRef.current.clear();
 
       const markSigned = httpsCallable(functions, "markContractSigned");
-      await markSigned({});
-      const completeUnsigned = httpsCallable(functions, "completeUnsignedContract");
-      await completeUnsigned({ contractId: activeContract.id });
+      await markSigned({
+        contractId: activeContract.id,
+        signedFileName: uploaded.fileName,
+        signedFileUrl: uploaded.fileUrl,
+      });
       await refreshProfile();
       const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
       setContracts(pending);
@@ -252,7 +258,7 @@ export const UserHomePage = () => {
               ? "Not Registered"
               : "Registered"}
           </span>
-          {appUser?.contractSigned === false ? (
+          {appUser?.contractSigned === false && appUser?.contractSent ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
               <FileText className="h-3.5 w-3.5" />
               Not Signed
@@ -261,6 +267,12 @@ export const UserHomePage = () => {
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
               <FileText className="h-3.5 w-3.5" />
               Signed
+            </span>
+          ) : null}
+          {registrationStatus === "registered" && !appUser?.contractSent ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+              <FileText className="h-3.5 w-3.5" />
+              Not Sent
             </span>
           ) : null}
         </div>
@@ -279,7 +291,7 @@ export const UserHomePage = () => {
           >
             Register Now
           </Button>
-        ) : appUser?.contractSigned === false ? (
+        ) : appUser?.contractSigned === false && appUser?.contractSentBy ? (
           <Button
             type="button"
             className="mt-3"
@@ -313,6 +325,10 @@ export const UserHomePage = () => {
           >
             {openingSignModal ? "Opening..." : "Sign Contract"}
           </Button>
+        ) : registrationStatus === "registered" ? (
+          <p className="mt-3 text-sm text-zinc-600">
+            Relax! There is nothing to do
+          </p>
         ) : null}
       </Card>
 

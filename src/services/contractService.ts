@@ -1,7 +1,6 @@
 import {
-  addDoc,
   collection,
-  getDocs,
+  addDoc, getDocs,
   query,
   serverTimestamp,
   where,
@@ -55,20 +54,13 @@ export const uploadSignedContract = async (
   currentUserId: string,
   agencyId: string,
   onProgress?: (pct: number) => void,
-): Promise<void> => {
+): Promise<{ fileName: string; fileUrl: string }> => {
   const path = `contracts/signed/${currentUserId}/${file.name}`;
   const storageRef = ref(storage, path);
   const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
-
-  await addDoc(collection(db, "signed_contracts"), {
-    userId: currentUserId,
-    agencyId,
-    fileName: file.name,
-    fileUrl,
-    signedAt: serverTimestamp(),
-  });
+  return { fileName: file.name, fileUrl };
 };
 
 export const getUnsignedContractInfo = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {

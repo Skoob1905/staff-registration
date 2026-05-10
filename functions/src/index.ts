@@ -405,6 +405,60 @@ export const markContractSigned = onCall(async (request) => {
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
 
   const db = getFirestore();
+  const contractId = String(request.data?.contractId || "").trim();
+  const signedFileName = String(request.data?.signedFileName || "").trim();
+  const signedFileUrl = String(request.data?.signedFileUrl || "").trim();
+  if (!contractId || !signedFileName || !signedFileUrl) {
+    throw new HttpsError(
+      "invalid-argument",
+      "contractId, signedFileName and signedFileUrl are required.",
+    );
+  }
+
+  const unsignedRef = db.collection("unsigned_contracts").doc(contractId);
+  const unsignedSnap = await unsignedRef.get();
+  if (!unsignedSnap.exists) {
+    throw new HttpsError("not-found", "Unsigned contract not found.");
+  }
+  const unsignedData = unsignedSnap.data() as {
+    targetUserId?: string;
+    agencyId?: string;
+    fileName?: string;
+    fileUrl?: string;
+    [key: string]: unknown;
+  };
+  if (unsignedData.targetUserId !== callerUid) {
+    throw new HttpsError("permission-denied", "Not your contract.");
+  }
+
+  await db.collection("signed_contracts").add({
+    ...unsignedData,
+    sourceUnsignedContractId: contractId,
+    userId: callerUid,
+    originalFileName: unsignedData.fileName ?? null,
+    originalFileUrl: unsignedData.fileUrl ?? null,
+    fileName: signedFileName,
+    fileUrl: signedFileUrl,
+    signedAt: FieldValue.serverTimestamp(),
+  });
+
+  const originalFileName = String(unsignedData.fileName || "").trim();
+  if (originalFileName) {
+    const bucket = getStorage().bucket();
+    const originalPath = `contracts/unsigned/${callerUid}/${originalFileName}`;
+    try {
+      await bucket.file(originalPath).delete({ignoreNotFound: true});
+    } catch (error) {
+      console.error("Failed deleting original unsigned file", {
+        contractId,
+        originalPath,
+        error,
+      });
+    }
+  }
+
+  await unsignedRef.delete();
+
   const userRef = db.collection("users").doc(callerUid);
   const userSnap = await userRef.get();
   if (!userSnap.exists) {
@@ -419,7 +473,7 @@ export const markContractSigned = onCall(async (request) => {
     {merge: true},
   );
 
-  return {ok: true};
+  return {ok: true, contractId};
 });
 
 export const completeUnsignedContract = onCall(async (request) => {
@@ -463,4 +517,90 @@ export const completeUnsignedContract = onCall(async (request) => {
 
   await contractRef.delete();
   return {ok: true, contractId};
+});
+
+export const deleteUserContract = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const targetUserId = String(request.data?.targetUserId || "").trim();
+  const mode = String(request.data?.mode || "").trim(); // "unsigned" | "signed"
+  if (!targetUserId || (mode !== "unsigned" && mode !== "signed")) {
+    throw new HttpsError(
+      "invalid-argument",
+      "targetUserId and mode (unsigned|signed) are required.",
+    );
+  }
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+  const caller = callerSnap.data() as {role?: string; agencyId?: string};
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const userRef = db.collection("users").doc(targetUserId);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "Target user not found.");
+  }
+  const target = userSnap.data() as {agencyId?: string};
+  if (target.agencyId !== caller.agencyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Target user is not in your agency.",
+    );
+  }
+
+  const bucket = getStorage().bucket();
+
+  if (mode === "unsigned") {
+    const unsignedSnaps = await db
+      .collection("unsigned_contracts")
+      .where("targetUserId", "==", targetUserId)
+      .where("agencyId", "==", caller.agencyId)
+      .where("status", "==", "pending")
+      .get();
+
+    for (const docSnap of unsignedSnaps.docs) {
+      const data = docSnap.data() as {fileName?: string};
+      const fileName = String(data.fileName || "").trim();
+      if (fileName) {
+        const path = `contracts/unsigned/${targetUserId}/${fileName}`;
+        await bucket.file(path).delete({ignoreNotFound: true});
+      }
+      await docSnap.ref.delete();
+    }
+  } else {
+    const signedSnaps = await db
+      .collection("signed_contracts")
+      .where("userId", "==", targetUserId)
+      .where("agencyId", "==", caller.agencyId)
+      .get();
+
+    for (const docSnap of signedSnaps.docs) {
+      const data = docSnap.data() as {fileName?: string};
+      const fileName = String(data.fileName || "").trim();
+      if (fileName) {
+        const path = `contracts/signed/${targetUserId}/${fileName}`;
+        await bucket.file(path).delete({ignoreNotFound: true});
+      }
+      await docSnap.ref.delete();
+    }
+  }
+
+  await userRef.set(
+    {
+      contractSent: FieldValue.delete(),
+      contractSentBy: FieldValue.delete(),
+      contractSigned: FieldValue.delete(),
+      contractSignedAt: FieldValue.delete(),
+    },
+    {merge: true},
+  );
+
+  return {ok: true, targetUserId, mode};
 });
