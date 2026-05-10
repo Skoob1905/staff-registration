@@ -57,7 +57,7 @@ export const AdminStaffPage = () => {
       getStaffUsersByAgency(appUser.agencyId),
       getAwaitingRegistrationsByAgency(appUser.agencyId),
     ]);
-    setStaff(users);
+    setStaff(users.filter((u) => u.registrationStatus !== "awaiting"));
     const awaitingView = await buildAwaitingView(awaitingList);
     setAwaiting(awaitingView);
   }, [appUser?.agencyId]);
