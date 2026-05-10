@@ -8,9 +8,12 @@ import {
   Button,
   Card,
   Input,
-  Label,
 } from "../../components/ui";
-import { DialogContent, DialogRoot, DialogTitle } from "../../components/ui/dialog";
+import {
+  DialogContent,
+  DialogRoot,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import {
@@ -38,7 +41,9 @@ type AwaitingRegistrationView = AwaitingRegistration & {
 };
 
 export const AdminStaffPage = () => {
-  useEffect(() => { document.title = "Home"; }, []);
+  useEffect(() => {
+    document.title = "Home";
+  }, []);
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -338,7 +343,9 @@ const StaffAccordion = ({
       const latestSignedFileUrl = signedForUser[0]?.fileUrl ?? "";
       const latestUnsignedFileName = contracts[0]?.fileName ?? "";
       const latestUnsignedFileUrl = contracts[0]?.fileUrl ?? "";
-      setDisplayContractFileName(latestUnsignedFileName || latestSignedFileName);
+      setDisplayContractFileName(
+        latestUnsignedFileName || latestSignedFileName,
+      );
       setDisplayContractFileUrl(latestUnsignedFileUrl || latestSignedFileUrl);
       void payslips;
 
@@ -445,29 +452,28 @@ const StaffAccordion = ({
         title={
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate">
-              {[member.firstName, member.lastName]
-                .filter(Boolean)
-                .join(" ") || member.email}
+              {[member.firstName, member.lastName].filter(Boolean).join(" ") ||
+                member.email}
             </span>
-                {member.contractSigned === false && member.contractSent ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
-                    <FileText className="h-3.5 w-3.5" />
-                    Not Signed
-                  </span>
-                ) : member.contractSigned === true ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                    <FileText className="h-3.5 w-3.5" />
-                    Signed
-                  </span>
-                ) : null}
-                {member.registrationStatus === "registered" &&
-                !member.contractSent ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-                    <FileText className="h-3.5 w-3.5" />
-                    Not Sent
-                  </span>
-                ) : null}
-              </div>
+            {member.contractSigned === false && member.contractSent ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+                <FileText className="h-3.5 w-3.5" />
+                Not Signed
+              </span>
+            ) : member.contractSigned === true ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                <FileText className="h-3.5 w-3.5" />
+                Signed
+              </span>
+            ) : null}
+            {member.registrationStatus === "registered" &&
+            !member.contractSent ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                <FileText className="h-3.5 w-3.5" />
+                Not Sent
+              </span>
+            ) : null}
+          </div>
         }
         actions={
           member.registrationStatus === "registered" ? (
@@ -539,7 +545,11 @@ const StaffAccordion = ({
                 <b>Signed At:</b> {formatInvitedAt(member.contractSignedAt)}
               </p>
             ) : null}
-            {latestPayslipLine ? <p><b>Last Payslip:</b> {latestPayslipLine}</p> : null}
+            {latestPayslipLine ? (
+              <p>
+                <b>Last Payslip:</b> {latestPayslipLine}
+              </p>
+            ) : null}
           </div>
         </div>
       </AccordionItem>
@@ -558,12 +568,15 @@ const StaffAccordion = ({
 
       <DialogRoot open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent onClose={() => setShowDeleteModal(false)}>
-          <DialogTitle className="text-lg font-bold">Delete Contract</DialogTitle>
+          <DialogTitle className="text-lg font-bold">
+            Delete Contract
+          </DialogTitle>
           <p className="mt-2 text-sm text-zinc-600">
             Are you sure you want to delete this contract?
           </p>
           <p className="mt-2 text-sm font-medium text-zinc-700">
-            The user must have a new contract resent and re-signed before going to work.
+            The user must have a new contract resent and re-signed before going
+            to work.
           </p>
           <div className="mt-4 flex justify-end">
             <Button
