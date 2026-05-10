@@ -490,7 +490,7 @@ const StaffAccordion = ({
             ) : null}
             {member.contractSent ? (
               <p>
-                <b>Contract Sent By:</b> {member.contractSentBy ?? "Unknown"} at{" "}
+                <b>Sent By:</b> {member.contractSentBy ?? "Unknown"} at{" "}
                 {formatInvitedAt(member.contractSent)}
               </p>
             ) : null}

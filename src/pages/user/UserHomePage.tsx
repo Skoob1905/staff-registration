@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import SignatureCanvas from "react-signature-canvas";
 import { SignModal } from "../../components/SignModal";
@@ -11,6 +11,7 @@ import { useToast } from "../../context/ToastProvider";
 import {
   getLatestUnsignedContract,
   getPendingContracts,
+  getSignedContractsForUser,
   uploadSignedContract,
 } from "../../services/contractService";
 import { functions } from "../../services/firebase";
@@ -27,6 +28,9 @@ export const UserHomePage = () => {
   const { appUser, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [contracts, setContracts] = useState<UnsignedContract[]>([]);
+  const [signedContracts, setSignedContracts] = useState<
+    Array<{ fileName: string; fileUrl: string; signedAt?: Date }>
+  >([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [registrationStatus, setRegistrationStatus] = useState<
     "awaiting" | "registered" | undefined
@@ -65,12 +69,20 @@ export const UserHomePage = () => {
         appUser.registrationStatus === "awaiting" ? "awaiting" : "registered";
       setRegistrationStatus(immediateStatus);
 
-      const [pending, slips, userStatus] = await Promise.all([
+      const [pending, signed, slips, userStatus] = await Promise.all([
         getPendingContracts(appUser.uid, appUser.agencyId),
+        getSignedContractsForUser(appUser.uid, appUser.agencyId),
         getPayslipsForUser(appUser.uid, appUser.agencyId),
         getStatus(appUser.uid),
       ]);
       setContracts(pending);
+      setSignedContracts(
+        signed.map((s) => ({
+          fileName: s.fileName,
+          fileUrl: s.fileUrl,
+          signedAt: s.signedAt,
+        })),
+      );
       setPayslips(slips);
       setRegistrationStatus(userStatus);
     };
@@ -185,13 +197,6 @@ export const UserHomePage = () => {
         appUser.uid,
         appUser.agencyId,
       );
-
-      // Primary action succeeded, so close the modal immediately.
-      setShowSignModal(false);
-      setActiveContract(null);
-      setShowDrawPad(false);
-      signaturePadRef.current.clear();
-
       const markSigned = httpsCallable(functions, "markContractSigned");
       await markSigned({
         contractId: activeContract.id,
@@ -201,6 +206,21 @@ export const UserHomePage = () => {
       await refreshProfile();
       const pending = await getPendingContracts(appUser.uid, appUser.agencyId);
       setContracts(pending);
+      const signed = await getSignedContractsForUser(appUser.uid, appUser.agencyId);
+      setSignedContracts(
+        signed.map((s) => ({
+          fileName: s.fileName,
+          fileUrl: s.fileUrl,
+          signedAt: s.signedAt,
+        })),
+      );
+
+      // Close modal right before showing success feedback to avoid perceived lag.
+      setShowSignModal(false);
+      setActiveContract(null);
+      setShowDrawPad(false);
+      signaturePadRef.current.clear();
+
       toast({
         title: "Contract signed",
         description: "Your signed contract was uploaded successfully.",
@@ -312,6 +332,37 @@ export const UserHomePage = () => {
       <Card>
         <div id="contracts-section" />
         <h2 className="text-lg font-bold">Contracts</h2>
+        <div className="mt-3 rounded-xl border border-[var(--border)] bg-zinc-50/50 p-3">
+          <div className="mt-2 space-y-1 text-sm text-zinc-600">
+          {appUser?.contractSent ? (
+            <p>
+              <b>Sent By:</b> {appUser.contractSentBy ?? "Unknown"} at{" "}
+              {formatInvitedAt(appUser.contractSent)}
+            </p>
+          ) : null}
+          {(contracts[0] || signedContracts[0]) ? (
+            <div className="flex items-center gap-2">
+              <b>Contract:</b> {contracts[0]?.fileName ?? signedContracts[0]?.fileName}
+              {(contracts[0]?.fileUrl || signedContracts[0]?.fileUrl) ? (
+                <a
+                  href={contracts[0]?.fileUrl ?? signedContracts[0]?.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Download contract"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+          {appUser?.contractSignedAt ? (
+            <p>
+              <b>Signed At:</b> {formatInvitedAt(appUser.contractSignedAt)}
+            </p>
+          ) : null}
+          </div>
+        </div>
         <div className="mt-3 space-y-3">
           {contracts.map((contract) => (
             <ContractRow
@@ -319,7 +370,7 @@ export const UserHomePage = () => {
               contract={contract}
             />
           ))}
-          {!contracts.length ? (
+          {!contracts.length && !contracts[0]?.fileUrl && !signedContracts[0]?.fileUrl ? (
             <p className="text-sm text-zinc-500">No pending contracts.</p>
           ) : null}
         </div>

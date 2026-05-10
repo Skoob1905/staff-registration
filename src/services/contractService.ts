@@ -135,3 +135,22 @@ export const getSignedContractsForAdmin = async (agencyId: string): Promise<Sign
       return bMs - aMs;
     });
 };
+
+export const getSignedContractsForUser = async (
+  userId: string,
+  agencyId: string,
+): Promise<SignedContract[]> => {
+  const q = query(
+    collection(db, "signed_contracts"),
+    where("userId", "==", userId),
+    where("agencyId", "==", agencyId),
+  );
+  const snaps = await getDocs(q);
+  return snaps.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<SignedContract, "id">) }))
+    .sort((a, b) => {
+      const aMs = a.signedAt instanceof Date ? a.signedAt.getTime() : 0;
+      const bMs = b.signedAt instanceof Date ? b.signedAt.getTime() : 0;
+      return bMs - aMs;
+    });
+};
