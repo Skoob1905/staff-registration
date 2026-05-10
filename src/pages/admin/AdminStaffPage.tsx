@@ -416,8 +416,22 @@ const StaffAccordion = ({
 
     setUploadingPayslip(true);
     try {
-      await uploadPayslip(file, member.uid, agencyId, "N/A", adminUid);
+      await uploadPayslip(file, member.uid, agencyId, adminUid);
+      const displayName =
+        [member.firstName, member.lastName].filter(Boolean).join(" ") ||
+        member.email;
+      toast({
+        title: "Payslip Sent",
+        description: `${file.name} sent successfully to ${displayName}`,
+        variant: "default",
+      });
       await loadSummary();
+    } catch {
+      toast({
+        title: "Failed to Send Payslip",
+        description: "Something went wrong. Please try again.",
+        variant: "error",
+      });
     } finally {
       setUploadingPayslip(false);
       event.target.value = "";
@@ -525,7 +539,7 @@ const StaffAccordion = ({
                 <b>Signed At:</b> {formatInvitedAt(member.contractSignedAt)}
               </p>
             ) : null}
-            {latestPayslipLine ? <p>{latestPayslipLine}</p> : null}
+            {latestPayslipLine ? <p><b>Last Payslip:</b> {latestPayslipLine}</p> : null}
           </div>
         </div>
       </AccordionItem>
@@ -574,14 +588,12 @@ const buildLatestPayslipLine = async (
   payslip:
     | {
         fileName: string;
-        uploadedAt?: unknown;
-        uploadedByUid?: string;
+        sentBy?: string;
+        timestamp?: unknown;
       }
     | undefined,
 ): Promise<string> => {
   if (!payslip) return "";
-  const sender = payslip.uploadedByUid
-    ? ((await getUserProfile(payslip.uploadedByUid))?.email ?? "Unknown")
-    : "Unknown";
-  return `${payslip.fileName} sent by ${sender} at ${formatInvitedAt(payslip.uploadedAt)}`;
+  const sender = payslip.sentBy ?? "Unknown";
+  return `${sender} ${formatInvitedAt(payslip.timestamp)}`;
 };

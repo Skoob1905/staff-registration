@@ -4,7 +4,7 @@ import { Download, FileText } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import SignatureCanvas from "react-signature-canvas";
 import { SignModal } from "../../components/SignModal";
-import { Button, Card } from "../../components/ui";
+import { AccordionItem, AccordionRoot, Button, Card } from "../../components/ui";
 import { DialogContent, DialogRoot, DialogTitle } from "../../components/ui/dialog";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
@@ -15,7 +15,7 @@ import {
   uploadSignedContract,
 } from "../../services/contractService";
 import { functions } from "../../services/firebase";
-import { getPayslipsForUser } from "../../services/payslipService";
+import { getPayslipsForUser, markPayslipDownloaded } from "../../services/payslipService";
 import {
   parseRegistrationForm,
   type RegistrationFormInput,
@@ -92,6 +92,10 @@ export const UserHomePage = () => {
   const parsedRegistration = useMemo(
     () => parseRegistrationForm(formData),
     [formData],
+  );
+  const latestUndownloadedPayslip = useMemo(
+    () => payslips.find((p) => p.hasDownloaded !== true),
+    [payslips],
   );
   const formErrors = parsedRegistration.success
     ? {}
@@ -243,6 +247,24 @@ export const UserHomePage = () => {
     }
   };
 
+  const onDownloadPayslip = async (payslip: Payslip) => {
+    window.open(payslip.fileUrl, "_blank", "noopener,noreferrer");
+    try {
+      await markPayslipDownloaded(payslip.id);
+      setPayslips((prev) =>
+        prev.map((item) =>
+          item.id === payslip.id ? { ...item, hasDownloaded: true } : item,
+        ),
+      );
+    } catch {
+      toast({
+        title: "Could not update payslip status",
+        description: "The file opened but download tracking failed.",
+        variant: "error",
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -322,10 +344,22 @@ export const UserHomePage = () => {
           >
             {openingSignModal ? "Opening..." : "Sign Contract"}
           </Button>
-        ) : registrationStatus === "registered" ? (
+        ) : registrationStatus === "registered" && !latestUndownloadedPayslip ? (
           <p className="mt-3 text-sm text-zinc-600">
             Relax! There is nothing to do
           </p>
+        ) : null}
+        {registrationStatus === "registered" && latestUndownloadedPayslip ? (
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-zinc-50/70 px-3 py-2">
+            <p className="text-sm text-zinc-700">Download latest payslip</p>
+            <Button
+              type="button"
+              className="bg-zinc-900 text-white hover:bg-black"
+              onClick={() => void onDownloadPayslip(latestUndownloadedPayslip)}
+            >
+              Download
+            </Button>
+          </div>
         ) : null}
       </Card>
 
@@ -378,22 +412,49 @@ export const UserHomePage = () => {
 
       <Card>
         <h2 className="text-lg font-bold">Payslips</h2>
-        <div className="mt-3 space-y-2">
-          {payslips.map((payslip) => (
-            <a
-              key={payslip.id}
-              href={payslip.fileUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-sm text-zinc-800 underline"
-            >
-              {payslip.fileName} ({payslip.periodLabel})
-            </a>
-          ))}
-          {!payslips.length ? (
-            <p className="text-sm text-zinc-500">No payslips available.</p>
-          ) : null}
-        </div>
+        {payslips.length ? (
+          <AccordionRoot type="single" collapsible className="mt-3 space-y-2">
+            {payslips.map((payslip) => (
+              <AccordionItem
+                key={payslip.id}
+                value={payslip.id}
+                title={
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{payslip.fileName}</span>
+                    {!payslip.hasDownloaded && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                        New
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Download payslip"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void onDownloadPayslip(payslip);
+                      }}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                }
+              >
+                <div className="space-y-1 text-xs text-zinc-500">
+                  <p>
+                    <b>Sent By:</b> {payslip.sentBy ?? "Unknown"}
+                  </p>
+                  <p>
+                    <b>Sent At:</b> {formatInvitedAt(payslip.timestamp)}
+                  </p>
+                </div>
+              </AccordionItem>
+            ))}
+          </AccordionRoot>
+        ) : (
+          <p className="mt-3 text-sm text-zinc-500">No payslips available.</p>
+        )}
       </Card>
 
       <DialogRoot

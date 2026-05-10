@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Input, Label, ProgressBar } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
+import { useToast } from "../../context/ToastProvider";
 import { uploadUnsignedContract } from "../../services/contractService";
 import { uploadPayslip } from "../../services/payslipService";
 import { getStaffUsersByAgency } from "../../services/userService";
@@ -8,6 +9,7 @@ import type { AppUser } from "../../types/domain";
 
 export const AdminUploadPage = () => {
   const { appUser } = useAuth();
+  const { toast } = useToast();
   const [staff, setStaff] = useState<AppUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [uploadType, setUploadType] = useState<"contract" | "payslip">("contract");
@@ -49,10 +51,15 @@ export const AdminUploadPage = () => {
           file,
           selectedUserId,
           appUser.agencyId,
-          periodLabel || "N/A",
           appUser.uid,
           setProgress,
         );
+        const targetUser = staff.find((member) => member.uid === selectedUserId);
+        toast({
+          title: "Payslip sent",
+          description: `${file.name} was sent to ${targetUser?.email ?? "staff member"}.`,
+          variant: "default",
+        });
       }
       setStatus("Upload complete.");
       setFile(null);

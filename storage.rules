@@ -28,10 +28,14 @@ service firebase.storage {
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
-    // Payslips uploaded by admin for staff.
-    match /payslips/{userId}/{allPaths=**} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+    // Payslips uploaded by admin for staff, scoped per agency.
+    // Path: payslips/{agencyId}/{userId}/{fileName}
+    match /payslips/{agencyId}/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (
+        (request.auth.uid == userId && userDoc().data.agencyId == agencyId) ||
+        (isAdmin() && userDoc().data.agencyId == agencyId)
+      );
+      allow write: if isAdmin() && userDoc().data.agencyId == agencyId;
     }
 
     // Staff-initiated uploads back to agency.

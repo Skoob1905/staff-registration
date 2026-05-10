@@ -519,6 +519,38 @@ export const completeUnsignedContract = onCall(async (request) => {
   return {ok: true, contractId};
 });
 
+export const updatePayslipDownloadedStatus = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const payslipId = String(request.data?.payslipId || "").trim();
+  if (!payslipId) {
+    throw new HttpsError("invalid-argument", "payslipId is required.");
+  }
+
+  const db = getFirestore();
+  const payslipRef = db.collection("payslips").doc(payslipId);
+  const payslipSnap = await payslipRef.get();
+  if (!payslipSnap.exists) {
+    throw new HttpsError("not-found", "Payslip not found.");
+  }
+
+  const payslip = payslipSnap.data() as { userId?: string };
+  if (payslip.userId !== callerUid) {
+    throw new HttpsError("permission-denied", "Not your payslip.");
+  }
+
+  await payslipRef.set(
+    {
+      hasDownloaded: true,
+      downloadedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+
+  return {ok: true, payslipId};
+});
+
 export const deleteUserContract = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");

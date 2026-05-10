@@ -86,8 +86,23 @@ service cloud.firestore {
         (isAdmin() && sameAgency(resource.data.agencyId))
       );
 
-      allow create, update, delete: if isAdmin() &&
+      allow create, delete: if isAdmin() &&
         request.resource.data.agencyId == userAgencyId();
+
+      // Admin can fully manage payslip docs in-agency.
+      allow update: if isAdmin() && resource.data.agencyId == userAgencyId();
+
+      // Staff can only mark their own payslip as downloaded.
+      allow update: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        resource.data.agencyId == userAgencyId() &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.agencyId == resource.data.agencyId &&
+        request.resource.data.fileName == resource.data.fileName &&
+        request.resource.data.fileUrl == resource.data.fileUrl &&
+        request.resource.data.sentBy == resource.data.sentBy &&
+        request.resource.data.timestamp == resource.data.timestamp &&
+        request.resource.data.hasDownloaded == true;
     }
 
     // Manual staff uploads to agency

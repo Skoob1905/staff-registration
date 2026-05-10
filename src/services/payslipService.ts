@@ -1,7 +1,9 @@
-import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db, functions, storage } from "./firebase";
 import type { Payslip } from "../types/domain";
+import { getUserProfile } from "./userService";
 
 const monitorUpload = (task: UploadTask, onProgress?: (pct: number) => void): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -21,24 +23,31 @@ export const uploadPayslip = async (
   file: File,
   userId: string,
   agencyId: string,
-  periodLabel: string,
   uploadedByUid?: string,
   onProgress?: (pct: number) => void,
 ): Promise<void> => {
-  const path = `payslips/${userId}/${file.name}`;
+  const path = `payslips/${agencyId}/${userId}/${file.name}`;
   const storageRef = ref(storage, path);
   const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
+  const senderProfile = uploadedByUid ? await getUserProfile(uploadedByUid) : null;
+  const sentBy = senderProfile?.email ?? "Unknown";
 
-  await addDoc(collection(db, "payslips"), {
+  const payslipRef = await addDoc(collection(db, "payslips"), {
     userId,
     agencyId,
     fileName: file.name,
     fileUrl,
-    periodLabel,
-    uploadedByUid: uploadedByUid ?? null,
-    uploadedAt: serverTimestamp(),
+    sentBy,
+    timestamp: serverTimestamp(),
+    hasDownloaded: false,
+  });
+
+  const userSnap = await getDoc(doc(db, "users", userId));
+  const existing = (userSnap.data()?.payslipsSent as string[]) ?? [];
+  await updateDoc(doc(db, "users", userId), {
+    payslipsSent: [payslipRef.id, ...existing],
   });
 };
 
@@ -52,8 +61,13 @@ export const getPayslipsForUser = async (userId: string, agencyId: string): Prom
   return snaps.docs
     .map((d) => ({ id: d.id, ...(d.data() as Omit<Payslip, "id">) }))
     .sort((a, b) => {
-      const aMs = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : 0;
-      const bMs = b.uploadedAt instanceof Date ? b.uploadedAt.getTime() : 0;
+      const aMs = a.timestamp?.toDate?.()?.getTime() ?? 0;
+      const bMs = b.timestamp?.toDate?.()?.getTime() ?? 0;
       return bMs - aMs;
     });
+};
+
+export const markPayslipDownloaded = async (payslipId: string): Promise<void> => {
+  const callable = httpsCallable(functions, "updatePayslipDownloadedStatus");
+  await callable({ payslipId });
 };

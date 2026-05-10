@@ -15,6 +15,7 @@ export interface AppUser {
   birthday?: string;
   address?: string;
   registeredAt?: Date;
+  payslipsSent?: string[];
 }
 
 export interface Agency {
@@ -50,10 +51,10 @@ export interface Payslip {
   userId: string;
   fileName: string;
   fileUrl: string;
-  periodLabel: string;
   agencyId: string;
-  uploadedByUid?: string;
-  uploadedAt?: Date;
+  sentBy?: string;
+  timestamp?: Date;
+  hasDownloaded?: boolean;
 }
 
 export interface StaffUpload {
