@@ -5,6 +5,7 @@ import { uploadStaffDocument } from "../../services/staffUploadService";
 import { getStatus } from "../../services/userService";
 
 export const UserUploadPage = () => {
+  useEffect(() => { document.title = "Upload"; }, []);
   const { appUser } = useAuth();
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);

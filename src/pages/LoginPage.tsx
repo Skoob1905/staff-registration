@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Alert, Button, Card, Input, Label, Separator, SecondaryButton } from "../components/ui";
 import { DialogRoot, DialogContent, DialogTitle } from "../components/ui/dialog";
@@ -8,6 +8,7 @@ import { useToast } from "../context/ToastProvider";
 const emailSchema = z.string().email("Enter a valid email address.");
 
 export const LoginPage = () => {
+  useEffect(() => { document.title = "Login"; }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);

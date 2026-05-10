@@ -38,6 +38,7 @@ type AwaitingRegistrationView = AwaitingRegistration & {
 };
 
 export const AdminStaffPage = () => {
+  useEffect(() => { document.title = "Home"; }, []);
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");

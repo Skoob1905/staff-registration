@@ -8,6 +8,7 @@ import { getStaffUsersByAgency } from "../../services/userService";
 import type { AppUser } from "../../types/domain";
 
 export const AdminUploadPage = () => {
+  useEffect(() => { document.title = "Upload"; }, []);
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [staff, setStaff] = useState<AppUser[]>([]);

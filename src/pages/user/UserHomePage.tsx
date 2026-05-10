@@ -37,6 +37,7 @@ import type { Payslip, UnsignedContract } from "../../types/domain";
 import { formatInvitedAt } from "../../utils/date";
 
 export const UserHomePage = () => {
+  useEffect(() => { document.title = "Home"; }, []);
   const { appUser, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [contracts, setContracts] = useState<UnsignedContract[]>([]);
