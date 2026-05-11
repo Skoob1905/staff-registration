@@ -1,27 +1,81 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ececf0;
-  --foreground: #171717;
+  --background: #edf2f7;
+  --foreground: #10233f;
   --card: #ffffff;
-  --card-foreground: #171717;
-  --muted: #e4e4e7;
-  --muted-foreground: #52525b;
-  --primary: #27272a;
+  --card-foreground: #10233f;
+  --muted: #d8e2ef;
+  --muted-foreground: #4d5f7c;
+  --primary: #1f4f8a;
   --primary-foreground: #ffffff;
-  --border: #d4d4d8;
-  --destructive: #ef4444;
+  --border: #c8d5e6;
+  --destructive: #c74343;
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --surface: #ffffff;
+  --input-bg: rgba(255, 255, 255, 0.88);
+  --input-focus-bg: #ffffff;
+  --placeholder: #6f819e;
   --radius: 0.875rem;
+}
+
+[data-theme="dark"] {
+  --background: #0e1624;
+  --foreground: #dbe7f7;
+  --card: #111c2d;
+  --card-foreground: #dbe7f7;
+  --muted: #1b2a40;
+  --muted-foreground: #9eb1cb;
+  --primary: #4d8fe0;
+  --primary-foreground: #dbe7f7;
+  --border: #263a55;
+  --destructive: #e06a6a;
+  --header-bg: rgba(17, 28, 45, 0.9);
+  --surface: #162338;
+  --input-bg: rgba(25, 40, 61, 0.92);
+  --input-focus-bg: #1c2d46;
+  --placeholder: #8ea4c0;
 }
 
 * { box-sizing: border-box; }
 
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: var(--background);
+}
+
 body {
   margin: 0;
   font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top right, #f5f5f5 0%, #ececec 40%, #e7e7ea 100%);
+  background: radial-gradient(
+    circle at top right,
+    color-mix(in srgb, var(--background) 70%, white 30%) 0%,
+    var(--background) 45%,
+    color-mix(in srgb, var(--background) 92%, black 8%) 100%
+  );
   color: var(--foreground);
 }
 
 #root { min-height: 100vh; }
+
+[data-theme="dark"] .text-zinc-900,
+[data-theme="dark"] .text-zinc-800,
+[data-theme="dark"] .text-zinc-700 {
+  color: var(--foreground) !important;
+}
+
+[data-theme="dark"] .text-zinc-600,
+[data-theme="dark"] .text-zinc-500,
+[data-theme="dark"] .text-zinc-400 {
+  color: var(--muted-foreground) !important;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--surface) !important;
+}
+
+[data-theme="dark"] .hover\:bg-zinc-100:hover {
+  background-color: color-mix(in srgb, var(--primary) 18%, transparent) !important;
+}

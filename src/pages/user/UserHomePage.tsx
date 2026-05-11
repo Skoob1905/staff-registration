@@ -291,32 +291,32 @@ export const UserHomePage = () => {
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold">To Do</h2>
           <span
-            className={`rounded-full px-3 py-1 text-xs font-bold ${registrationStatus === "awaiting" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${registrationStatus === "awaiting" ? "border-[color:rgba(245,158,11,0.28)] bg-[color:rgba(251,191,36,0.18)] text-amber-700" : "border-[color:rgba(16,185,129,0.28)] bg-[color:rgba(52,211,153,0.18)] text-emerald-700"}`}
           >
             {registrationStatus === "awaiting"
               ? "Not Registered"
               : "Registered"}
           </span>
           {appUser?.contractSigned === false && appUser?.contractSent ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[color:rgba(251,191,36,0.18)] border border-[color:rgba(245,158,11,0.28)] px-3 py-1 text-xs font-semibold text-amber-700">
               <FileText className="h-3.5 w-3.5" />
-              Not Signed
+              <span>Not Signed</span>
             </span>
           ) : appUser?.contractSigned === true ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[color:rgba(52,211,153,0.18)] border border-[color:rgba(16,185,129,0.28)] px-3 py-1 text-xs font-semibold text-emerald-700">
               <FileText className="h-3.5 w-3.5" />
-              Signed
+              <span>Signed</span>
             </span>
           ) : null}
           {registrationStatus === "registered" && !appUser?.contractSent ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[color:rgba(248,113,113,0.16)] border border-[color:rgba(239,68,68,0.26)] px-3 py-1 text-xs font-semibold text-red-600">
               <FileText className="h-3.5 w-3.5" />
-              Not Sent
+              <span>Not Sent</span>
             </span>
           ) : null}
         </div>
         {appUser?.contractSigned === false && appUser?.contractSentBy ? (
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
             Sent By: {appUser.contractSentBy} at{" "}
             {formatInvitedAt(appUser.contractSent)}
           </p>
@@ -366,16 +366,16 @@ export const UserHomePage = () => {
           </Button>
         ) : registrationStatus === "registered" &&
           !latestUndownloadedPayslip ? (
-          <p className="mt-3 text-sm text-zinc-600">
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Relax! There is nothing to do
           </p>
         ) : null}
         {registrationStatus === "registered" && latestUndownloadedPayslip ? (
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-zinc-50/70 px-3 py-2">
-            <p className="text-sm text-zinc-700">Download latest payslip</p>
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] px-3 py-2">
+            <p className="text-sm text-[var(--foreground)]">Download latest payslip</p>
             <Button
               type="button"
-              className="bg-zinc-900 text-white hover:bg-black"
+              className="bg-[var(--primary)] text-white"
               onClick={() => void onDownloadPayslip(latestUndownloadedPayslip)}
             >
               Download
@@ -387,8 +387,8 @@ export const UserHomePage = () => {
       <Card>
         <div id="contracts-section" />
         <h2 className="text-lg font-bold">Contracts</h2>
-        <div className="mt-3 rounded-xl border border-[var(--border)] bg-zinc-50/50 p-3">
-          <div className="space-y-1 text-sm text-zinc-600">
+        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] p-3">
+          <div className="space-y-1 text-sm text-[var(--foreground)]">
             {appUser?.contractSent ? (
               <p>
                 <b>Sent By:</b> {appUser.contractSentBy ?? "Unknown"} at{" "}
@@ -417,7 +417,7 @@ export const UserHomePage = () => {
                 <b>Signed At:</b> {formatInvitedAt(appUser.contractSignedAt)}
               </p>
             ) : appUser?.contractSigned === undefined ? (
-              <p className="text-sm text-zinc-500">No contracts signed.</p>
+              <p className="text-sm text-[var(--muted-foreground)]">No contracts signed.</p>
             ) : null}
           </div>
         </div>

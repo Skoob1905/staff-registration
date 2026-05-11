@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { httpsCallable } from "firebase/functions";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Upload } from "lucide-react";
 import {
   AccordionItem,
   AccordionRoot,
@@ -450,57 +450,83 @@ const StaffAccordion = ({
       <AccordionItem
         value={member.uid}
         title={
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 w-full items-center gap-2">
             <span className="truncate">
               {[member.firstName, member.lastName].filter(Boolean).join(" ") ||
                 member.email}
             </span>
             {member.contractSigned === false && member.contractSent ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[color:rgba(251,191,36,0.18)] border border-[color:rgba(245,158,11,0.28)] px-3 py-1 text-xs font-semibold text-amber-700 md:ml-0">
                 <FileText className="h-3.5 w-3.5" />
-                Not Signed
+                <span>Not Signed</span>
               </span>
             ) : member.contractSigned === true ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[color:rgba(52,211,153,0.18)] border border-[color:rgba(16,185,129,0.28)] px-3 py-1 text-xs font-semibold text-emerald-700 md:ml-0">
                 <FileText className="h-3.5 w-3.5" />
-                Signed
+                <span>Signed</span>
               </span>
             ) : null}
             {member.registrationStatus === "registered" &&
             !member.contractSent ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[color:rgba(248,113,113,0.16)] border border-[color:rgba(239,68,68,0.26)] px-3 py-1 text-xs font-semibold text-red-600 md:ml-0">
                 <FileText className="h-3.5 w-3.5" />
-                Not Sent
+                <span>Not Sent</span>
               </span>
             ) : null}
           </div>
         }
         actions={
           member.registrationStatus === "registered" ? (
-            <>
+            <div className="hidden md:flex md:items-center md:gap-2">
               {!member.contractSent ? (
                 <Button
                   type="button"
-                  className="px-3 py-1 text-xs"
+                  className="inline-flex items-center gap-1 border border-[var(--primary)] bg-[color:rgba(31,79,138,0.14)] px-2 text-xs text-[var(--foreground)] shadow-none hover:brightness-110"
                   disabled={uploadingContract}
                   onClick={() => contractFileInputRef.current?.click()}
                 >
-                  {uploadingContract ? "Sending..." : "Send Contract"}
+                  <Upload className="h-3 w-3" />
+                  {uploadingContract ? "Sending..." : "Contract"}
                 </Button>
               ) : null}
               <Button
                 type="button"
-                className="px-3 py-1 text-xs"
+                className="inline-flex items-center gap-1 border border-[var(--primary)] bg-[color:rgba(31,79,138,0.14)] px-2 text-xs text-[var(--foreground)] shadow-none hover:brightness-110"
                 disabled={uploadingPayslip}
                 onClick={() => payslipFileInputRef.current?.click()}
               >
-                {uploadingPayslip ? "Sending..." : "Send Payslip"}
+                <Upload className="h-3 w-3" />
+                {uploadingPayslip ? "Sending..." : "Payslip"}
               </Button>
-            </>
+            </div>
           ) : undefined
         }
       >
         <div className="space-y-3">
+          {member.registrationStatus === "registered" ? (
+            <div className="flex items-center gap-2 md:hidden">
+              {!member.contractSent ? (
+                <Button
+                  type="button"
+                  className="inline-flex items-center gap-1 border border-[var(--primary)] bg-[color:rgba(31,79,138,0.14)] px-2 text-xs text-[var(--foreground)] shadow-none hover:brightness-110"
+                  disabled={uploadingContract}
+                  onClick={() => contractFileInputRef.current?.click()}
+                >
+                  <Upload className="h-3 w-3" />
+                  {uploadingContract ? "Sending..." : "Contract"}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                className="inline-flex items-center gap-1 border border-[var(--primary)] bg-[color:rgba(31,79,138,0.14)] px-2 text-xs text-[var(--foreground)] shadow-none hover:brightness-110"
+                disabled={uploadingPayslip}
+                onClick={() => payslipFileInputRef.current?.click()}
+              >
+                <Upload className="h-3 w-3" />
+                {uploadingPayslip ? "Sending..." : "Payslip"}
+              </Button>
+            </div>
+          ) : null}
           <div className="space-y-1 text-zinc-600">
             <b>Email</b>: {member.email}
             {member.registeredAt ? (
@@ -525,7 +551,7 @@ const StaffAccordion = ({
                     target="_blank"
                     rel="noreferrer"
                     aria-label="Download contract"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:rgba(77,143,224,0.55)] bg-[color:rgba(77,143,224,0.14)] text-[#4d8fe0] transition hover:bg-[#4d8fe0] hover:text-white"
                   >
                     <Download className="h-3.5 w-3.5" />
                   </a>
@@ -533,7 +559,7 @@ const StaffAccordion = ({
                 <button
                   type="button"
                   aria-label="Delete contract"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 text-red-500 opacity-80 transition hover:bg-red-500 hover:text-white hover:opacity-100"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:rgba(199,67,67,0.55)] bg-[color:rgba(199,67,67,0.12)] text-[#c74343] transition hover:bg-[#c74343] hover:text-white"
                   onClick={() => setShowDeleteModal(true)}
                 >
                   ×
