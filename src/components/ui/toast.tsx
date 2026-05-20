@@ -31,7 +31,7 @@ export const ToastItem = ({
       open
       onOpenChange={onOpenChange}
       duration={5000}
-      className={`group z-[9999] rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${
+      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${
         isError
           ? "border-red-300 bg-red-50/90"
           : "border-emerald-300 bg-emerald-50/90"

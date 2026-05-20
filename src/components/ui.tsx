@@ -2,10 +2,22 @@ import * as Accordion from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
-const cls = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
+const cls = (...parts: Array<string | false | null | undefined>) =>
+  parts.filter(Boolean).join(" ");
 
-export const Card = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <div className={cls("rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_12px_28px_rgba(18,50,92,0.10)]", className)}>
+export const Card = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={cls(
+      "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_12px_28px_rgba(18,50,92,0.10)]",
+      className,
+    )}
+  >
     {children}
   </div>
 );
@@ -20,7 +32,10 @@ export const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
   />
 );
 
-export const Button = ({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+export const Button = ({
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button
     {...props}
     className={cls(
@@ -30,7 +45,10 @@ export const Button = ({ className, ...props }: React.ButtonHTMLAttributes<HTMLB
   />
 );
 
-export const SecondaryButton = ({ className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+export const SecondaryButton = ({
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button
     {...props}
     className={cls(
@@ -40,35 +58,68 @@ export const SecondaryButton = ({ className, ...props }: React.ButtonHTMLAttribu
   />
 );
 
-export const Label = ({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) => (
-  <label htmlFor={htmlFor} className="text-sm font-medium text-[var(--muted-foreground)]">
+export const Label = ({
+  children,
+  htmlFor,
+}: {
+  children: ReactNode;
+  htmlFor?: string;
+}) => (
+  <label
+    htmlFor={htmlFor}
+    className="text-sm font-medium text-[var(--muted-foreground)]"
+  >
     {children}
   </label>
 );
 
 export const Alert = ({ children }: { children: ReactNode }) => (
-  <div className="rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] px-3 py-2 text-sm text-[var(--foreground)]">{children}</div>
+  <div className="rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] px-3 py-2 text-sm text-[var(--foreground)]">
+    {children}
+  </div>
 );
 
-export const Separator = () => <div className="my-4 h-px w-full bg-[var(--muted)]" />;
+export const Separator = () => (
+  <div className="my-4 h-px w-full bg-[var(--muted)]" />
+);
 
 export const ProgressBar = ({ value }: { value: number }) => (
   <div className="h-2 w-full rounded-full bg-[color:rgba(31,79,138,0.15)]">
-    <div className="h-2 rounded-full bg-[var(--primary)] transition-all" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    <div
+      className="h-2 rounded-full bg-[var(--primary)] transition-all"
+      style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+    />
   </div>
 );
 
 export const AccordionRoot = Accordion.Root;
 
-export const AccordionItem = ({ value, title, children, actions }: { value: string; title: ReactNode; children: ReactNode; actions?: ReactNode }) => (
-  <Accordion.Item value={value} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_6px_20px_rgba(18,50,92,0.08)]">
+export const AccordionItem = ({
+  value,
+  title,
+  children,
+  actions,
+}: {
+  value: string;
+  title: ReactNode;
+  children: ReactNode;
+  actions?: ReactNode;
+}) => (
+  <Accordion.Item
+    value={value}
+    className="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_6px_20px_rgba(18,50,92,0.08)]"
+  >
     <Accordion.Header className="flex items-center">
       <Accordion.Trigger className="flex flex-1 items-center px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">
         {title}
       </Accordion.Trigger>
-      {actions && <div className="mr-2 flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="mr-2 flex shrink-0 items-center gap-2">{actions}</div>
+      )}
       <ChevronDown className="mr-4 h-4 w-4 shrink-0" />
     </Accordion.Header>
-    <Accordion.Content className="px-4 pb-4 text-sm text-[var(--muted-foreground)]">{children}</Accordion.Content>
+    <Accordion.Content className="px-4 pb-4 text-sm text-[var(--muted-foreground)]">
+      {children}
+    </Accordion.Content>
   </Accordion.Item>
 );

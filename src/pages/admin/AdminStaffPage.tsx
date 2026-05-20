@@ -215,7 +215,7 @@ export const AdminStaffPage = () => {
           {awaiting.map((person) => (
             <div
               key={person.id}
-              className="bg-white px-1 py-1 text-sm text-zinc-700"
+              className="bg-white py-1 text-sm text-zinc-700"
             >
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <button
@@ -223,15 +223,14 @@ export const AdminStaffPage = () => {
                   aria-label={`Remove ${person.email}`}
                   disabled={removeLoadingUid === person.uid}
                   onClick={() => void onRemoveAwaiting(person.uid)}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 text-red-500 opacity-80 transition hover:bg-red-500 hover:text-white hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-red-300 text-red-500 opacity-80 transition hover:bg-red-500 hover:text-white hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ×
                 </button>
-                <div className="flex w-full items-center justify-between">
+                <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between">
                   <span className="font-bold">{person.email}</span>
-                  <div className="flex items-center gap-3 text-zinc-600">
+                  <div className="flex items-center gap-1 text-zinc-600">
                     <span>{person.requesterEmail}</span>
-                    <span className="text-zinc-400">•</span>
                     <span>{person.invitedAtFormatted}</span>
                   </div>
                 </div>
