@@ -39,6 +39,10 @@
 
 * { box-sizing: border-box; }
 
+html {
+  background-color: var(--header-bg);
+}
+
 html,
 body,
 #root {

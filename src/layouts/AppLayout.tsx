@@ -5,6 +5,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { logoutUser } from "../services/authService";
 import { useAuth } from "../context/AuthProvider";
 import { Button } from "../components/ui";
+import { Footer } from "../components/Footer";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-xl px-2 py-1 text-xs font-semibold transition sm:px-4 sm:py-2 sm:text-sm ${
@@ -168,7 +169,7 @@ export const AppLayout = () => {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header
         className="sticky top-0 z-20 border-b border-[var(--border)] backdrop-blur relative"
         style={{ backgroundColor: "var(--header-bg)" }}
@@ -236,9 +237,11 @@ export const AppLayout = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-3 sm:py-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-3 sm:py-6">
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 };
