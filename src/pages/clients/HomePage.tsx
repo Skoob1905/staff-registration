@@ -35,9 +35,12 @@ import {
 import { getStatus } from "../../services/userService";
 import type { Payslip, UnsignedContract } from "../../types/domain";
 import { formatInvitedAt } from "../../utils/date";
+import { AssignedStaffSection } from "../../components/AssignedStaffSection";
 
 export const UserHomePage = () => {
-  useEffect(() => { document.title = "Home"; }, []);
+  useEffect(() => {
+    document.title = "Home";
+  }, []);
   const { appUser, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [contracts, setContracts] = useState<UnsignedContract[]>([]);
@@ -286,10 +289,10 @@ export const UserHomePage = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="mx-auto max-w-2xl space-y-4">
+      {/* <Card>
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold">To Do</h2>
+          <h2 className="text-sm sm:text-lg font-bold">To Do</h2>
           <span
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${registrationStatus === "awaiting" ? "border-[color:rgba(245,158,11,0.28)] bg-[color:rgba(251,191,36,0.18)] text-amber-700" : "border-[color:rgba(16,185,129,0.28)] bg-[color:rgba(52,211,153,0.18)] text-emerald-700"}`}
           >
@@ -366,13 +369,15 @@ export const UserHomePage = () => {
           </Button>
         ) : registrationStatus === "registered" &&
           !latestUndownloadedPayslip ? (
-          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+          <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
             Relax! There is nothing to do
           </p>
         ) : null}
         {registrationStatus === "registered" && latestUndownloadedPayslip ? (
           <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] px-3 py-2">
-            <p className="text-sm text-[var(--foreground)]">Download latest payslip</p>
+            <p className="text-xs sm:text-sm text-[var(--foreground)]">
+              Download latest payslip
+            </p>
             <Button
               type="button"
               className="bg-[var(--primary)] text-white"
@@ -386,9 +391,9 @@ export const UserHomePage = () => {
 
       <Card>
         <div id="contracts-section" />
-        <h2 className="text-lg font-bold">Contracts</h2>
-        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] p-3">
-          <div className="space-y-1 text-sm text-[var(--foreground)]">
+        <h2 className="text-sm sm:text-lg font-bold">Contracts</h2>
+        <div className="mt-1.5 rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] p-3 sm:mt-3">
+          <div className="space-y-1 text-xs sm:text-sm text-[var(--foreground)]">
             {appUser?.contractSent ? (
               <p>
                 <b>Sent By:</b> {appUser.contractSentBy ?? "Unknown"} at{" "}
@@ -417,74 +422,78 @@ export const UserHomePage = () => {
                 <b>Signed At:</b> {formatInvitedAt(appUser.contractSignedAt)}
               </p>
             ) : appUser?.contractSigned === undefined ? (
-              <p className="text-sm text-[var(--muted-foreground)]">No contracts signed.</p>
+              <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                No contracts signed.
+              </p>
             ) : null}
           </div>
         </div>
       </Card>
 
       <Card>
-        <h2 className="text-lg font-bold">Payslips</h2>
+        <h2 className="text-sm sm:text-lg font-bold">Payslips</h2>
         {payslips.length ? (
-          <AccordionRoot type="single" collapsible className="mt-3 space-y-2">
-            {payslips.map((payslip) => (
-              <AccordionItem
-                key={payslip.id}
-                value={payslip.id}
-                title={
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate">{payslip.fileName}</span>
-                    {!payslip.hasDownloaded && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                        New
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      aria-label="Download payslip"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        void onDownloadPayslip(payslip);
-                      }}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </button>
+          <div className="mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] sm:mt-3">
+            <AccordionRoot type="single" collapsible>
+              {payslips.map((payslip) => (
+                <AccordionItem
+                  key={payslip.id}
+                  value={payslip.id}
+                  title={
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{payslip.fileName}</span>
+                      {!payslip.hasDownloaded && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                          New
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Download payslip"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void onDownloadPayslip(payslip);
+                        }}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  }
+                >
+                  <div className="space-y-1 text-xs sm:text-sm text-zinc-600">
+                    <p>
+                      <b>Sent By:</b> {payslip.sentBy ?? "Unknown"}
+                    </p>
+                    <p>
+                      <b>Sent At:</b> {formatInvitedAt(payslip.timestamp)}
+                    </p>
                   </div>
-                }
-              >
-                <div className="space-y-1 text-sm text-zinc-600">
-                  <p>
-                    <b>Sent By:</b> {payslip.sentBy ?? "Unknown"}
-                  </p>
-                  <p>
-                    <b>Sent At:</b> {formatInvitedAt(payslip.timestamp)}
-                  </p>
-                </div>
-              </AccordionItem>
-            ))}
-          </AccordionRoot>
+                </AccordionItem>
+              ))}
+            </AccordionRoot>
+          </div>
         ) : (
-          <p className="mt-3 text-sm text-zinc-500">No payslips available.</p>
+          <p className="mt-1.5 text-xs sm:text-sm text-zinc-500 sm:mt-3">No payslips available.</p>
         )}
-      </Card>
+      </Card> */}
 
-      <DialogRoot
+      {/* <DialogRoot
         open={showRegistrationModal}
         onOpenChange={setShowRegistrationModal}
       >
         <DialogContent onClose={() => setShowRegistrationModal(false)}>
-          <DialogTitle className="text-lg font-bold">
+          <DialogTitle className="text-sm sm:text-lg font-bold">
             Complete Registration
           </DialogTitle>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-xs sm:text-sm text-zinc-600">
             Please provide your details to complete onboarding.
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-zinc-700">
+              <label className="text-xs sm:text-sm font-medium text-zinc-700">
                 First name
               </label>
               <input
@@ -498,7 +507,7 @@ export const UserHomePage = () => {
                 onBlur={() =>
                   setTouched((prev) => ({ ...prev, firstName: true }))
                 }
-                className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
               />
               {touched.firstName && "firstName" in formErrors ? (
                 <p className="mt-1 text-xs text-red-600">
@@ -508,7 +517,7 @@ export const UserHomePage = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-zinc-700">
+              <label className="text-xs sm:text-sm font-medium text-zinc-700">
                 Last name
               </label>
               <input
@@ -519,7 +528,7 @@ export const UserHomePage = () => {
                 onBlur={() =>
                   setTouched((prev) => ({ ...prev, lastName: true }))
                 }
-                className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
               />
               {touched.lastName && "lastName" in formErrors ? (
                 <p className="mt-1 text-xs text-red-600">
@@ -530,7 +539,7 @@ export const UserHomePage = () => {
           </div>
 
           <div className="mt-3">
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-xs sm:text-sm font-medium text-zinc-700">
               Birthday
             </label>
             <input
@@ -540,7 +549,7 @@ export const UserHomePage = () => {
                 setFormData((prev) => ({ ...prev, birthday: e.target.value }))
               }
               onBlur={() => setTouched((prev) => ({ ...prev, birthday: true }))}
-              className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
             />
             {touched.birthday && "birthday" in formErrors ? (
               <p className="mt-1 text-xs text-red-600">{formErrors.birthday}</p>
@@ -548,14 +557,14 @@ export const UserHomePage = () => {
           </div>
 
           <div className="mt-3">
-            <label className="text-sm font-medium text-zinc-700">Address</label>
+            <label className="text-xs sm:text-sm font-medium text-zinc-700">Address</label>
             <textarea
               value={formData.address}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, address: e.target.value }))
               }
               onBlur={() => setTouched((prev) => ({ ...prev, address: true }))}
-              className="mt-1 min-h-24 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
+              className="mt-1 min-h-24 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
             />
             {touched.address && "address" in formErrors ? (
               <p className="mt-1 text-xs text-red-600">{formErrors.address}</p>
@@ -563,7 +572,7 @@ export const UserHomePage = () => {
           </div>
 
           <div className="mt-4">
-            <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+            <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
               <input
                 type="checkbox"
                 checked={formData.honestyConfirmed}
@@ -604,9 +613,11 @@ export const UserHomePage = () => {
             </Button>
           </div>
         </DialogContent>
-      </DialogRoot>
+      </DialogRoot> */}
 
-      <SignModal
+      <AssignedStaffSection />
+
+      {/* <SignModal
         open={showSignModal}
         contract={activeContract}
         showDrawPad={showDrawPad}
@@ -620,7 +631,7 @@ export const UserHomePage = () => {
         onStartSign={() => setShowDrawPad(true)}
         onClearSignature={() => signaturePadRef.current?.clear()}
         onSubmitSignature={onApplySignature}
-      />
+      /> */}
     </div>
   );
 };

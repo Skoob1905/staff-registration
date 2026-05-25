@@ -6,9 +6,9 @@ export const UserLayout = () => (
       <NavLink to="/app/user/home" className={"tabClass"}>
         HOME
       </NavLink>
-      <NavLink to="/app/user/upload" className={"tabClass"}>
+      {/* <NavLink to="/app/user/upload" className={"tabClass"}>
         UPLOAD
-      </NavLink>
+      </NavLink> */}
     </nav>
     <Outlet />
   </div>

@@ -1,7 +1,7 @@
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
 import { db, storage } from "./firebase";
-import type { StaffUpload } from "../types/domain";
+import type { Agency, BulkStaff, BulkUploadRecord, StaffUpload } from "../types/domain";
 
 const monitorUpload = (task: UploadTask, onProgress?: (pct: number) => void): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -44,4 +44,89 @@ export const getStaffUploadsForAgency = async (agencyId: string): Promise<StaffU
   const q = query(collection(db, "staff_uploads"), where("agencyId", "==", agencyId), orderBy("uploadedAt", "desc"));
   const snaps = await getDocs(q);
   return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<StaffUpload, "id">) }));
+};
+
+export const getAllAgencies = async (): Promise<Agency[]> => {
+  const snaps = await getDocs(collection(db, "agencies"));
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Agency, "id">) }));
+};
+
+export interface CsvStaffRow {
+  email: string;
+  title: string;
+  initial: string;
+  forename: string;
+  surname: string;
+  address1: string;
+  address2: string;
+}
+
+export const parseCsvText = (text: string): { headers: string[]; rows: CsvStaffRow[]; errors: string[] } => {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const errors: string[] = [];
+  const rows: CsvStaffRow[] = [];
+
+  if (lines.length < 2) {
+    return { headers: [], rows, errors: ["CSV must have a header row and at least one data row."] };
+  }
+
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+  const emailIdx = headers.indexOf("email");
+  const titleIdx = headers.indexOf("title");
+  const initialIdx = headers.indexOf("initial");
+  const forenameIdx = headers.indexOf("forename");
+  const surnameIdx = headers.indexOf("surname");
+  const address1Idx = headers.indexOf("address 1");
+  const address2Idx = headers.indexOf("address 2");
+
+  if (emailIdx === -1) {
+    return { headers, rows, errors: ["CSV must contain an 'Email' column."] };
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",").map((c) => c.trim());
+    const email = cols[emailIdx]?.toLowerCase() ?? "";
+    if (!email) {
+      errors.push(`Row ${i + 1}: missing email, skipped.`);
+      continue;
+    }
+
+    rows.push({
+      email,
+      title: cols[titleIdx] ?? "",
+      initial: cols[initialIdx] ?? "",
+      forename: cols[forenameIdx] ?? "",
+      surname: cols[surnameIdx] ?? "",
+      address1: cols[address1Idx] ?? "",
+      address2: cols[address2Idx] ?? "",
+    });
+  }
+
+  return { headers, rows, errors };
+};
+
+export const uploadCsvToStorage = async (
+  file: File,
+  agencyId: string,
+  onProgress?: (pct: number) => void,
+): Promise<{ storagePath: string; downloadUrl: string }> => {
+  const storagePath = `bulk-uploads/${agencyId}/${Date.now()}_${file.name}`;
+  const storageRef = ref(storage, storagePath);
+  const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
+  await monitorUpload(task, onProgress);
+  const downloadUrl = await getDownloadURL(storageRef);
+  return { storagePath, downloadUrl };
+};
+
+export const getBulkStaffForAgency = async (agencyId: string): Promise<BulkStaff[]> => {
+  const q = query(collection(db, "staff"), where("agencyId", "==", agencyId), orderBy("assignedAt", "desc"));
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BulkStaff, "id">) }));
+};
+
+export const getUploadHistory = async (): Promise<BulkUploadRecord[]> => {
+  const q = query(collection(db, "uploads"), orderBy("uploadedAt", "desc"));
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BulkUploadRecord, "id">) }));
 };

@@ -14,7 +14,7 @@ export const Card = ({
 }) => (
   <div
     className={cls(
-      "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_12px_28px_rgba(18,50,92,0.10)]",
+      "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-[0_12px_28px_rgba(18,50,92,0.10)] sm:p-4",
       className,
     )}
   >
@@ -107,18 +107,23 @@ export const AccordionItem = ({
 }) => (
   <Accordion.Item
     value={value}
-    className="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_6px_20px_rgba(18,50,92,0.08)]"
+    className="border-b border-[var(--border)] last:border-b-0"
   >
     <Accordion.Header className="flex items-center">
-      <Accordion.Trigger className="flex flex-1 items-center px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">
+      <Accordion.Trigger className="flex flex-1 items-center px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
         {title}
       </Accordion.Trigger>
       {actions && (
-        <div className="mr-2 flex shrink-0 items-center gap-2">{actions}</div>
+        <div
+          className="mr-1 flex shrink-0 items-center gap-2 sm:mr-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {actions}
+        </div>
       )}
-      <ChevronDown className="mr-4 h-4 w-4 shrink-0" />
+      <ChevronDown className="mr-2 h-4 w-4 shrink-0 text-[var(--muted-foreground)] sm:mr-4" />
     </Accordion.Header>
-    <Accordion.Content className="px-4 pb-4 text-sm text-[var(--muted-foreground)]">
+    <Accordion.Content className="px-3 pb-3 text-xs text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
       {children}
     </Accordion.Content>
   </Accordion.Item>

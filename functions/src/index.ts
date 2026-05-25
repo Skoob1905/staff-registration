@@ -128,7 +128,7 @@ export const invitePortalUser = onCall(async (request) => {
       uid: user.uid,
       email,
       agencyId: caller.agencyId,
-      role: "user",
+      role: "client",
       invitedByUid: callerUid,
       status: "awaiting",
       invitedAt: FieldValue.serverTimestamp(),
@@ -142,9 +142,9 @@ export const invitePortalUser = onCall(async (request) => {
     {
       uid: user.uid,
       email,
-      role: "user",
+      role: "client",
       agencyId: caller.agencyId,
-      registrationStatus: "awaiting",
+      invitedByAgencyId: caller.agencyId,
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
@@ -176,8 +176,134 @@ export const invitePortalUser = onCall(async (request) => {
     });
     throw new HttpsError(
       "internal",
-      "Failed to send invite email: " +
-        `${resp.status} ${resp.statusText} ${errorText}`,
+      "Failed to send invite email: " + `${resp.status} `,
+    );
+  }
+
+  return {ok: true, userId: user.uid};
+});
+
+export const assignClientLogin = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const email = normalizeEmail(request.data?.email);
+  if (!email) throw new HttpsError("invalid-argument", "Email is required.");
+  if (!emailPattern.test(email)) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Please enter a valid email address.",
+    );
+  }
+
+  const agencyDocId = String(request.data?.agencyDocId || "").trim();
+  if (!agencyDocId) {
+    throw new HttpsError("invalid-argument", "agencyDocId is required.");
+  }
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+    email?: string;
+  };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  if (!caller.agencyId) {
+    throw new HttpsError("failed-precondition", "Admin has no agencyId.");
+  }
+
+  const agencySnap = await db.collection("agencies").doc(agencyDocId).get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Agency/company not found.");
+  }
+
+  const [existingRegistered, existingAwaiting] = await Promise.all([
+    db
+      .collection("users")
+      .where("email", "==", email)
+      .where("agencyId", "==", agencyDocId)
+      .limit(1)
+      .get(),
+    db
+      .collection("unregistered_staff")
+      .where("email", "==", email)
+      .where("agencyId", "==", agencyDocId)
+      .limit(1)
+      .get(),
+  ]);
+  if (!existingRegistered.empty) {
+    throw new HttpsError("already-exists", "Email is already registered.");
+  }
+  if (!existingAwaiting.empty) {
+    throw new HttpsError(
+      "already-exists",
+      "Email is already awaiting registration.",
+    );
+  }
+
+  let user;
+  try {
+    user = await adminAuth.getUserByEmail(email);
+  } catch (err: unknown) {
+    const authErr = err as { code?: string };
+    if (authErr.code === "auth/user-not-found") {
+      user = await adminAuth.createUser({email});
+    } else if (authErr.code === "auth/invalid-email") {
+      throw new HttpsError(
+        "invalid-argument",
+        "Please enter a valid email address.",
+      );
+    } else {
+      throw err;
+    }
+  }
+
+  await db.collection("users").doc(user.uid).set(
+    {
+      uid: user.uid,
+      email,
+      role: "client",
+      agencyId: agencyDocId,
+      invitedByAgencyId: caller.agencyId,
+      invitedByUid: callerUid,
+      invitedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
+
+  const resp = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
+    {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        requestType: "PASSWORD_RESET",
+        email,
+        continueUrl: RESET_CONTINUE_URL.value(),
+      }),
+    },
+  );
+
+  if (!resp.ok) {
+    const errorText = await resp.text();
+    console.error("sendOobCode failed", {
+      status: resp.status,
+      statusText: resp.statusText,
+      body: errorText,
+      email,
+    });
+    throw new HttpsError(
+      "internal",
+      "Failed to send invite email: " + `${resp.status} `,
     );
   }
 
@@ -243,7 +369,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
   const userSnap = await userRef.get();
   if (userSnap.exists) {
     const userData = userSnap.data() as { agencyId?: string; role?: string };
-    if (userData.agencyId === caller.agencyId && userData.role === "user") {
+    if (userData.agencyId === caller.agencyId && userData.role === "client") {
       await userRef.delete();
     }
   }
@@ -316,6 +442,7 @@ export const registerStaffProfile = onCall(async (request) => {
 
   const awaiting = awaitingSnap.data() as {
     agencyId?: string;
+    invitedByAgencyId?: string;
     email?: string;
   };
   if (!awaiting.agencyId || !awaiting.email) {
@@ -325,12 +452,29 @@ export const registerStaffProfile = onCall(async (request) => {
     );
   }
 
+  const staffAgencyId = awaiting.invitedByAgencyId || awaiting.agencyId;
+  const staffSnap = await db
+    .collection("staff")
+    .where("email", "==", awaiting.email)
+    .where("agencyId", "==", staffAgencyId)
+    .limit(1)
+    .get();
+
+  let assignedToId = "";
+  if (!staffSnap.empty) {
+    const staffData = staffSnap.docs[0].data() as {
+      metadata?: { assignedToId?: string };
+    };
+    assignedToId = staffData.metadata?.assignedToId ?? "";
+  }
+
   await db.collection("users").doc(callerUid).set(
     {
       uid: callerUid,
       email: awaiting.email,
-      role: "user",
+      role: "client",
       agencyId: awaiting.agencyId,
+      ...(assignedToId ? {assignedToId} : {}),
       registrationStatus: "registered",
       firstName,
       lastName,
@@ -551,6 +695,313 @@ export const updatePayslipDownloadedStatus = onCall(async (request) => {
   return {ok: true, payslipId};
 });
 
+export const importAgencyCsv = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+    email?: string;
+  };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const records = request.data?.records;
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "A non-empty records array is required.",
+    );
+  }
+
+  const fileName = String(request.data?.fileName || "unknown.csv");
+  const fileUrl = String(request.data?.fileUrl || "");
+
+  const existingSnaps = await db
+    .collection("agencies")
+    .where("importedByAgencyId", "==", caller.agencyId)
+    .get();
+
+  const existingNames = new Set<string>();
+  for (const doc of existingSnaps.docs) {
+    const data = doc.data();
+    const name = String(data.business_name || "")
+      .trim()
+      .toLowerCase();
+    if (name) existingNames.add(name);
+  }
+
+  const newRecords: Array<Record<string, unknown>> = [];
+  let duplicateCount = 0;
+
+  for (const record of records) {
+    if (typeof record !== "object" || record === null) continue;
+    const name = String(record.business_name || "")
+      .trim()
+      .toLowerCase();
+    if (name && existingNames.has(name)) {
+      duplicateCount++;
+      continue;
+    }
+    newRecords.push(record);
+  }
+
+  if (newRecords.length === 0) {
+    return {
+      ok: true,
+      added: 0,
+      duplicates: duplicateCount,
+      total: records.length,
+    };
+  }
+
+  const importRef = db.collection("csv_imports").doc();
+  const importId = importRef.id;
+
+  const BATCH_LIMIT = 500;
+  let writtenCount = 0;
+
+  for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = newRecords.slice(i, i + BATCH_LIMIT);
+    for (const record of chunk) {
+      const docRef = db.collection("agencies").doc();
+      batch.set(docRef, {
+        ...record,
+        metadata: {
+          uploadedInFile: importId,
+          uploadedBy: caller.agencyId,
+          importedAt: FieldValue.serverTimestamp(),
+        },
+      });
+    }
+    await batch.commit();
+    writtenCount += chunk.length;
+  }
+
+  const totalRecords = Number(request.data?.totalRecords) || records.length;
+
+  await importRef.set({
+    type: "agency",
+    agencyId: caller.agencyId,
+    fileName,
+    fileUrl: fileUrl || null,
+    recordCount: newRecords.length,
+    totalRecords,
+    importedByUid: callerUid,
+    importedByEmail: caller.email ?? null,
+    importedAt: FieldValue.serverTimestamp(),
+  });
+
+  return {
+    ok: true,
+    added: writtenCount,
+    duplicates: duplicateCount,
+    total: records.length,
+    importId,
+  };
+});
+
+export const importStaffCsv = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+    email?: string;
+  };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const records = request.data?.records;
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "A non-empty records array is required.",
+    );
+  }
+
+  const fileName = String(request.data?.fileName || "unknown.csv");
+  const fileUrl = String(request.data?.fileUrl || "");
+
+  const existingSnaps = await db
+    .collection("staff")
+    .where("agencyId", "==", caller.agencyId)
+    .get();
+
+  const field = (data: Record<string, unknown>, ...names: string[]): string => {
+    for (const name of names) {
+      const v = data[name];
+      if (v !== undefined && v !== null) return String(v);
+    }
+    const lowerKeys = Object.keys(data).reduce<Record<string, string>>(
+      (acc, k) => {
+        acc[k.toLowerCase()] = k;
+        return acc;
+      },
+      {},
+    );
+    for (const name of names) {
+      const match = lowerKeys[name.toLowerCase()];
+      if (match) return String(data[match]);
+    }
+    return "";
+  };
+
+  const existingNiNumbers = new Set<string>();
+  for (const doc of existingSnaps.docs) {
+    const data = doc.data();
+    const ni = field(
+      data, "NI Number", "ni_number", "NI_Number", "NINO",
+    ).toLowerCase();
+    if (ni) existingNiNumbers.add(ni);
+  }
+
+  const assignedToId = request.data?.assignedToId ?
+    String(request.data.assignedToId) :
+    null;
+  const assignedToName = request.data?.assignedToName ?
+    String(request.data.assignedToName) :
+    null;
+
+  const newRecords: Array<Record<string, unknown>> = [];
+  let duplicateCount = 0;
+
+  for (const record of records) {
+    if (typeof record !== "object" || record === null) continue;
+    const ni = field(
+      record, "NI Number", "ni_number", "NI_Number", "NINO",
+    ).toLowerCase();
+    if (ni && existingNiNumbers.has(ni)) {
+      duplicateCount++;
+      continue;
+    }
+    newRecords.push(record);
+  }
+
+  if (newRecords.length === 0) {
+    return {
+      ok: true,
+      added: 0,
+      duplicates: duplicateCount,
+      total: records.length,
+    };
+  }
+
+  const importRef = db.collection("csv_imports").doc();
+  const importId = importRef.id;
+
+  const BATCH_LIMIT = 500;
+  let writtenCount = 0;
+  const newStaffIds: string[] = [];
+
+  for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = newRecords.slice(i, i + BATCH_LIMIT);
+    for (const record of chunk) {
+      const docRef = db.collection("staff").doc();
+      batch.set(docRef, {
+        ...record,
+        metadata: {
+          uploadedInFile: importId,
+          uploadedBy: caller.agencyId,
+          importedAt: FieldValue.serverTimestamp(),
+          ...(assignedToId ? {assignedToId, assignedToName} : {}),
+        },
+      });
+      newStaffIds.push(docRef.id);
+    }
+    await batch.commit();
+    writtenCount += chunk.length;
+  }
+
+  if (assignedToId && newStaffIds.length > 0) {
+    await db.collection("agencies").doc(assignedToId).update({
+      assignedStaff: FieldValue.arrayUnion(...newStaffIds),
+    });
+  }
+
+  const totalRecords = Number(request.data?.totalRecords) || records.length;
+
+  await importRef.set({
+    type: "staff",
+    agencyId: caller.agencyId,
+    fileName,
+    fileUrl: fileUrl || null,
+    recordCount: newRecords.length,
+    totalRecords,
+    importedByUid: callerUid,
+    importedByEmail: caller.email ?? null,
+    importedAt: FieldValue.serverTimestamp(),
+  });
+
+  return {
+    ok: true,
+    added: writtenCount,
+    duplicates: duplicateCount,
+    total: records.length,
+    importId,
+  };
+});
+
+export const assignStaffToAgency = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string; email?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const staffId = String(request.data?.staffId || "").trim();
+  const assignedToId = String(request.data?.assignedToId || "").trim();
+  const assignedToName = String(request.data?.assignedToName || "").trim();
+
+  if (!staffId || !assignedToId || !assignedToName) {
+    throw new HttpsError(
+      "invalid-argument",
+      "staffId, assignedToId, and assignedToName are required.",
+    );
+  }
+
+  await db.collection("staff").doc(staffId).set({
+    metadata: {
+      assignedToId,
+      assignedToName,
+      assignedBy: caller.email ?? callerUid,
+      assignedAt: FieldValue.serverTimestamp(),
+    },
+  }, {merge: true});
+
+  await db.collection("agencies").doc(assignedToId).update({
+    assignedStaff: FieldValue.arrayUnion(staffId),
+  });
+
+  return {ok: true, staffId, assignedToId};
+});
+
 export const deleteUserContract = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -569,7 +1020,7 @@ export const deleteUserContract = onCall(async (request) => {
   if (!callerSnap.exists) {
     throw new HttpsError("permission-denied", "Caller profile missing.");
   }
-  const caller = callerSnap.data() as {role?: string; agencyId?: string};
+  const caller = callerSnap.data() as { role?: string; agencyId?: string };
   if (caller.role !== "admin") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
@@ -579,7 +1030,7 @@ export const deleteUserContract = onCall(async (request) => {
   if (!userSnap.exists) {
     throw new HttpsError("not-found", "Target user not found.");
   }
-  const target = userSnap.data() as {agencyId?: string};
+  const target = userSnap.data() as { agencyId?: string };
   if (target.agencyId !== caller.agencyId) {
     throw new HttpsError(
       "permission-denied",
@@ -598,7 +1049,7 @@ export const deleteUserContract = onCall(async (request) => {
       .get();
 
     for (const docSnap of unsignedSnaps.docs) {
-      const data = docSnap.data() as {fileName?: string};
+      const data = docSnap.data() as { fileName?: string };
       const fileName = String(data.fileName || "").trim();
       if (fileName) {
         const path = `contracts/unsigned/${targetUserId}/${fileName}`;
@@ -614,7 +1065,7 @@ export const deleteUserContract = onCall(async (request) => {
       .get();
 
     for (const docSnap of signedSnaps.docs) {
-      const data = docSnap.data() as {fileName?: string};
+      const data = docSnap.data() as { fileName?: string };
       const fileName = String(data.fileName || "").trim();
       if (fileName) {
         const path = `contracts/signed/${targetUserId}/${fileName}`;
@@ -635,4 +1086,476 @@ export const deleteUserContract = onCall(async (request) => {
   );
 
   return {ok: true, targetUserId, mode};
+});
+
+export const bulkUploadStaff = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const agencyId = String(request.data?.agencyId || "").trim();
+  if (!agencyId) {
+    throw new HttpsError("invalid-argument", "agencyId is required.");
+  }
+
+  const rows = request.data?.rows;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new HttpsError("invalid-argument", "rows must be a non-empty array.");
+  }
+
+  const fileStoragePath = String(request.data?.fileStoragePath || "").trim();
+  const originalFileName = String(request.data?.originalFileName || "").trim();
+
+  const existingSnap = await db
+    .collection("staff")
+    .where("agencyId", "==", agencyId)
+    .get();
+  const existingEmails = new Set<string>();
+  existingSnap.docs.forEach((d) => {
+    const data = d.data() as { email?: string };
+    if (data.email) existingEmails.add(data.email.toLowerCase());
+  });
+
+  let added = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  let batch = db.batch();
+  let batchCount = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const email = String(row.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      errors.push(`Row ${i + 1}: missing email, skipped.`);
+      continue;
+    }
+
+    if (existingEmails.has(email)) {
+      skipped++;
+      continue;
+    }
+
+    const docRef = db.collection("staff").doc();
+    batch.set(docRef, {
+      email,
+      title: String(row.title || "").trim(),
+      initial: String(row.initial || "").trim(),
+      forename: String(row.forename || "").trim(),
+      surname: String(row.surname || "").trim(),
+      address1: String(row.address1 || "").trim(),
+      address2: String(row.address2 || "").trim(),
+      agencyId,
+      assignedBy: callerUid,
+      assignedAt: FieldValue.serverTimestamp(),
+      sourceFileName: originalFileName,
+    });
+
+    existingEmails.add(email);
+    added++;
+    batchCount++;
+
+    if (batchCount >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      batchCount = 0;
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.commit();
+  }
+
+  await db.collection("uploads").add({
+    fileName: originalFileName,
+    fileStoragePath,
+    uploadedBy: callerUid,
+    uploadedAt: FieldValue.serverTimestamp(),
+    agencyId,
+    totalRows: rows.length,
+    addedCount: added,
+    skippedCount: skipped,
+  });
+
+  return {ok: true, added, skipped, errors};
+});
+
+export const removeAgencies = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+  };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const importId = String(request.data?.importId || "").trim();
+  if (!importId) {
+    throw new HttpsError("invalid-argument", "importId is required.");
+  }
+
+  const importRef = db.collection("csv_imports").doc(importId);
+  const importSnap = await importRef.get();
+  if (!importSnap.exists) {
+    throw new HttpsError("not-found", "Import record not found.");
+  }
+
+  const importData = importSnap.data() as {
+    agencyId?: string;
+    fileUrl?: string | null;
+  };
+  if (importData.agencyId !== caller.agencyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Import record does not belong to your agency.",
+    );
+  }
+
+  if (importData.fileUrl) {
+    try {
+      const filePath = decodeURIComponent(
+        importData.fileUrl.split("/o/")[1]?.split("?")[0] ?? "",
+      );
+      if (filePath) {
+        await getStorage().bucket().file(filePath).delete();
+      }
+    } catch {
+      // file may not exist — proceed with record deletion
+    }
+  }
+
+  const agencySnaps = await db
+    .collection("agencies")
+    .where("metadata.uploadedInFile", "==", importId)
+    .get();
+
+  const BATCH_LIMIT = 500;
+  let deletedCount = 0;
+
+  for (let i = 0; i < agencySnaps.docs.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = agencySnaps.docs.slice(i, i + BATCH_LIMIT);
+    for (const doc of chunk) {
+      batch.delete(doc.ref);
+      deletedCount++;
+    }
+    await batch.commit();
+  }
+
+  await importRef.delete();
+
+  return {ok: true, deletedCount, importId};
+});
+
+export const removeStaffImport = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+  };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const importId = String(request.data?.importId || "").trim();
+  if (!importId) {
+    throw new HttpsError("invalid-argument", "importId is required.");
+  }
+
+  const importRef = db.collection("csv_imports").doc(importId);
+  const importSnap = await importRef.get();
+  if (!importSnap.exists) {
+    throw new HttpsError("not-found", "Import record not found.");
+  }
+
+  const importData = importSnap.data() as {
+    agencyId?: string;
+    fileUrl?: string | null;
+  };
+  if (importData.agencyId !== caller.agencyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Import record does not belong to your agency.",
+    );
+  }
+
+  if (importData.fileUrl) {
+    try {
+      const filePath = decodeURIComponent(
+        importData.fileUrl.split("/o/")[1]?.split("?")[0] ?? "",
+      );
+      if (filePath) {
+        await getStorage().bucket().file(filePath).delete();
+      }
+    } catch {
+      // file may not exist — proceed with record deletion
+    }
+  }
+
+  const staffSnaps = await db
+    .collection("staff")
+    .where("metadata.uploadedInFile", "==", importId)
+    .get();
+
+  const agencyUpdates = new Map<string, string[]>();
+
+  for (const snap of staffSnaps.docs) {
+    const data = snap.data();
+    const assignedToId = data.metadata?.assignedToId;
+    if (assignedToId) {
+      const ids = agencyUpdates.get(assignedToId) || [];
+      ids.push(snap.id);
+      agencyUpdates.set(assignedToId, ids);
+    }
+  }
+
+  const BATCH_LIMIT = 500;
+  let deletedCount = 0;
+
+  for (let i = 0; i < staffSnaps.docs.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = staffSnaps.docs.slice(i, i + BATCH_LIMIT);
+    for (const doc of chunk) {
+      batch.delete(doc.ref);
+      deletedCount++;
+    }
+    await batch.commit();
+  }
+
+  for (const [agencyId, staffIds] of agencyUpdates) {
+    await db.collection("agencies").doc(agencyId).update({
+      assignedStaff: FieldValue.arrayRemove(...staffIds),
+    });
+  }
+
+  await importRef.delete();
+
+  return {
+    ok: true, deletedCount, importId,
+    agencyCleanupCount: agencyUpdates.size,
+  };
+});
+
+export const backfillAssignedBy = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string; agencyId?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const agencyId = caller.agencyId;
+  if (!agencyId) {
+    throw new HttpsError("failed-precondition", "Caller has no agencyId.");
+  }
+
+  const staffSnaps = await db
+    .collection("staff")
+    .where("metadata.assignedBy", "!=", "")
+    .get();
+
+  const uidToEmail = new Map<string, string>();
+  const batch = db.batch();
+  let updatedCount = 0;
+
+  for (const snap of staffSnaps.docs) {
+    const data = snap.data();
+    const assignedBy = data.metadata?.assignedBy;
+    if (!assignedBy || assignedBy.includes("@")) continue;
+
+    if (!uidToEmail.has(assignedBy)) {
+      try {
+        const userRecord = await getAuth().getUser(assignedBy);
+        uidToEmail.set(assignedBy, userRecord.email || assignedBy);
+      } catch {
+        uidToEmail.set(assignedBy, assignedBy);
+      }
+    }
+
+    const resolvedEmail = uidToEmail.get(assignedBy);
+    if (resolvedEmail && resolvedEmail !== assignedBy) {
+      batch.update(snap.ref, "metadata.assignedBy", resolvedEmail);
+      updatedCount++;
+    }
+  }
+
+  if (updatedCount > 0) {
+    await batch.commit();
+  }
+
+  return {ok: true, updatedCount};
+});
+
+export const unassignStaffFromAgency = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const staffId = String(request.data?.staffId || "").trim();
+  if (!staffId) {
+    throw new HttpsError("invalid-argument", "staffId is required.");
+  }
+
+  const staffSnap = await db.collection("staff").doc(staffId).get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff member not found.");
+  }
+
+  const staffData = staffSnap.data();
+  const assignedToId = staffData?.metadata?.assignedToId;
+  if (!assignedToId) {
+    throw new HttpsError("failed-precondition", "Staff not assigned.");
+  }
+
+  await db.collection("staff").doc(staffId).set({
+    metadata: {
+      assignedToId: FieldValue.delete(),
+      assignedToName: FieldValue.delete(),
+      assignedBy: FieldValue.delete(),
+      assignedAt: FieldValue.delete(),
+    },
+  }, {merge: true});
+
+  await db.collection("agencies").doc(assignedToId).update({
+    assignedStaff: FieldValue.arrayRemove(staffId),
+  });
+
+  return {ok: true, staffId, assignedToId};
+});
+
+export const addStaffTag = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const staffId = String(request.data?.staffId || "").trim();
+  const tag = String(request.data?.tag || "").trim();
+  if (!staffId || !tag) {
+    throw new HttpsError("invalid-argument", "staffId and tag are required.");
+  }
+
+  const tagsSnap = await db.collection("tags").where("value", "==", tag).get();
+  let tagId: string;
+  if (tagsSnap.empty) {
+    const newTagRef = await db.collection("tags").add({value: tag});
+    tagId = newTagRef.id;
+  } else {
+    tagId = tagsSnap.docs[0].id;
+  }
+
+  await db.collection("staff").doc(staffId).update({
+    tags: FieldValue.arrayUnion(tagId),
+  });
+
+  return {ok: true, staffId, tagId, tagValue: tag, created: tagsSnap.empty};
+});
+
+export const removeClientLogin = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const uid = String(request.data?.uid || "").trim();
+  if (!uid) throw new HttpsError("invalid-argument", "uid is required.");
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError(
+      "permission-denied", "Caller profile missing.",
+    );
+  }
+
+  const caller = callerSnap.data() as { role?: string; agencyId?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+  if (!caller.agencyId) {
+    throw new HttpsError(
+      "failed-precondition", "Admin has no agencyId.",
+    );
+  }
+
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) throw new HttpsError("not-found", "User not found.");
+
+  const userData = userSnap.data() as {
+    agencyId?: string; role?: string; invitedByAgencyId?: string;
+  };
+  if (userData.role !== "client") {
+    throw new HttpsError(
+      "permission-denied", "Can only remove client users.",
+    );
+  }
+
+  try {
+    await adminAuth.deleteUser(uid);
+  } catch (err: unknown) {
+    const authErr = err as { code?: string };
+    if (authErr.code !== "auth/user-not-found") throw err;
+  }
+
+  await userRef.delete();
+
+  return {ok: true, uid};
 });

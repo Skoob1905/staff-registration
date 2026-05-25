@@ -23,14 +23,21 @@ service cloud.firestore {
       return isSignedIn() && userRole() == "admin";
     }
 
+    function isClient() {
+      return isSignedIn() && userRole() == "client";
+    }
+
     function sameAgency(resourceAgencyId) {
       return isSignedIn() && resourceAgencyId == userAgencyId();
     }
 
     // Agencies
     match /agencies/{agencyId} {
-      allow read: if isSignedIn() && agencyId == userAgencyId();
-      allow write: if isAdmin() && agencyId == userAgencyId();
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        (isClient() && agencyId == userAgencyId())
+      );
+      allow write: if isAdmin();
     }
 
     // User profiles
@@ -38,7 +45,10 @@ service cloud.firestore {
       // User can read own profile; admin can read profiles in same agency
       allow read: if isSignedIn() && (
         request.auth.uid == uid ||
-        (isAdmin() && sameAgency(resource.data.agencyId))
+        (isAdmin() && (
+          sameAgency(resource.data.agencyId) ||
+          sameAgency(resource.data.invitedByAgencyId)
+        ))
       );
 
       // Admin manages users in own agency
@@ -121,6 +131,18 @@ service cloud.firestore {
         resource.data.agencyId == userAgencyId();
     }
 
+    // CSV import history
+    match /csv_imports/{docId} {
+      allow read: if isAdmin() && resource.data.agencyId == userAgencyId();
+      allow write: if isAdmin() && request.resource.data.agencyId == userAgencyId();
+    }
+
+    // Staff records imported via CSV
+    match /staff/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Holds invited staff records before they complete registration and
     // are promoted into the users collection.
     match /unregistered_staff/{docId} {
@@ -128,6 +150,24 @@ service cloud.firestore {
         (isSignedIn() && resource.data.uid == request.auth.uid);
       allow create, update, delete: if isAdmin() &&
         request.resource.data.agencyId == userAgencyId();
+    }
+
+    // Staff types used for filtering staff
+    match /staffType/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Tags for staff members
+    match /tags/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Logins created by admin for client companies
+    match /logins/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
     }
   }
 }

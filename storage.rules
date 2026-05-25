@@ -44,6 +44,17 @@ service firebase.storage {
       allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
+    // CSV imports uploaded by admin for agency client data.
+    match /agency_imports/{agencyId}/{allPaths=**} {
+      allow read: if isAdmin() && userDoc().data.agencyId == agencyId;
+      allow write: if isAdmin() && userDoc().data.agencyId == agencyId;
+    }
+
+    // CSV imports uploaded by admin for staff data.
+    match /staff_imports/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

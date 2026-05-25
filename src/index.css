@@ -79,3 +79,19 @@ body {
 [data-theme="dark"] .hover\:bg-zinc-100:hover {
   background-color: color-mix(in srgb, var(--primary) 18%, transparent) !important;
 }
+
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.animate-dropdown-enter {
+  animation: dropdown-enter 0.12s ease-out;
+  transform-origin: top left;
+}

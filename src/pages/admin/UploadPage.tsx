@@ -8,12 +8,17 @@ import { getStaffUsersByAgency } from "../../services/userService";
 import type { AppUser } from "../../types/domain";
 
 export const AdminUploadPage = () => {
-  useEffect(() => { document.title = "Upload"; }, []);
+  useEffect(() => {
+    document.title = "Upload";
+  }, []);
+
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [staff, setStaff] = useState<AppUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [uploadType, setUploadType] = useState<"contract" | "payslip">("contract");
+  const [uploadType, setUploadType] = useState<"contract" | "payslip">(
+    "contract",
+  );
   const [periodLabel, setPeriodLabel] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -29,7 +34,10 @@ export const AdminUploadPage = () => {
     void run();
   }, [appUser?.agencyId]);
 
-  const canSubmit = useMemo(() => Boolean(selectedUserId && file && appUser?.agencyId), [selectedUserId, file, appUser?.agencyId]);
+  const canSubmit = useMemo(
+    () => Boolean(selectedUserId && file && appUser?.agencyId),
+    [selectedUserId, file, appUser?.agencyId],
+  );
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -55,7 +63,9 @@ export const AdminUploadPage = () => {
           appUser.uid,
           setProgress,
         );
-        const targetUser = staff.find((member) => member.uid === selectedUserId);
+        const targetUser = staff.find(
+          (member) => member.uid === selectedUserId,
+        );
         toast({
           title: "Payslip sent",
           description: `${file.name} was sent to ${targetUser?.email ?? "staff member"}.`,
@@ -70,8 +80,9 @@ export const AdminUploadPage = () => {
   };
 
   return (
-    <Card>
-      <h2 className="text-lg font-bold">Upload Contract or Payslip</h2>
+    <div className="mx-auto max-w-2xl space-y-4">
+      <Card>
+        <h2 className="text-lg font-bold">Upload Staff</h2>
       <form className="mt-4 space-y-3" onSubmit={onSubmit}>
         <div className="space-y-1">
           <Label>Staff Member</Label>
@@ -92,7 +103,9 @@ export const AdminUploadPage = () => {
           <Label>Upload Type</Label>
           <select
             value={uploadType}
-            onChange={(e) => setUploadType(e.target.value as "contract" | "payslip")}
+            onChange={(e) =>
+              setUploadType(e.target.value as "contract" | "payslip")
+            }
             className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
           >
             <option value="contract">Contract (Unsigned)</option>
@@ -103,13 +116,22 @@ export const AdminUploadPage = () => {
         {uploadType === "payslip" ? (
           <div className="space-y-1">
             <Label htmlFor="period">Period Label</Label>
-            <Input id="period" value={periodLabel} onChange={(e) => setPeriodLabel(e.target.value)} placeholder="2026-05" />
+            <Input
+              id="period"
+              value={periodLabel}
+              onChange={(e) => setPeriodLabel(e.target.value)}
+              placeholder="2026-05"
+            />
           </div>
         ) : null}
 
         <div className="space-y-1">
           <Label htmlFor="file">File</Label>
-          <Input id="file" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <Input
+            id="file"
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
         </div>
 
         <ProgressBar value={progress} />
@@ -120,5 +142,6 @@ export const AdminUploadPage = () => {
         </Button>
       </form>
     </Card>
+    </div>
   );
 };

@@ -99,8 +99,8 @@ export const SignModal = ({
   return (
     <DialogRoot open={open} onOpenChange={(next) => (!next ? onClose() : null)}>
       <DialogContent onClose={onClose}>
-        <DialogTitle className="text-lg font-bold">SignModal</DialogTitle>
-        <p className="mt-1 text-sm text-zinc-600">
+        <DialogTitle className="text-sm sm:text-lg font-bold">SignModal</DialogTitle>
+        <p className="mt-1 text-xs sm:text-sm text-zinc-600">
           Review your contract, then sign at the bottom.
         </p>
 
@@ -110,18 +110,18 @@ export const SignModal = ({
               <a
                 href={downloadedFileUrl ?? contract.fileUrl}
                 download={contract.fileName}
-                className="text-sm font-medium text-zinc-700 underline"
+                className="text-xs sm:text-sm font-medium text-zinc-700 underline"
               >
                 Download contract
               </a>
             </div>
             <div className="h-[420px] overflow-hidden rounded-xl border border-[var(--border)] bg-white">
               {loadingContract ? (
-                <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500">
                   Downloading contract...
                 </div>
               ) : downloadError ? (
-                <div className="flex h-full items-center justify-center px-4 text-center text-sm text-red-600">
+                <div className="flex h-full items-center justify-center px-4 text-center text-xs sm:text-sm text-red-600">
                   {downloadError}
                 </div>
               ) : (
@@ -149,7 +149,7 @@ export const SignModal = ({
 
         {showDrawPad ? (
           <div className="mt-4">
-            <p className="mb-2 text-sm text-zinc-600">Draw your signature below.</p>
+            <p className="mb-2 text-xs sm:text-sm text-zinc-600">Draw your signature below.</p>
             <div className="rounded-xl border border-[var(--border)] bg-white p-2">
               <SignatureCanvas
                 ref={(ref) => {
@@ -179,7 +179,7 @@ export const SignModal = ({
         ) : null}
 
         <div className="mt-4 border-t border-[var(--border)] pt-3">
-          <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+          <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
             <input
               type="checkbox"
               checked={signingForm.termsAccepted}

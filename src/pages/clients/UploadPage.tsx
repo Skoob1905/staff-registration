@@ -5,7 +5,9 @@ import { uploadStaffDocument } from "../../services/staffUploadService";
 import { getStatus } from "../../services/userService";
 
 export const UserUploadPage = () => {
-  useEffect(() => { document.title = "Upload"; }, []);
+  useEffect(() => {
+    document.title = "Upload";
+  }, []);
   const { appUser } = useAuth();
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
@@ -43,7 +45,13 @@ export const UserUploadPage = () => {
     setStatus("");
 
     try {
-      await uploadStaffDocument(file, appUser.uid, appUser.agencyId, category, setProgress);
+      await uploadStaffDocument(
+        file,
+        appUser.uid,
+        appUser.agencyId,
+        category,
+        setProgress,
+      );
       setStatus("Upload sent to your agency.");
       setFile(null);
     } catch {
@@ -54,7 +62,9 @@ export const UserUploadPage = () => {
   return (
     <Card>
       <h2 className="text-lg font-bold">Manual Upload</h2>
-      <p className="mt-1 text-sm text-zinc-600">Upload documents directly to your agency inbox.</p>
+      <p className="mt-1 text-sm text-zinc-600">
+        Upload documents directly to your agency inbox.
+      </p>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
         <div className="space-y-1">
@@ -94,7 +104,9 @@ export const UserUploadPage = () => {
         {status ? <p className="text-sm text-zinc-600">{status}</p> : null}
 
         {statusLoading ? (
-          <p className="text-sm text-zinc-500">Checking registration status...</p>
+          <p className="text-sm text-zinc-500">
+            Checking registration status...
+          </p>
         ) : null}
 
         {!statusLoading && registrationStatus !== "registered" ? (

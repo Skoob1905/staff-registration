@@ -79,8 +79,8 @@ export const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md">
-        <h1 className="text-xl font-bold">Sign In</h1>
-        <p className="mt-1 text-sm text-zinc-600">Access your agency workspace.</p>
+        <h1 className="text-lg sm:text-xl font-bold">Sign In</h1>
+        <p className="mt-1 text-xs sm:text-sm text-zinc-600">Access your agency workspace.</p>
         <Separator />
 
         <form onSubmit={onSubmit} className="space-y-3">
@@ -114,7 +114,7 @@ export const LoginPage = () => {
 
       <DialogRoot open={showForgotModal} onOpenChange={(open) => { if (!open) closeForgotModal(); }}>
         <DialogContent onClose={closeForgotModal}>
-          <DialogTitle className="text-lg font-bold">Reset Password</DialogTitle>
+          <DialogTitle className="text-sm sm:text-lg font-bold">Reset Password</DialogTitle>
           <div className="mt-4 space-y-3">
             <Label htmlFor="forgot-email">Email</Label>
             <Input

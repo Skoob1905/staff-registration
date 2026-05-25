@@ -2,7 +2,7 @@ import * as ToastPrimitive from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
-type ToastVariant = "default" | "error";
+type ToastVariant = "default" | "success" | "error";
 
 export interface AppToast {
   id: string;
