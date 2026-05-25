@@ -892,6 +892,7 @@ export const importStaffCsv = onCall(async (request) => {
       duplicateCount++;
       continue;
     }
+    existingNiNumbers.add(ni);
     newRecords.push(record);
   }
 
@@ -1252,6 +1253,8 @@ export const removeAgencies = onCall(async (request) => {
     .where("metadata.uploadedInFile", "==", importId)
     .get();
 
+  const agencyIds = agencySnaps.docs.map((d) => d.id);
+
   const BATCH_LIMIT = 500;
   let deletedCount = 0;
 
@@ -1263,6 +1266,25 @@ export const removeAgencies = onCall(async (request) => {
       deletedCount++;
     }
     await batch.commit();
+  }
+
+  // Remove associated client logins
+  const adminAuth = getAuth();
+  for (const agencyId of agencyIds) {
+    const userSnaps = await db
+      .collection("users")
+      .where("agencyId", "==", agencyId)
+      .where("role", "==", "client")
+      .get();
+    for (const userDoc of userSnaps.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
   }
 
   await importRef.delete();

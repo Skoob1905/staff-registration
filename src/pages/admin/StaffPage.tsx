@@ -93,10 +93,12 @@ export const AdminStaffPage = () => {
 
   const staffWithFullName = useMemo(
     () =>
-      staff.map((s) => ({
-        ...s,
-        fullName: [s.Title, s.Forename, s.Surname].filter(Boolean).join(" "),
-      })),
+      staff
+        .map((s) => ({
+          ...s,
+          fullName: [s.Title, s.Forename, s.Surname].filter(Boolean).join(" "),
+        }))
+        .sort((a, b) => (a.Forename || "").localeCompare(b.Forename || "")),
     [staff],
   );
 

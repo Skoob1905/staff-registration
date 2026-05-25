@@ -24,6 +24,7 @@ export const AdminClientsPage = () => {
   const clients = useAppStore((s) => s.clients);
   const clientsLoading = useAppStore((s) => s.clientsLoading);
   const loadClients = useAppStore((s) => s.loadClients);
+  const loadLogins = useAppStore((s) => s.loadLogins);
 
   useEffect(() => {
     if (!appUser?.agencyId) return;
@@ -80,7 +81,10 @@ export const AdminClientsPage = () => {
 
   const handleDeleteSuccess = async () => {
     if (appUser?.agencyId) {
-      await loadClients(appUser.agencyId, true);
+      await Promise.all([
+        loadClients(appUser.agencyId, true),
+        loadLogins(appUser.agencyId, true),
+      ]);
     }
   };
 
@@ -90,6 +94,14 @@ export const AdminClientsPage = () => {
     }
     setImportHistoryVersion((v) => v + 1);
   };
+
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((a, b) =>
+        getPrimaryLabel(a).localeCompare(getPrimaryLabel(b)),
+      ),
+    [clients],
+  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -120,7 +132,7 @@ export const AdminClientsPage = () => {
                 value={openClientId}
                 onValueChange={setOpenClientId}
               >
-                {clients.map((client) => (
+                {sortedClients.map((client) => (
                   <AccordionItem
                     key={client.id}
                     value={client.id}

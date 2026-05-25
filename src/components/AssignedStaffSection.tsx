@@ -41,10 +41,18 @@ export const AssignedStaffSection = ({
     loadTags().catch(() => {});
   }, [loadTags]);
 
+  const sortedStaff = useMemo(
+    () =>
+      [...assignedStaff].sort((a, b) =>
+        (a.Forename || "").localeCompare(b.Forename || ""),
+      ),
+    [assignedStaff],
+  );
+
   return (
     <FilterView
       title="Assigned Staff"
-      items={assignedStaff}
+      items={sortedStaff}
       filters={filters}
       onFiltersChange={setFilters}
       searchFields={["fullName", "Forename", "Surname", "email"]}

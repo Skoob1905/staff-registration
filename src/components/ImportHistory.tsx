@@ -129,7 +129,19 @@ export const ImportHistory = ({
 
     const cached = useFileStaffStore.getState().fileStaffMap[entry.id];
     if (cached && cached.staff.length > 0) {
-      const names = getPreviewNames(cached.staff).filter(Boolean);
+      const names = getPreviewNames(cached.staff).filter(Boolean).sort(
+        (a, b) => {
+          const aParts = a.split(" ");
+          const bParts = b.split(" ");
+          const aKey = (
+            type === "staff" && aParts.length >= 3 ? aParts[1] : aParts[0]
+          ).toLowerCase();
+          const bKey = (
+            type === "staff" && bParts.length >= 3 ? bParts[1] : bParts[0]
+          ).toLowerCase();
+          return aKey.localeCompare(bKey);
+        },
+      );
       setDeletePreviewNames(names);
       setPreviewLoading(false);
       return;
@@ -144,7 +156,19 @@ export const ImportHistory = ({
       const resp = await fetch(entry.fileUrl);
       const text = await resp.text();
       const parsed = parseCsv(text);
-      const names = getPreviewNames(parsed.rows).filter(Boolean);
+      const names = getPreviewNames(parsed.rows).filter(Boolean).sort(
+        (a, b) => {
+          const aParts = a.split(" ");
+          const bParts = b.split(" ");
+          const aKey = (
+            type === "staff" && aParts.length >= 3 ? aParts[1] : aParts[0]
+          ).toLowerCase();
+          const bKey = (
+            type === "staff" && bParts.length >= 3 ? bParts[1] : bParts[0]
+          ).toLowerCase();
+          return aKey.localeCompare(bKey);
+        },
+      );
       setDeletePreviewNames(names);
     } catch {
       // silently fail
@@ -263,6 +287,11 @@ export const ImportHistory = ({
             Any staff assigned to agencies will be unassigned and must be
             re-assigned after deletion.
           </p>
+          {type === "agency" && (
+            <p className="mt-1 text-xs font-medium text-amber-600">
+              Associated logins for these clients will also be revoked.
+            </p>
+          )}
           {previewLoading ? (
             <div className="mt-4 flex justify-center">
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
