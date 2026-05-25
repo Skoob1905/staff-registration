@@ -144,7 +144,7 @@ export const AdminClientsPage = () => {
                       </div>
                     }
                   >
-                    <div className="columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
+                    <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
                       {getDisplayFields(client).map((field) => (
                         <p
                           key={field.label}

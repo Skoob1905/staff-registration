@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
+import { LoadingPage } from "../components/LoadingPage";
 import type { UserRole } from "../types/domain";
 
 const Forbidden = () => (
@@ -14,7 +15,7 @@ const Forbidden = () => (
 export const RoleGuard = ({ role }: { role: UserRole | "authenticated" }) => {
   const { appUser, loading } = useAuth();
 
-  if (loading) return <div className="p-6 text-sm">Checking permissions...</div>;
+  if (loading) return <LoadingPage />;
   if (!appUser) return <Navigate to="/login" replace />;
 
   if (role === "authenticated") return <Outlet />;
@@ -23,7 +24,7 @@ export const RoleGuard = ({ role }: { role: UserRole | "authenticated" }) => {
     if (role === "admin") {
       return <Forbidden />;
     }
-    return <Navigate to={appUser.role === "admin" ? "/staff" : "/home"} replace />;
+    return <Navigate to="/staff" replace />;
   }
 
   return <Outlet />;

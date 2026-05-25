@@ -225,7 +225,7 @@ export const ImportHistory = ({
             {history.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.04)] px-3 py-2"
+                className="flex items-center rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.04)] px-3 py-2"
               >
                 <button
                   type="button"

@@ -79,26 +79,20 @@ export const AssignedStaffSection = ({
                       <span className="truncate font-medium pr-4">{displayName}</span>
                     </div>
                   }
-                  actions={
-                    member.tags && member.tags.length > 0 ? (
-                      <span className="text-xs sm:text-sm font-medium text-zinc-600 overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] whitespace-nowrap">
-                        {member.tags.map((id) => tagsMap[id] || id).join(", ")}
-                      </span>
-                    ) : undefined
-                  }
                 >
-                  {member.metadata?.assignedBy ? (
-                    <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                      <span className="font-medium text-[var(--foreground)]">
-                        Assigned by:{" "}
-                      </span>
-                      {member.metadata.assignedBy}
-                      {member.metadata.assignedAt
-                        ? ` ${formatInvitedAt(member.metadata.assignedAt)}`
-                        : ""}
-                    </span>
-                  ) : null}
-                  <div className="columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600 mt-2">
+                  {(member.tags && member.tags.length > 0) && (
+                    <div className="flex gap-4 mb-2">
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        {member.tags && member.tags.length > 0 && (
+                          <div className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                            <span className="font-semibold">Tags:</span>{" "}
+                            {member.tags.map((id) => tagsMap[id] || id).join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600 mt-2">
                     {Object.entries(member)
                       .filter(
                         ([key, value]) =>

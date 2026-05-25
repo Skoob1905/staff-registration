@@ -7,7 +7,7 @@ import {
 } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { Pen, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import {
   DialogRoot,
   DialogContent,
@@ -27,14 +27,13 @@ import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { useAppStore } from "../../stores/appStore";
 import { db, functions } from "../../services/firebase";
-import { formatInvitedAt } from "../../utils/date";
 import { getCompanyName } from "../../utils/company";
 import type { Agency, BulkStaff, StaffFilters } from "../../types/domain";
 import { emptyFilters } from "../../types/domain";
 
 export const AdminStaffPage = () => {
   useEffect(() => {
-    document.title = "Home";
+    document.title = "Staff";
   }, []);
 
   const { appUser } = useAuth();
@@ -108,7 +107,15 @@ export const AdminStaffPage = () => {
         staff
           .map((s) => {
             const r = s as unknown as Record<string, string>;
-            const ni = (r["NI Number"] || r.ni_number || r.NI_Number || r.NINO || "").toLowerCase().trim();
+            const ni = (
+              r["NI Number"] ||
+              r.ni_number ||
+              r.NI_Number ||
+              r.NINO ||
+              ""
+            )
+              .toLowerCase()
+              .trim();
             return ni || "";
           })
           .filter(Boolean),
@@ -117,7 +124,6 @@ export const AdminStaffPage = () => {
   );
 
   const [importHistoryVersion, setImportHistoryVersion] = useState(0);
-  const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
   const [assigningStaffLoading, setAssigningStaffLoading] = useState(false);
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
@@ -253,7 +259,6 @@ export const AdminStaffPage = () => {
             assignedAt: new Date(),
           },
         });
-        setAssigningStaffId(null);
         toast({
           title: "Assigned",
           description: `${[staffMember?.Title, staffMember?.Forename, staffMember?.Surname].filter(Boolean).join(" ")} has now been assigned to ${assignedToName}`,
@@ -329,93 +334,65 @@ export const AdminStaffPage = () => {
                     </div>
                   }
                   actions={
-                    <div className="flex items-center gap-1">
-                      {member.metadata?.assignedToName ? (
-                        <div className="group relative inline-flex items-center">
-                          <div className="overflow-x-auto max-w-[160px] [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent]">
-                            <span className="text-xs sm:text-sm text-zinc-600 font-medium whitespace-nowrap">
-                              {member.tags && member.tags.length > 0
-                                ? member.tags
-                                    .map((id) => tagsMap[id] || id)
-                                    .join(", ")
-                                : ""}
-                            </span>
-                          </div>
-                          <span className="text-xs sm:text-sm text-zinc-600 font-medium whitespace-nowrap shrink-0">
-                            {member.tags && member.tags.length > 0 ? " @ " : ""}
-                            {member.metadata.assignedToName}
-                          </span>
-                          <div className="overflow-hidden w-0 group-hover:w-5 transition-all duration-150 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setUnassignTarget(member);
-                              }}
-                              className="h-3.5 w-3.5 shrink-0 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                            >
-                              <X className="h-2 w-2" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : assigningStaffId === member.id ? (
-                        <div className="flex items-center gap-1">
-                          {member.tags && member.tags.length > 0 && (
-                            <span className="hidden md:inline text-xs sm:text-sm font-medium text-zinc-600">
-                              {member.tags
-                                .map((id) => tagsMap[id] || id)
-                                .join(", ")}
-                            </span>
-                          )}
-                          <ClientsDropdown
-                            autoFocus
-                            disabled={assigningStaffLoading}
-                            value=""
-                            onChange={(value) => {
-                              if (value) {
-                                handleAssign(member.id, value);
-                              }
-                            }}
-                            onBlur={() => setAssigningStaffId(null)}
-                            className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                            placeholder="Select client..."
-                          />
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center gap-1">
-                          {member.tags && member.tags.length > 0 && (
-                            <span className="hidden md:inline text-xs sm:text-sm font-medium text-zinc-600">
-                              {member.tags
-                                .map((id) => tagsMap[id] || id)
-                                .join(", ")}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setAssigningStaffId(member.id)}
-                            className="inline-flex items-center gap-1 text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
-                          >
-                            <Pen className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                    </div>
+                    member.metadata?.assignedToName ? (
+                      <span className="hidden sm:inline text-xs sm:text-sm text-[var(--muted-foreground)] whitespace-nowrap">
+                        {member.metadata.assignedToName}
+                      </span>
+                    ) : (
+                      <span className="hidden sm:inline">
+                        <ClientsDropdown
+                          disabled={assigningStaffLoading}
+                          value=""
+                          onChange={(value) => {
+                            if (value) handleAssign(member.id, value);
+                          }}
+                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                          placeholder="Select client..."
+                        />
+                      </span>
+                    )
                   }
                 >
-                  {(member.metadata?.assignedBy ||
-                    appUser?.role === "admin") && (
-                    <div className="flex items-center justify-between mb-2">
-                      {member.metadata?.assignedBy && (
-                        <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                          <span className="font-medium text-[var(--foreground)]">
-                            Assigned by:{" "}
+                  {(appUser?.role === "admin" || (member.tags?.length ?? 0) > 0) && (
+                    <div className="flex gap-4 mb-2">
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="sm:hidden text-xs sm:text-sm text-[var(--muted-foreground)]">
+                          <span className="font-semibold">Assigned To:</span>{" "}
+                          {member.metadata?.assignedToName ? (
+                            <>
+                              {member.metadata.assignedToName}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUnassignTarget(member);
+                                }}
+                                className="ml-1.5 h-3.5 w-3.5 rounded-full bg-red-500 text-white inline-flex items-center justify-center hover:bg-red-600 transition shrink-0 align-middle"
+                              >
+                                <X className="h-2 w-2" />
+                              </button>
+                            </>
+                          ) : appUser?.role === "admin" ? (
+                            <ClientsDropdown
+                              disabled={assigningStaffLoading}
+                              value=""
+                              onChange={(value) => {
+                                if (value) handleAssign(member.id, value);
+                              }}
+                              className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                              placeholder="Select client..."
+                            />
+                          ) : null}
+                        </div>
+                        {member.tags && member.tags.length > 0 && (
+                          <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                            <span className="font-semibold">Tags:</span>{" "}
+                            {member.tags
+                              .map((id) => tagsMap[id] || id)
+                              .join(", ")}
                           </span>
-                          {member.metadata.assignedBy}
-                          {member.metadata.assignedAt
-                            ? ` ${formatInvitedAt(member.metadata.assignedAt)}`
-                            : ""}
-                        </span>
-                      )}
+                        )}
+                      </div>
                       {appUser?.role === "admin" && (
                         <Button
                           type="button"
@@ -423,14 +400,14 @@ export const AdminStaffPage = () => {
                             e.stopPropagation();
                             setTagTarget(member);
                           }}
-                          className="ml-auto h-6 rounded-lg px-2 text-[10px] shadow-none"
+                          className="self-center h-6 rounded-lg px-2 text-[10px] shadow-none shrink-0"
                         >
                           Tags
                         </Button>
                       )}
                     </div>
                   )}
-                  <div className="columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
+                  <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
                     {Object.entries(member)
                       .filter(
                         ([key, value]) =>
@@ -518,7 +495,9 @@ export const AdminStaffPage = () => {
             setTagInput("");
           }}
         >
-          <DialogTitle className="text-sm sm:text-lg font-bold">Assign Tags</DialogTitle>
+          <DialogTitle className="text-sm sm:text-lg font-bold">
+            Assign Tags
+          </DialogTitle>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">
             Assigned tags will be visible to the client.
           </p>

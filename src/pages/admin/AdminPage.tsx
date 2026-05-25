@@ -24,7 +24,7 @@ import { getCompanyName } from "../../utils/company";
 
 export const AdminPage = () => {
   useEffect(() => {
-    document.title = "Admin";
+    document.title = "Users";
   }, []);
 
   const { appUser } = useAuth();
@@ -262,7 +262,7 @@ export const AdminPage = () => {
                             e.stopPropagation();
                             setDeleteTarget(user);
                           }}
-                          className="shrink-0 rounded-xl bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_3px_10px_rgba(31,79,138,0.12)] transition hover:bg-red-700"
+                          className="shrink-0 rounded-xl bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_3px_10px_rgba(0,95,87,0.12)] transition hover:bg-red-700"
                         >
                           Revoke
                         </button>

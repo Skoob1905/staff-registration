@@ -923,7 +923,10 @@ export const importStaffCsv = onCall(async (request) => {
           uploadedInFile: importId,
           uploadedBy: caller.agencyId,
           importedAt: FieldValue.serverTimestamp(),
-          ...(assignedToId ? {assignedToId, assignedToName} : {}),
+          ...(assignedToId ? {
+            assignedToId, assignedToName, assignedBy: caller.email,
+            assignedAt: FieldValue.serverTimestamp(),
+          } : {}),
         },
       });
       newStaffIds.push(docRef.id);
@@ -1100,7 +1103,7 @@ export const bulkUploadStaff = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Caller profile missing.");
   }
 
-  const caller = callerSnap.data() as { role?: string };
+  const caller = callerSnap.data() as { role?: string; email?: string };
   if (caller.role !== "admin") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
@@ -1161,8 +1164,10 @@ export const bulkUploadStaff = onCall(async (request) => {
       address1: String(row.address1 || "").trim(),
       address2: String(row.address2 || "").trim(),
       agencyId,
-      assignedBy: callerUid,
-      assignedAt: FieldValue.serverTimestamp(),
+      metadata: {
+        assignedBy: caller.email || callerUid,
+        assignedAt: FieldValue.serverTimestamp(),
+      },
       sourceFileName: originalFileName,
     });
 

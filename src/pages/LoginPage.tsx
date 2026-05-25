@@ -1,14 +1,29 @@
+import logo from "../assets/BlackRockLogo2.jpg";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Alert, Button, Card, Input, Label, Separator, SecondaryButton } from "../components/ui";
-import { DialogRoot, DialogContent, DialogTitle } from "../components/ui/dialog";
+import {
+  Alert,
+  Button,
+  Card,
+  Input,
+  Label,
+  Separator,
+  SecondaryButton,
+} from "../components/ui";
+import {
+  DialogRoot,
+  DialogContent,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { loginWithEmail, sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
 
 const emailSchema = z.string().email("Enter a valid email address.");
 
 export const LoginPage = () => {
-  useEffect(() => { document.title = "Login"; }, []);
+  useEffect(() => {
+    document.title = "Login";
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,7 +86,8 @@ export const LoginPage = () => {
     setEmail(result.data);
     toast({
       title: "Reset email sent",
-      description: "If an account with that email exists, instructions have been sent.",
+      description:
+        "If an account with that email exists, instructions have been sent.",
       variant: "default",
     });
   };
@@ -79,14 +95,30 @@ export const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md">
-        <h1 className="text-lg sm:text-xl font-bold">Sign In</h1>
-        <p className="mt-1 text-xs sm:text-sm text-zinc-600">Access your agency workspace.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold">Log In</h1>
+            <p className="text-xs sm:text-sm text-[var(--muted-foreground)] mt-0.5">
+              Access your staff portal here
+            </p>
+          </div>
+          <img
+            src={logo}
+            alt="BlackRock"
+            className="max-h-12 w-auto object-contain"
+          />
+        </div>
         <Separator />
 
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@agency.com" />
+            <Input
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@agency.com"
+            />
           </div>
 
           <div className="space-y-1">
@@ -102,19 +134,36 @@ export const LoginPage = () => {
 
           {error ? <Alert>{error}</Alert> : null}
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Signing in..." : "Login"}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={loading} className="flex-1">
+              {loading ? "Signing in..." : "Login"}
+            </Button>
+            <SecondaryButton type="button" onClick={openForgotModal} className="flex-1">
+              Forgot password?
+            </SecondaryButton>
+          </div>
 
-          <SecondaryButton type="button" onClick={openForgotModal} className="w-full">
-            Forgot password?
-          </SecondaryButton>
+          <a
+            href="https://blackrockconsultancyuk.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-right text-xs text-[var(--muted-foreground)] hover:text-[var(--primary)] transition"
+          >
+            &larr; Return to Homepage
+          </a>
         </form>
       </Card>
 
-      <DialogRoot open={showForgotModal} onOpenChange={(open) => { if (!open) closeForgotModal(); }}>
+      <DialogRoot
+        open={showForgotModal}
+        onOpenChange={(open) => {
+          if (!open) closeForgotModal();
+        }}
+      >
         <DialogContent onClose={closeForgotModal}>
-          <DialogTitle className="text-sm sm:text-lg font-bold">Reset Password</DialogTitle>
+          <DialogTitle className="text-sm sm:text-lg font-bold">
+            Reset Password
+          </DialogTitle>
           <div className="mt-4 space-y-3">
             <Label htmlFor="forgot-email">Email</Label>
             <Input

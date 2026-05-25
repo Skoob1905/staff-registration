@@ -301,8 +301,8 @@ export const AddModal = ({
             onClick={() => fileInputRef.current?.click()}
             className={`mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 transition ${
               dragOver
-                ? "border-[var(--primary)] bg-[color:rgba(31,79,138,0.06)]"
-                : "border-[var(--border)] hover:border-[var(--primary)] hover:bg-[color:rgba(31,79,138,0.04)]"
+                ? "border-[var(--primary)] bg-[color:rgba(0,95,87,0.06)]"
+                : "border-[var(--border)] hover:border-[var(--primary)] hover:bg-[color:rgba(0,95,87,0.04)]"
             }`}
           >
             <Upload className="h-6 w-6 text-[var(--muted-foreground)]" />
@@ -336,7 +336,7 @@ export const AddModal = ({
             <div className="mt-2 flex-1 min-h-0 overflow-auto rounded-xl border border-[var(--border)]">
               <table className="min-w-full text-left text-xs sm:text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)] bg-[color:rgba(31,79,138,0.06)]">
+                  <tr className="border-b border-[var(--border)] bg-[color:rgba(0,95,87,0.06)]">
                     {csvData.headers.map((h) => (
                       <th
                         key={h}
@@ -369,7 +369,7 @@ export const AddModal = ({
 
             {loading && uploadProgress > 0 ? (
               <div className="mt-3">
-                <div className="h-2 w-full rounded-full bg-[color:rgba(31,79,138,0.15)]">
+                <div className="h-2 w-full rounded-full bg-[color:rgba(0,95,87,0.15)]">
                   <div
                     className="h-2 rounded-full bg-[var(--primary)] transition-all"
                     style={{ width: `${uploadProgress}%` }}

@@ -31,7 +31,9 @@ export const SignModal = ({
   onClearSignature,
   onSubmitSignature,
 }: SignModalProps) => {
-  const [downloadedFileUrl, setDownloadedFileUrl] = useState<string | null>(null);
+  const [downloadedFileUrl, setDownloadedFileUrl] = useState<string | null>(
+    null,
+  );
   const [loadingContract, setLoadingContract] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [signingForm, setSigningForm] = useState<SigningFormInput>({
@@ -99,7 +101,9 @@ export const SignModal = ({
   return (
     <DialogRoot open={open} onOpenChange={(next) => (!next ? onClose() : null)}>
       <DialogContent onClose={onClose}>
-        <DialogTitle className="text-sm sm:text-lg font-bold">SignModal</DialogTitle>
+        <DialogTitle className="text-sm sm:text-lg font-bold">
+          SignModal
+        </DialogTitle>
         <p className="mt-1 text-xs sm:text-sm text-zinc-600">
           Review your contract, then sign at the bottom.
         </p>
@@ -149,7 +153,9 @@ export const SignModal = ({
 
         {showDrawPad ? (
           <div className="mt-4">
-            <p className="mb-2 text-xs sm:text-sm text-zinc-600">Draw your signature below.</p>
+            <p className="mb-2 text-xs sm:text-sm text-zinc-600">
+              Draw your signature below.
+            </p>
             <div className="rounded-xl border border-[var(--border)] bg-white p-2">
               <SignatureCanvas
                 ref={(ref) => {
@@ -161,10 +167,7 @@ export const SignModal = ({
               />
             </div>
             <div className="mt-3 flex justify-between">
-              <Button
-                type="button"
-                onClick={onClearSignature}
-              >
+              <Button type="button" onClick={onClearSignature}>
                 Clear
               </Button>
               <Button
@@ -192,7 +195,9 @@ export const SignModal = ({
             I have read the terms and conditions in the contract
           </label>
           {touched.termsAccepted && "termsAccepted" in formErrors ? (
-            <p className="mt-1 text-xs text-red-600">{formErrors.termsAccepted}</p>
+            <p className="mt-1 text-xs text-red-600">
+              {formErrors.termsAccepted}
+            </p>
           ) : null}
         </div>
       </DialogContent>

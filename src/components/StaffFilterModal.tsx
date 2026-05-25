@@ -266,7 +266,7 @@ export const StaffFilterModal = ({
           {!hideClear && (
             <Button
               type="button"
-              className="border border-[var(--border)] bg-transparent text-[var(--foreground)] shadow-none hover:bg-[color:rgba(31,79,138,0.06)]"
+              className="border border-[var(--border)] bg-transparent text-[var(--foreground)] shadow-none hover:bg-[color:rgba(0,95,87,0.06)]"
               onClick={() => {
                 setName("");
                 setSelectedTypeIds(new Set());

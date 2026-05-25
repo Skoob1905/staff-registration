@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { AdminLayout } from "../layouts/AdminLayout";
-import { ClientLayout } from "../layouts/ClientLayout";
+import { LoadingPage } from "../components/LoadingPage";
 import { LoginPage } from "../pages/LoginPage";
 import { AdminPage } from "../pages/admin/AdminPage";
 import { AdminClientsPage } from "../pages/admin/ClientsPage";
@@ -15,16 +15,16 @@ const AppEntryRedirect = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
   return (
-    <Navigate to={appUser.role === "admin" ? "/staff" : "/home"} replace />
+    <Navigate to="/staff" replace />
   );
 };
 
 const LoginRedirect = () => {
   const { firebaseUser, appUser, loading } = useAuth();
-  if (loading) return <div className="p-6 text-sm">Loading...</div>;
+  if (loading) return <LoadingPage />;
   if (firebaseUser && appUser)
     return (
-      <Navigate to={appUser.role === "admin" ? "/staff" : "/home"} replace />
+      <Navigate to="/staff" replace />
     );
   return <LoginPage />;
 };
@@ -48,20 +48,13 @@ export const AppRouter = () => (
 
     <Route element={<RoleGuard role="authenticated" />}>
       <Route element={<AppLayout />}>
+        <Route path="/staff" element={<StaffPageSwitch />} />
         <Route path="/profile" element={<ProfileSwitch />} />
 
         <Route element={<RoleGuard role="admin" />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/clients" element={<AdminClientsPage />} />
-            {/* <Route path="/upload" element={<AdminUploadPage />} /> */}
-            <Route path="/staff" element={<StaffPageSwitch />} />
-          </Route>
-        </Route>
-
-        <Route element={<RoleGuard role="client" />}>
-          <Route element={<ClientLayout />}>
-            <Route path="/home" element={<StaffPageSwitch />} />
           </Route>
         </Route>
 

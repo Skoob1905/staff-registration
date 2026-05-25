@@ -108,7 +108,7 @@ export const UserHomePage = () => {
           </p>
         ) : null}
         {registrationStatus === "registered" && latestUndownloadedPayslip ? (
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] px-3 py-2">
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.08)] px-3 py-2">
             <p className="text-xs sm:text-sm text-[var(--foreground)]">
               Download latest payslip
             </p>
@@ -126,7 +126,7 @@ export const UserHomePage = () => {
       <Card>
         <div id="contracts-section" />
         <h2 className="text-sm sm:text-lg font-bold">Contracts</h2>
-        <div className="mt-1.5 rounded-xl border border-[var(--border)] bg-[color:rgba(31,79,138,0.08)] p-3 sm:mt-3">
+        <div className="mt-1.5 rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.08)] p-3 sm:mt-3">
           <div className="space-y-1 text-xs sm:text-sm text-[var(--foreground)]">
             {appUser?.contractSent ? (
               <p>

@@ -122,7 +122,7 @@ export const FilterView = <T,>({
             <button
               type="button"
               onClick={() => setShowFilterModal(true)}
-              className="relative inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition hover:bg-[color:rgba(31,79,138,0.06)]"
+              className="relative inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)]"
             >
               <Filter className="h-3.5 w-3.5" />
               {activeFilterCount > 0 && (
