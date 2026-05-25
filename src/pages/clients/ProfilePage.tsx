@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Mail, Key, Building, Shield } from "lucide-react";
 import { Card, Button } from "../../components/ui";
-import { AssignedStaffSection } from "../../components/AssignedStaffSection";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { sendForgotPassword } from "../../services/authService";
@@ -45,7 +44,9 @@ export const ProfilePage = () => {
             <Mail className="h-4 w-4 text-[var(--muted-foreground)]" />
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">Email</p>
-              <p className="text-xs sm:text-sm font-medium">{appUser?.email || "—"}</p>
+              <p className="text-xs sm:text-sm font-medium">
+                {appUser?.email || "—"}
+              </p>
             </div>
           </div>
 
@@ -64,7 +65,9 @@ export const ProfilePage = () => {
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">Company</p>
               <p className="text-xs sm:text-sm font-medium">
-                {agency ? getCompanyName(agency) : "—"}
+                {agency
+                  ? getCompanyName(agency as unknown as Record<string, unknown>)
+                  : "—"}
               </p>
             </div>
           </div>

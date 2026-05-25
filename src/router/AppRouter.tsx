@@ -7,7 +7,6 @@ import { LoginPage } from "../pages/LoginPage";
 import { AdminPage } from "../pages/admin/AdminPage";
 import { AdminClientsPage } from "../pages/admin/ClientsPage";
 import { AdminStaffPage } from "../pages/admin/StaffPage";
-import { AdminUploadPage } from "../pages/admin/UploadPage";
 import { UserHomePage } from "../pages/clients/HomePage";
 import { ProfilePage } from "../pages/clients/ProfilePage";
 import { RoleGuard } from "./RoleGuard";

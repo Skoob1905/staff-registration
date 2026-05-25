@@ -311,7 +311,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ),
       );
       const loaded = snaps.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+        .map((d) => ({ id: d.id, ...d.data() }) as { id: string; invitedAt?: Date | { toDate?: () => Date }; email?: string; role?: string; agencyId?: string; assignedTo?: string; invitedByUid?: string })
         .sort((a, b) => {
           const dateA =
             a.invitedAt instanceof Date

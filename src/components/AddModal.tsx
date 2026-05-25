@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";

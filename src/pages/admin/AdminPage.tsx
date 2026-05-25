@@ -44,7 +44,6 @@ export const AdminPage = () => {
   const loginsLoaded = useAppStore((s) => s.loginsLoaded);
   const loginsLoading = useAppStore((s) => s.loginsLoading);
   const admins = useAppStore((s) => s.admins);
-  const loadClients = useAppStore((s) => s.loadClients);
   const loadLogins = useAppStore((s) => s.loadLogins);
   const loadAdmins = useAppStore((s) => s.loadAdmins);
   const fetchCompanyById = useAppStore((s) => s.fetchCompanyById);
@@ -82,7 +81,7 @@ export const AdminPage = () => {
 
   const adminEmailByUid = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const a of admins) {
+    for (const a of admins as Array<{ id: string; email?: string; uid?: string }>) {
       const email = (a as { email?: string }).email;
       if (!email) continue;
       map[a.id] = email;
@@ -108,11 +107,11 @@ export const AdminPage = () => {
     setSubmitting(true);
     try {
       const assignFn = httpsCallable(functions, "assignClientLogin");
-      const result = await assignFn<{ ok: boolean; userId: string }>({
+      const result = await assignFn({
         email: email.trim().toLowerCase(),
         agencyDocId: selectedCompanyId,
       });
-      const createdId = result.data.userId;
+      const createdId = (result.data as { ok: boolean; userId: string }).userId;
 
       addLogin({
         id: createdId,
