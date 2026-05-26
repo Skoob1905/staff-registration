@@ -135,11 +135,9 @@ export const LoginPage = () => {
           {error ? <Alert>{error}</Alert> : null}
 
           <div className="flex gap-2">
-            <div className="w-[176px]">
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Signing in..." : "Login"}
-              </Button>
-            </div>
+            <Button type="submit" disabled={loading} className="flex-1 h-auto md:h-auto py-2 text-sm">
+              {loading ? "Signing in..." : "Login"}
+            </Button>
             <SecondaryButton
               type="button"
               onClick={openForgotModal}
