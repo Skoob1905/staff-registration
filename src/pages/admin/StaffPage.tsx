@@ -126,6 +126,7 @@ export const AdminStaffPage = () => {
   const [importHistoryVersion, setImportHistoryVersion] = useState(0);
   const [assigningStaffLoading, setAssigningStaffLoading] = useState(false);
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
+  const [activeAssignMenu, setActiveAssignMenu] = useState<string | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
   const [tagTarget, setTagTarget] = useState<BulkStaff | null>(null);
   const [tagInput, setTagInput] = useState("");
@@ -354,15 +355,28 @@ export const AdminStaffPage = () => {
                       </span>
                     ) : (
                       <span className="hidden sm:inline" onClick={(e) => e.stopPropagation()}>
-                        <ClientsDropdown
-                          disabled={assigningStaffLoading}
-                          value=""
-                          onChange={(value) => {
-                            if (value) handleAssign(member.id, value);
-                          }}
-                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                          placeholder="Select client..."
-                        />
+                        {activeAssignMenu === member.id ? (
+                          <ClientsDropdown
+                            disabled={assigningStaffLoading}
+                            value=""
+                            onChange={(value) => {
+                              if (value) handleAssign(member.id, value);
+                              setActiveAssignMenu(null);
+                            }}
+                            className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                            placeholder="Select client..."
+                            autoFocus
+                            onBlur={() => setActiveAssignMenu(null)}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveAssignMenu(member.id)}
+                            className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition hover:text-[var(--primary)]"
+                          >
+                            <Pen className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </span>
                     )
                   }
@@ -518,7 +532,7 @@ export const AdminStaffPage = () => {
               <label className="text-sm sm:text-base font-semibold text-[var(--foreground)]">
                 Existing tags
               </label>
-              <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+              <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                 {Object.entries(tagsMap).map(([id, value]) => (
                   <label
                     key={id}
@@ -533,9 +547,9 @@ export const AdminStaffPage = () => {
                         else next.add(id);
                         setSelectedAssignTagIds(next);
                       }}
-                      className="rounded"
+                      className="rounded shrink-0"
                     />
-                    <span>{value}</span>
+                    <span className="truncate">{value}</span>
                   </label>
                 ))}
               </div>

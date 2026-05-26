@@ -165,7 +165,7 @@ export const StaffFilterModal = ({
                   No types available
                 </p>
               ) : (
-                <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+                <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                   {staffTypes.map((t) => (
                     <label
                       key={t.id}
@@ -175,10 +175,10 @@ export const StaffFilterModal = ({
                         type="checkbox"
                         checked={selectedTypeIds.has(t.id)}
                         onChange={() => toggleType(t.id)}
-                        className="rounded"
+                        className="rounded shrink-0"
                       />
-                      <span>{t.name}</span>
-                      <span className="text-xs text-[var(--muted-foreground)]">
+                      <span className="truncate">{t.name}</span>
+                      <span className="text-xs text-[var(--muted-foreground)] shrink-0">
                         ({typeCounts.get(t.id) || 0})
                       </span>
                     </label>
@@ -198,7 +198,7 @@ export const StaffFilterModal = ({
                   No tags have been assigned
                 </p>
               ) : (
-                <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+                <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                   {Object.entries(tags).filter(([id]) => (tagCounts.get(id) || 0) > 0).map(([id, value]) => (
                     <label
                       key={id}
@@ -208,10 +208,10 @@ export const StaffFilterModal = ({
                         type="checkbox"
                         checked={selectedTagIds.has(id)}
                         onChange={() => toggleTag(id)}
-                        className="rounded"
+                        className="rounded shrink-0"
                       />
-                      <span>{value}</span>
-                      <span className="text-xs text-[var(--muted-foreground)]">
+                      <span className="truncate">{value}</span>
+                      <span className="text-xs text-[var(--muted-foreground)] shrink-0">
                         ({tagCounts.get(id) || 0})
                       </span>
                     </label>
@@ -236,7 +236,7 @@ export const StaffFilterModal = ({
                   No clients have been assigned
                 </p>
               ) : (
-                <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+                <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                   {Array.from(agencyCounts.entries())
                     .filter(([, count]) => count > 0)
                     .map(([id, count]) => (
@@ -248,10 +248,10 @@ export const StaffFilterModal = ({
                           type="checkbox"
                           checked={selectedAgencyIds.has(id)}
                           onChange={() => toggleAgency(id)}
-                          className="rounded"
+                          className="rounded shrink-0"
                         />
-                        <span>{agencyMap[id] || id}</span>
-                        <span className="text-xs text-[var(--muted-foreground)]">
+                        <span className="truncate">{agencyMap[id] || id}</span>
+                        <span className="text-xs text-[var(--muted-foreground)] shrink-0">
                           ({count})
                         </span>
                       </label>

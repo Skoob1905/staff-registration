@@ -1,10 +1,11 @@
 import logo from "../assets/BlackRock.jpg";
-import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { logoutUser } from "../services/authService";
 import { useAuth } from "../context/AuthProvider";
 import { Button } from "../components/ui";
 import { Footer } from "../components/Footer";
+
+document.documentElement.setAttribute("data-theme", "light");
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center h-8 rounded-xl px-3 text-xs font-semibold transition sm:px-4 sm:text-sm ${
@@ -15,23 +16,6 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export const AppLayout = () => {
   const { appUser } = useAuth();
-  const [, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const prefersDark =
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const nextTheme =
-      stored === "dark" || stored === "light"
-        ? (stored as "light" | "dark")
-        : prefersDark
-          ? "dark"
-          : "light";
-    setTheme(nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-  }, []);
-
   const isAdmin = appUser?.role === "admin";
 
   const navLinks = isAdmin ? (

@@ -116,7 +116,7 @@ export const AccordionItem = ({
   >
     <Accordion.Header className="flex items-center">
       <Accordion.Trigger className="flex flex-1 items-center px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
-        {title}
+        <span className="flex-1 min-w-0">{title}</span>
         {actions && (
           <div className="ml-auto mr-1 flex shrink-0 items-center gap-2 sm:mr-2" onClick={(e) => e.stopPropagation()}>
             {actions}

@@ -3,6 +3,7 @@ import type { User } from "firebase/auth";
 import type { Agency, AppUser } from "../types/domain";
 import { initAuthPersistence, onAuthUserChanged } from "../services/authService";
 import { getAgencyProfile, getUserProfile } from "../services/userService";
+import { useToast } from "./ToastProvider";
 
 interface AuthContextValue {
   firebaseUser: User | null;
@@ -19,6 +20,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [agency, setAgency] = useState<Agency | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   const loadProfileForUser = async (user: User | null, fromServer = false) => {
     setFirebaseUser(user);
@@ -29,14 +31,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const profile = await getUserProfile(user.uid, { fromServer });
-    setAppUser(profile);
 
+    let agencyProfile = null;
     if (profile?.agencyId) {
-      const agencyProfile = await getAgencyProfile(profile.agencyId);
-      setAgency(agencyProfile);
-    } else {
-      setAgency(null);
+      agencyProfile = await getAgencyProfile(profile.agencyId);
     }
+
+    setAppUser(profile);
+    setAgency(agencyProfile);
   };
 
   const refreshProfile = async () => {
@@ -51,8 +53,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const unsub = onAuthUserChanged(async (user) => {
         if (!mounted) return;
         setLoading(true);
-        await loadProfileForUser(user);
-        setLoading(false);
+        try {
+          await loadProfileForUser(user);
+        } catch (err) {
+          console.error("Failed to load user profile", err);
+          toast({
+            title: "Login failed",
+            description: "Could not load your profile. Check your account or try again later.",
+            variant: "error",
+          });
+        } finally {
+          setLoading(false);
+        }
       });
 
       return unsub;
