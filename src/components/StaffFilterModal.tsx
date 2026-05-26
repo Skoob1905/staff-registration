@@ -138,12 +138,12 @@ export const StaffFilterModal = ({
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogContent onClose={() => onOpenChange(false)}>
-        <DialogTitle className="text-sm sm:text-lg font-bold">Filter</DialogTitle>
+        <DialogTitle className="text-base sm:text-lg font-bold">Filter</DialogTitle>
 
         <div className="mt-4 space-y-4">
           {enableName && (
             <div>
-              <label className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)]">
+              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
                 Name
               </label>
               <Input
@@ -157,7 +157,7 @@ export const StaffFilterModal = ({
 
           {enableType && (
             <div>
-              <label className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)]">
+              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
                 Type
               </label>
               {staffTypes.length === 0 ? (
@@ -190,7 +190,7 @@ export const StaffFilterModal = ({
 
           {enableTag && (
             <div>
-              <label className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)]">
+              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
                 Tags
               </label>
               {Object.keys(tags).length === 0 ? (
@@ -228,7 +228,7 @@ export const StaffFilterModal = ({
 
           {enableAgency && (
             <div>
-              <label className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)]">
+              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
                 Clients
               </label>
               {agencyCounts.size === 0 ? (

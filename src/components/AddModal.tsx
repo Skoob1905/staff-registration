@@ -284,7 +284,7 @@ export const AddModal = ({
             : "max-sm:w-[95vw] sm:max-w-lg"
         }`}
       >
-        <DialogTitle className="text-sm sm:text-lg font-bold">Bulk Upload</DialogTitle>
+        <DialogTitle className="text-base sm:text-lg font-bold">Bulk Upload</DialogTitle>
 
         {!csvData ? (
           <div
@@ -404,7 +404,7 @@ export const AddModal = ({
                     disabled={!autoAssign}
                     value={selectedClient}
                     onChange={setSelectedClient}
-                    className="h-8 rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs text-[var(--foreground)] outline-none transition focus:border-[var(--primary)] disabled:opacity-50"
+                    className="h-8 rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)] disabled:opacity-50"
                   />
                 </div>
               ) : null}

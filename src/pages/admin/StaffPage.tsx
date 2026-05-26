@@ -320,10 +320,12 @@ export const AdminStaffPage = () => {
         {(filteredStaff): ReactNode => (
           <div className="overflow-hidden rounded-xl border border-[var(--border)]">
             <AccordionRoot type="single" collapsible>
-              {filteredStaff.map((member) => (
+              {filteredStaff.map((member, idx) => (
                 <AccordionItem
                   key={member.id}
                   value={member.id}
+                  className="animate-cascade"
+                  style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
                   title={
                     <div className="flex flex-col min-w-0">
                       <span className="truncate font-medium pr-4">
@@ -335,18 +337,30 @@ export const AdminStaffPage = () => {
                   }
                   actions={
                     member.metadata?.assignedToName ? (
-                      <span className="hidden sm:inline text-xs sm:text-sm text-[var(--muted-foreground)] whitespace-nowrap">
-                        {member.metadata.assignedToName}
+                      <span className="group hidden sm:inline-flex items-center text-xs sm:text-sm text-[var(--muted-foreground)] whitespace-nowrap">
+                        <span className="transition-all duration-200 group-hover:mr-1">{member.metadata.assignedToName}</span>
+                        <span className="overflow-hidden w-0 transition-all duration-200 group-hover:w-4">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnassignTarget(member);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-4 w-4 rounded-full bg-red-500 text-white inline-flex items-center justify-center hover:bg-red-600 shrink-0"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
                       </span>
                     ) : (
-                      <span className="hidden sm:inline">
+                      <span className="hidden sm:inline" onClick={(e) => e.stopPropagation()}>
                         <ClientsDropdown
                           disabled={assigningStaffLoading}
                           value=""
                           onChange={(value) => {
                             if (value) handleAssign(member.id, value);
                           }}
-                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
                           placeholder="Select client..."
                         />
                       </span>
@@ -379,7 +393,7 @@ export const AdminStaffPage = () => {
                               onChange={(value) => {
                                 if (value) handleAssign(member.id, value);
                               }}
-                              className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                              className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
                               placeholder="Select client..."
                             />
                           ) : null}
@@ -447,7 +461,7 @@ export const AdminStaffPage = () => {
         }}
       >
         <DialogContent onClose={() => setUnassignTarget(null)}>
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Unassign Staff
           </DialogTitle>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">
@@ -495,7 +509,7 @@ export const AdminStaffPage = () => {
             setTagInput("");
           }}
         >
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Assign Tags
           </DialogTitle>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">

@@ -35,7 +35,10 @@ export const AdminPage = () => {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [openUserId, setOpenUserId] = useState<string | undefined>();
-  const [deleteTarget, setDeleteTarget] = useState<Record<string, unknown> | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const companies = useAppStore((s) => s.clients);
@@ -81,7 +84,11 @@ export const AdminPage = () => {
 
   const adminEmailByUid = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const a of admins as Array<{ id: string; email?: string; uid?: string }>) {
+    for (const a of admins as Array<{
+      id: string;
+      email?: string;
+      uid?: string;
+    }>) {
       const email = (a as { email?: string }).email;
       if (!email) continue;
       map[a.id] = email;
@@ -152,7 +159,11 @@ export const AdminPage = () => {
     if (!target) return;
     const uid = (target.id as string) || (target.uid as string) || "";
     if (!uid) {
-      toast({ title: "Cannot delete", description: "Missing user identifier.", variant: "error" });
+      toast({
+        title: "Cannot delete",
+        description: "Missing user identifier.",
+        variant: "error",
+      });
       return;
     }
     setDeleteLoading(true);
@@ -162,7 +173,10 @@ export const AdminPage = () => {
       removeLogin(uid);
       setDeleteTarget(null);
       const revokedEmail = (deleteTarget as { email?: string })?.email || uid;
-      toast({ title: "Login removed", description: `${revokedEmail} has been revoked.` });
+      toast({
+        title: "Login removed",
+        description: `${revokedEmail} has been revoked.`,
+      });
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&
@@ -181,7 +195,9 @@ export const AdminPage = () => {
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm sm:text-lg font-bold">Generate Login</h2>
+          <h2 className="text-base sm:text-lg font-bold">
+            Users ({logins.length})
+          </h2>
           <Button
             type="button"
             onClick={() => setShowModal(true)}
@@ -191,13 +207,11 @@ export const AdminPage = () => {
             New Login
           </Button>
         </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-sm sm:text-lg font-bold">Users ({logins.length})</h2>
         <div className="mt-1.5 sm:mt-3">
           {loginsLoading && !loginsLoaded ? (
-            <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">Loading...</p>
+            <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+              Loading...
+            </p>
           ) : logins.length === 0 ? (
             <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
               No users created yet.
@@ -210,7 +224,7 @@ export const AdminPage = () => {
                 value={openUserId}
                 onValueChange={setOpenUserId}
               >
-                {logins.map((user) => {
+                {logins.map((user, idx) => {
                   const userRecord = user as {
                     id: string;
                     email?: string;
@@ -232,42 +246,44 @@ export const AdminPage = () => {
                     userRecord.invitedByUid ||
                     "";
                   return (
-                    <AccordionItem
-                      key={userRecord.id}
-                      value={userRecord.id}
-                      title={
-                        <span className="truncate font-medium pr-4">
-                          {userRecord.email || userRecord.id}
-                        </span>
-                      }
-                      actions={
-                        <span className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)] whitespace-nowrap">
-                          {companyName}
-                        </span>
-                      }
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs sm:text-sm text-zinc-600 truncate">
-                          <span className="font-medium text-[var(--foreground)]">
-                            Invited by:{" "}
+                      <AccordionItem
+                        key={userRecord.id}
+                        value={userRecord.id}
+                        className="animate-cascade"
+                        style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
+                        title={
+                          <span className="truncate font-medium pr-4">
+                            {userRecord.email || userRecord.id}
                           </span>
-                          {invitedByEmail} at{" "}
-                          {formatInvitedAt(
-                            (user as { invitedAt?: unknown }).invitedAt,
-                          )}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget(user);
-                          }}
-                          className="shrink-0 rounded-xl bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_3px_10px_rgba(0,95,87,0.12)] transition hover:bg-red-700"
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    </AccordionItem>
+                        }
+                        actions={
+                          <span className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)] whitespace-nowrap">
+                            {companyName}
+                          </span>
+                        }
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs sm:text-sm text-zinc-600 truncate">
+                            <span className="font-medium text-[var(--foreground)]">
+                              Invited by:{" "}
+                            </span>
+                            {invitedByEmail} at{" "}
+                            {formatInvitedAt(
+                              (user as { invitedAt?: unknown }).invitedAt,
+                            )}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(user);
+                            }}
+                            className="shrink-0 rounded-xl bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_3px_10px_rgba(0,95,87,0.12)] transition hover:bg-red-700"
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      </AccordionItem>
                   );
                 })}
               </AccordionRoot>
@@ -283,13 +299,15 @@ export const AdminPage = () => {
         }}
       >
         <DialogContent onClose={() => setDeleteTarget(null)}>
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Remove Login
           </DialogTitle>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">
             Remove login for{" "}
             <strong>
-              {(deleteTarget as { email?: string })?.email || (deleteTarget?.id as string) || ""}
+              {(deleteTarget as { email?: string })?.email ||
+                (deleteTarget?.id as string) ||
+                ""}
             </strong>
             ?
           </p>
@@ -324,7 +342,7 @@ export const AdminPage = () => {
             setShowModal(false);
           }}
         >
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Generate Login
           </DialogTitle>
           <p className="mt-1 text-xs sm:text-sm text-[var(--muted-foreground)]">

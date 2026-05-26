@@ -161,7 +161,7 @@ export const LoginPage = () => {
         }}
       >
         <DialogContent onClose={closeForgotModal}>
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Reset Password
           </DialogTitle>
           <div className="mt-4 space-y-3">

@@ -26,7 +26,7 @@ export const UserHomePage = () => {
     <div className="mx-auto max-w-2xl space-y-4">
       {/* <Card>
         <div className="flex items-center gap-2">
-          <h2 className="text-sm sm:text-lg font-bold">To Do</h2>
+          <h2 className="text-base sm:text-lg font-bold">To Do</h2>
           <span
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${registrationStatus === "awaiting" ? "border-[color:rgba(245,158,11,0.28)] bg-[color:rgba(251,191,36,0.18)] text-amber-700" : "border-[color:rgba(16,185,129,0.28)] bg-[color:rgba(52,211,153,0.18)] text-emerald-700"}`}
           >
@@ -125,7 +125,7 @@ export const UserHomePage = () => {
 
       <Card>
         <div id="contracts-section" />
-        <h2 className="text-sm sm:text-lg font-bold">Contracts</h2>
+        <h2 className="text-base sm:text-lg font-bold">Contracts</h2>
         <div className="mt-1.5 rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.08)] p-3 sm:mt-3">
           <div className="space-y-1 text-xs sm:text-sm text-[var(--foreground)]">
             {appUser?.contractSent ? (
@@ -165,7 +165,7 @@ export const UserHomePage = () => {
       </Card>
 
       <Card>
-        <h2 className="text-sm sm:text-lg font-bold">Payslips</h2>
+        <h2 className="text-base sm:text-lg font-bold">Payslips</h2>
         {payslips.length ? (
           <div className="mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] sm:mt-3">
             <AccordionRoot type="single" collapsible>
@@ -218,7 +218,7 @@ export const UserHomePage = () => {
         onOpenChange={setShowRegistrationModal}
       >
         <DialogContent onClose={() => setShowRegistrationModal(false)}>
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Complete Registration
           </DialogTitle>
           <p className="mt-1 text-xs sm:text-sm text-zinc-600">

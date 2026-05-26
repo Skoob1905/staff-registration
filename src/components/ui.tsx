@@ -99,29 +99,31 @@ export const AccordionItem = ({
   title,
   children,
   actions,
+  className,
+  style,
 }: {
   value: string;
   title: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }) => (
   <Accordion.Item
     value={value}
-    className="border-b border-[var(--border)] last:border-b-0"
+    className={`border-b border-[var(--border)] last:border-b-0${className ? ` ${className}` : ""}`}
+    style={style}
   >
     <Accordion.Header className="flex items-center">
       <Accordion.Trigger className="flex flex-1 items-center px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
         {title}
+        {actions && (
+          <div className="ml-auto mr-1 flex shrink-0 items-center gap-2 sm:mr-2" onClick={(e) => e.stopPropagation()}>
+            {actions}
+          </div>
+        )}
+        <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
       </Accordion.Trigger>
-      {actions && (
-        <div
-          className="mr-1 flex shrink-0 items-center gap-2 sm:mr-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {actions}
-        </div>
-      )}
-      <ChevronDown className="mr-2 h-4 w-4 shrink-0 text-[var(--muted-foreground)] sm:mr-4" />
     </Accordion.Header>
     <Accordion.Content className="px-3 pb-3 text-xs text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
       {children}

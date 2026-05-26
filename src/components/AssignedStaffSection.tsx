@@ -65,7 +65,7 @@ export const AssignedStaffSection = ({
       {(filtered) => (
         <div className="overflow-hidden rounded-xl border border-[var(--border)]">
           <AccordionRoot type="single" collapsible>
-            {filtered.map((member) => {
+            {filtered.map((member, idx) => {
               const displayName =
                 [member.Title, member.Forename, member.Surname]
                   .filter(Boolean)
@@ -74,6 +74,8 @@ export const AssignedStaffSection = ({
                 <AccordionItem
                   key={member.id}
                   value={member.id}
+                  className="animate-cascade"
+                  style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
                   title={
                     <div className="flex flex-col min-w-0">
                       <span className="truncate font-medium pr-4">{displayName}</span>

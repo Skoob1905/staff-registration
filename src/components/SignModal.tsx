@@ -101,7 +101,7 @@ export const SignModal = ({
   return (
     <DialogRoot open={open} onOpenChange={(next) => (!next ? onClose() : null)}>
       <DialogContent onClose={onClose}>
-        <DialogTitle className="text-sm sm:text-lg font-bold">
+        <DialogTitle className="text-base sm:text-lg font-bold">
           SignModal
         </DialogTitle>
         <p className="mt-1 text-xs sm:text-sm text-zinc-600">

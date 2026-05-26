@@ -115,7 +115,7 @@ export const FilterView = <T,>({
     <Card>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm sm:text-lg font-bold">
+          <h2 className="text-base sm:text-lg font-bold">
             {title} ({filteredItems.length}/{items.length})
           </h2>
           {hasAnyFilter && (

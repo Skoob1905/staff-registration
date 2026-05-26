@@ -107,7 +107,7 @@ export const AdminClientsPage = () => {
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm sm:text-lg font-bold">Clients ({clients.length})</h2>
+          <h2 className="text-base sm:text-lg font-bold">Clients ({clients.length})</h2>
           <Button
             type="button"
             onClick={() => setShowAddModal(true)}
@@ -132,10 +132,12 @@ export const AdminClientsPage = () => {
                 value={openClientId}
                 onValueChange={setOpenClientId}
               >
-                {sortedClients.map((client) => (
+                {sortedClients.map((client, idx) => (
                   <AccordionItem
                     key={client.id}
                     value={client.id}
+                    className="animate-cascade"
+                    style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
                     title={
                       <div className="flex min-w-0 w-full items-center gap-2">
                         <span className="truncate pr-4">

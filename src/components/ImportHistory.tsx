@@ -211,7 +211,7 @@ export const ImportHistory = ({
   return (
     <>
       <Card>
-        <h2 className="text-sm sm:text-lg font-bold">Import History</h2>
+        <h2 className="text-base sm:text-lg font-bold">Import History</h2>
         {loading ? (
           <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
             Loading...
@@ -275,7 +275,7 @@ export const ImportHistory = ({
         }}
       >
         <DialogContent onClose={() => setDeleteTarget(null)}>
-          <DialogTitle className="text-sm sm:text-lg font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             Confirm Delete
           </DialogTitle>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">

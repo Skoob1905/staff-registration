@@ -54,7 +54,7 @@ export const AppLayout = () => {
         className="sticky top-0 z-20 border-b border-[var(--border)] backdrop-blur"
         style={{ backgroundColor: "var(--header-bg)" }}
       >
-        <div className="mx-auto max-w-6xl px-4 py-3">
+        <div className="mx-auto max-w-6xl px-0 py-3 sm:px-1">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <img
               src={logo}
