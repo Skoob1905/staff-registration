@@ -7,7 +7,7 @@ import {
 } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { Plus, X } from "lucide-react";
+import { Pen, Plus, X } from "lucide-react";
 import {
   DialogRoot,
   DialogContent,
@@ -368,57 +368,55 @@ export const AdminStaffPage = () => {
                   }
                 >
                   {(appUser?.role === "admin" || (member.tags?.length ?? 0) > 0) && (
-                    <div className="flex gap-4 mb-2">
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="sm:hidden text-xs sm:text-sm text-[var(--muted-foreground)]">
-                          <span className="font-semibold">Assigned To:</span>{" "}
-                          {member.metadata?.assignedToName ? (
-                            <>
-                              {member.metadata.assignedToName}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setUnassignTarget(member);
-                                }}
-                                className="ml-1.5 h-3.5 w-3.5 rounded-full bg-red-500 text-white inline-flex items-center justify-center hover:bg-red-600 transition shrink-0 align-middle"
-                              >
-                                <X className="h-2 w-2" />
-                              </button>
-                            </>
-                          ) : appUser?.role === "admin" ? (
-                            <ClientsDropdown
-                              disabled={assigningStaffLoading}
-                              value=""
-                              onChange={(value) => {
-                                if (value) handleAssign(member.id, value);
+                    <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
+                      <div className="sm:hidden text-xs sm:text-sm text-[var(--muted-foreground)]">
+                        <span className="font-semibold">Assigned To:</span>{" "}
+                        {member.metadata?.assignedToName ? (
+                          <>
+                            {member.metadata.assignedToName}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUnassignTarget(member);
                               }}
-                              className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                              placeholder="Select client..."
-                            />
-                          ) : null}
-                        </div>
-                        {member.tags && member.tags.length > 0 && (
-                          <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                            <span className="font-semibold">Tags:</span>{" "}
-                            {member.tags
-                              .map((id) => tagsMap[id] || id)
-                              .join(", ")}
-                          </span>
+                              className="ml-1.5 h-3.5 w-3.5 rounded-full bg-red-500 text-white inline-flex items-center justify-center hover:bg-red-600 transition shrink-0 align-middle"
+                            >
+                              <X className="h-2 w-2" />
+                            </button>
+                          </>
+                        ) : appUser?.role === "admin" ? (
+                          <ClientsDropdown
+                            disabled={assigningStaffLoading}
+                            value=""
+                            onChange={(value) => {
+                              if (value) handleAssign(member.id, value);
+                            }}
+                            className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                            placeholder="Select client..."
+                          />
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                          <span className="font-semibold">Tags:</span>{" "}
+                          {member.tags && member.tags.length > 0
+                            ? member.tags.map((id) => tagsMap[id] || id).join(", ")
+                            : ""}
+                        </span>
+                        {appUser?.role === "admin" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTagTarget(member);
+                            }}
+                            className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition hover:text-[var(--primary)]"
+                          >
+                            <Pen className="h-3.5 w-3.5" />
+                          </button>
                         )}
                       </div>
-                      {appUser?.role === "admin" && (
-                        <Button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTagTarget(member);
-                          }}
-                          className="self-center h-6 rounded-lg px-2 text-[10px] shadow-none shrink-0"
-                        >
-                          Tags
-                        </Button>
-                      )}
                     </div>
                   )}
                   <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
@@ -517,7 +515,7 @@ export const AdminStaffPage = () => {
           </p>
           {Object.keys(tagsMap).length > 0 && (
             <div className="mt-4">
-              <label className="text-xs font-medium text-[var(--muted-foreground)]">
+              <label className="text-sm sm:text-base font-semibold text-[var(--foreground)]">
                 Existing tags
               </label>
               <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
@@ -544,7 +542,7 @@ export const AdminStaffPage = () => {
             </div>
           )}
           <div className="mt-4">
-            <label className="text-xs font-medium text-[var(--muted-foreground)]">
+            <label className="text-sm sm:text-base font-semibold text-[var(--foreground)]">
               {Object.keys(tagsMap).length > 0
                 ? "Or create a new tag"
                 : "New tag"}
