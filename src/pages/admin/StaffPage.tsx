@@ -7,7 +7,7 @@ import {
 } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { Pen, Plus, X } from "lucide-react";
+import { Loader2, Pen, Plus, X } from "lucide-react";
 import {
   DialogRoot,
   DialogContent,
@@ -28,6 +28,7 @@ import { useToast } from "../../context/ToastProvider";
 import { useAppStore } from "../../stores/appStore";
 import { db, functions } from "../../services/firebase";
 import { getCompanyName } from "../../utils/company";
+import { usePaginatedStaff } from "../../hooks/usePaginatedStaff";
 import type { Agency, BulkStaff, StaffFilters } from "../../types/domain";
 import { emptyFilters } from "../../types/domain";
 
@@ -45,24 +46,19 @@ export const AdminStaffPage = () => {
   const agencies = useAppStore((s) => s.agencies);
   const companies = useAppStore((s) => s.clients);
   const tags = useAppStore((s) => s.tags);
-  const loadStaff = useAppStore((s) => s.loadStaff);
   const loadAgencies = useAppStore((s) => s.loadAgencies);
   const loadClients = useAppStore((s) => s.loadClients);
   const loadTags = useAppStore((s) => s.loadTags);
   const addTag = useAppStore((s) => s.addTag);
   const updateStaffInStore = useAppStore((s) => s.updateStaffInStore);
+  const updateStaffInPaginationCache = useAppStore((s) => s.updateStaffInPaginationCache);
+  const clearAllPaginationCache = useAppStore((s) => s.clearAllPaginationCache);
 
-  useEffect(() => {
-    if (!appUser?.agencyId) return;
-    loadStaff(appUser.agencyId).catch((err) => {
-      console.error("Failed to load staff:", err);
-      toast({
-        title: "Error",
-        description: "Failed to load staff. Check permissions.",
-        variant: "error",
-      });
-    });
-  }, [appUser?.agencyId, loadStaff, toast]);
+  const pagination = usePaginatedStaff({
+    agencyId: appUser?.agencyId ?? "",
+    filters,
+    pageSize: 50,
+  });
 
   useEffect(() => {
     if (!appUser?.agencyId) return;
@@ -90,17 +86,6 @@ export const AdminStaffPage = () => {
     return map;
   }, [tags]);
 
-  const staffWithFullName = useMemo(
-    () =>
-      staff
-        .map((s) => ({
-          ...s,
-          fullName: [s.Title, s.Forename, s.Surname].filter(Boolean).join(" "),
-        }))
-        .sort((a, b) => (a.Forename || "").localeCompare(b.Forename || "")),
-    [staff],
-  );
-
   const existingNiKeys = useMemo(
     () =>
       new Set(
@@ -124,7 +109,7 @@ export const AdminStaffPage = () => {
   );
 
   const [importHistoryVersion, setImportHistoryVersion] = useState(0);
-  const [assigningStaffLoading, setAssigningStaffLoading] = useState(false);
+  const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
   const [activeAssignMenu, setActiveAssignMenu] = useState<string | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
@@ -184,7 +169,9 @@ export const AdminStaffPage = () => {
       if (ops.length === 0) return;
 
       await Promise.all(ops);
-      updateStaffInStore(staffId, { tags: Array.from(finalTagIds) });
+      const tagUpdates = { tags: Array.from(finalTagIds) };
+      updateStaffInStore(staffId, tagUpdates);
+      updateStaffInPaginationCache(staffId, tagUpdates);
       setTagInput("");
       setTagTarget(null);
       toast({
@@ -207,6 +194,7 @@ export const AdminStaffPage = () => {
     tagInput,
     addTag,
     updateStaffInStore,
+    updateStaffInPaginationCache,
     toast,
   ]);
 
@@ -216,15 +204,15 @@ export const AdminStaffPage = () => {
     try {
       const callable = httpsCallable(functions, "unassignStaffFromAgency");
       await callable({ staffId: unassignTarget.id });
-      updateStaffInStore(unassignTarget.id, {
-        metadata: {
-          assignedTo: undefined,
-          assignedToId: undefined,
-          assignedToName: undefined,
-          assignedBy: undefined,
-          assignedAt: undefined,
-        },
-      });
+      const clearedMetadata = {
+        assignedTo: undefined,
+        assignedToId: undefined,
+        assignedToName: undefined,
+        assignedBy: undefined,
+        assignedAt: undefined,
+      };
+      updateStaffInStore(unassignTarget.id, { metadata: clearedMetadata });
+      updateStaffInPaginationCache(unassignTarget.id, { metadata: clearedMetadata });
       setUnassignTarget(null);
       toast({
         title: "Unassigned",
@@ -240,26 +228,26 @@ export const AdminStaffPage = () => {
     } finally {
       setUnassignLoading(false);
     }
-  }, [unassignTarget, appUser?.agencyId, updateStaffInStore, toast]);
+  }, [unassignTarget, appUser?.agencyId, updateStaffInStore, updateStaffInPaginationCache, toast]);
 
   const handleAssign = useCallback(
     async (staffId: string, assignedToId: string) => {
       if (!appUser?.agencyId) return;
-      setAssigningStaffLoading(true);
+      setAssigningStaffId(staffId);
       try {
         const staffMember = staff.find((s) => s.id === staffId);
         const agency = companies.find((a) => a.id === assignedToId);
         const assignedToName = agency ? getCompanyName(agency) : assignedToId;
         const callable = httpsCallable(functions, "assignStaffToAgency");
         await callable({ staffId, assignedToId, assignedToName });
-        updateStaffInStore(staffId, {
-          metadata: {
-            assignedToId,
-            assignedToName,
-            assignedBy: appUser.email || appUser.uid,
-            assignedAt: new Date(),
-          },
-        });
+        const metadata = {
+          assignedToId,
+          assignedToName,
+          assignedBy: appUser.email || appUser.uid,
+          assignedAt: new Date(),
+        };
+        updateStaffInStore(staffId, { metadata });
+        updateStaffInPaginationCache(staffId, { metadata });
         toast({
           title: "Assigned",
           description: `${[staffMember?.Title, staffMember?.Forename, staffMember?.Surname].filter(Boolean).join(" ")} has now been assigned to ${assignedToName}`,
@@ -272,24 +260,20 @@ export const AdminStaffPage = () => {
           variant: "error",
         });
       } finally {
-        setAssigningStaffLoading(false);
+        setAssigningStaffId(null);
       }
     },
-    [appUser?.agencyId, staff, companies, updateStaffInStore, toast],
+    [appUser?.agencyId, staff, companies, updateStaffInStore, updateStaffInPaginationCache, toast],
   );
 
   const handleDeleteSuccess = async () => {
-    if (appUser?.agencyId) {
-      await loadStaff(appUser.agencyId, true);
-    }
+    clearAllPaginationCache();
   };
 
   const handleAddSuccess = async () => {
+    clearAllPaginationCache();
     if (appUser?.agencyId) {
-      await Promise.all([
-        loadClients(appUser.agencyId, true),
-        loadStaff(appUser.agencyId, true),
-      ]);
+      await loadClients(appUser.agencyId, true);
     }
     setImportHistoryVersion((v) => v + 1);
   };
@@ -298,15 +282,25 @@ export const AdminStaffPage = () => {
     <div className="mx-auto max-w-2xl space-y-4">
       <FilterView
         title="Staff"
-        items={staffWithFullName}
+        items={pagination.items}
         filters={filters}
         onFiltersChange={setFilters}
-        searchFields={["fullName", "Forename", "Surname", "email"]}
+        searchFields={["Forename", "Surname", "email"]}
         tags={tagsMap}
         agencies={companies as unknown as Agency[]}
         enableNameFilter
         enableTagFilter
         enableAgencyFilter
+        pagination
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        totalCount={pagination.totalCount}
+        pageSize={pagination.pageSize}
+        loading={pagination.loading}
+        onPrevPage={pagination.goPrev}
+        onNextPage={pagination.goNext}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
         action={
           <Button
             type="button"
@@ -357,7 +351,7 @@ export const AdminStaffPage = () => {
                       <span className="hidden sm:inline" onClick={(e) => e.stopPropagation()}>
                         {activeAssignMenu === member.id ? (
                           <ClientsDropdown
-                            disabled={assigningStaffLoading}
+                            disabled={assigningStaffId === member.id}
                             value=""
                             onChange={(value) => {
                               if (value) handleAssign(member.id, value);
@@ -368,6 +362,8 @@ export const AdminStaffPage = () => {
                             autoFocus
                             onBlur={() => setActiveAssignMenu(null)}
                           />
+                        ) : assigningStaffId === member.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
                         ) : (
                           <button
                             type="button"
@@ -401,7 +397,7 @@ export const AdminStaffPage = () => {
                           </>
                         ) : appUser?.role === "admin" ? (
                           <ClientsDropdown
-                            disabled={assigningStaffLoading}
+                            disabled={assigningStaffId === member.id}
                             value=""
                             onChange={(value) => {
                               if (value) handleAssign(member.id, value);

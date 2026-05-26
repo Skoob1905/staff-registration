@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { formatInvitedAt } from "../utils/date";
 import { FilterView } from "./FilterView";
+import { usePaginatedStaff } from "../hooks/usePaginatedStaff";
 import type { StaffFilters } from "../types/domain";
 import { emptyFilters } from "../types/domain";
 
@@ -17,8 +18,6 @@ export const AssignedStaffSection = ({
   const { appUser } = useAuth();
   const agencyId = targetAgencyId || appUser?.agencyId;
 
-  const assignedStaff = useAppStore((s) => s.assignedStaff);
-  const loadAssignedStaff = useAppStore((s) => s.loadAssignedStaff);
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
 
@@ -32,35 +31,39 @@ export const AssignedStaffSection = ({
 
   const [filters, setFilters] = useState<StaffFilters>(emptyFilters);
 
-  useEffect(() => {
-    if (!agencyId) return;
-    loadAssignedStaff(agencyId).catch(() => {});
-  }, [agencyId, loadAssignedStaff]);
+  const pagination = usePaginatedStaff({
+    agencyId: agencyId ?? "",
+    filters,
+    pageSize: 50,
+    assignedToId: targetAgencyId || agencyId,
+  });
 
   useEffect(() => {
     loadTags().catch(() => {});
   }, [loadTags]);
 
-  const sortedStaff = useMemo(
-    () =>
-      [...assignedStaff].sort((a, b) =>
-        (a.Forename || "").localeCompare(b.Forename || ""),
-      ),
-    [assignedStaff],
-  );
-
   return (
     <FilterView
       title="Assigned Staff"
-      items={sortedStaff}
+      items={pagination.items}
       filters={filters}
       onFiltersChange={setFilters}
-      searchFields={["fullName", "Forename", "Surname", "email"]}
+      searchFields={["Forename", "Surname", "email"]}
       tags={tagsMap}
       enableNameFilter
       enableTagFilter
       hideClear
       emptyMessage="You've not been assigned any staff yet"
+      pagination
+      currentPage={pagination.currentPage}
+      totalPages={pagination.totalPages}
+      totalCount={pagination.totalCount}
+      pageSize={pagination.pageSize}
+      loading={pagination.loading}
+      onPrevPage={pagination.goPrev}
+      onNextPage={pagination.goNext}
+      onGoToPage={pagination.goToPage}
+      onPageSizeChange={pagination.setPageSize}
     >
       {(filtered) => (
         <div className="overflow-hidden rounded-xl border border-[var(--border)]">

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Filter } from "lucide-react";
 import { Card } from "./ui";
+import { PaginationBar } from "./PaginationBar";
 import { StaffFilterModal } from "./StaffFilterModal";
 import type { Agency, StaffFilters, StaffType } from "../types/domain";
 
@@ -22,6 +23,16 @@ interface FilterViewProps<T> {
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
   hideClear?: boolean;
+  pagination?: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  totalCount?: number;
+  pageSize?: number;
+  loading?: boolean;
+  onPrevPage?: () => void;
+  onNextPage?: () => void;
+  onGoToPage?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 }
 
 export const FilterView = <T,>({
@@ -35,13 +46,23 @@ export const FilterView = <T,>({
   staffTypes = [],
   children,
   emptyMessage = "",
-  noMatchMessage = "No items match the current filters",
+  noMatchMessage = "Oops there are no records with that filter",
   action,
   enableNameFilter = true,
   enableTypeFilter = false,
   enableTagFilter = false,
   enableAgencyFilter = false,
   hideClear = false,
+  pagination = false,
+  currentPage = 1,
+  totalPages = 1,
+  totalCount = 0,
+  pageSize = 50,
+  loading = false,
+  onPrevPage,
+  onNextPage,
+  onGoToPage,
+  onPageSizeChange,
 }: FilterViewProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -58,34 +79,36 @@ export const FilterView = <T,>({
       );
     }
 
-    if (enableTypeFilter && filters.typeIds.length > 0) {
-      const typeSet = new Set(filters.typeIds);
-      result = result.filter((s) => {
-        const ids = (s as Record<string, unknown>).typeIds as
-          | string[]
-          | undefined;
-        return ids?.some((t: string) => typeSet.has(t));
-      });
-    }
+    if (!pagination) {
+      if (enableTypeFilter && filters.typeIds.length > 0) {
+        const typeSet = new Set(filters.typeIds);
+        result = result.filter((s) => {
+          const ids = (s as Record<string, unknown>).typeIds as
+            | string[]
+            | undefined;
+          return ids?.some((t: string) => typeSet.has(t));
+        });
+      }
 
-    if (enableTagFilter && filters.tagIds.length > 0) {
-      const tagSet = new Set(filters.tagIds);
-      result = result.filter((s) => {
-        const ids = (s as Record<string, unknown>).tags as
-          | string[]
-          | undefined;
-        return ids?.some((t: string) => tagSet.has(t));
-      });
-    }
+      if (enableTagFilter && filters.tagIds.length > 0) {
+        const tagSet = new Set(filters.tagIds);
+        result = result.filter((s) => {
+          const ids = (s as Record<string, unknown>).tags as
+            | string[]
+            | undefined;
+          return ids?.some((t: string) => tagSet.has(t));
+        });
+      }
 
-    if (enableAgencyFilter && filters.agencyIds.length > 0) {
-      const agencySet = new Set(filters.agencyIds);
-      result = result.filter((s) => {
-        const meta = (s as Record<string, unknown>).metadata as
-          | { assignedToId?: string }
-          | undefined;
-        return meta?.assignedToId && agencySet.has(meta.assignedToId);
-      });
+      if (enableAgencyFilter && filters.agencyIds.length > 0) {
+        const agencySet = new Set(filters.agencyIds);
+        result = result.filter((s) => {
+          const meta = (s as Record<string, unknown>).metadata as
+            | { assignedToId?: string }
+            | undefined;
+          return meta?.assignedToId && agencySet.has(meta.assignedToId);
+        });
+      }
     }
 
     return result;
@@ -97,6 +120,7 @@ export const FilterView = <T,>({
     enableTypeFilter,
     enableTagFilter,
     enableAgencyFilter,
+    pagination,
   ]);
 
   const activeFilterCount = useMemo(() => {
@@ -106,18 +130,27 @@ export const FilterView = <T,>({
     if (enableTagFilter && filters.tagIds.length > 0) count++;
     if (enableAgencyFilter && filters.agencyIds.length > 0) count++;
     return count;
-  }, [filters, enableNameFilter, enableTypeFilter, enableTagFilter, enableAgencyFilter]);
+  }, [
+    filters,
+    enableNameFilter,
+    enableTypeFilter,
+    enableTagFilter,
+    enableAgencyFilter,
+  ]);
 
   const hasAnyFilter =
-    enableNameFilter || enableTypeFilter || enableTagFilter || enableAgencyFilter;
+    enableNameFilter ||
+    enableTypeFilter ||
+    enableTagFilter ||
+    enableAgencyFilter;
 
   return (
     <Card>
       <div className="flex items-center justify-between">
+        <h2 className="text-base sm:text-lg font-bold">
+          {pagination ? `${title} (${totalCount})` : title}
+        </h2>
         <div className="flex items-center gap-2">
-          <h2 className="text-base sm:text-lg font-bold">
-            {title} ({filteredItems.length}/{items.length})
-          </h2>
           {hasAnyFilter && (
             <button
               type="button"
@@ -132,14 +165,20 @@ export const FilterView = <T,>({
               )}
             </button>
           )}
+          {action}
         </div>
-        {action}
       </div>
 
       <div className="mt-1.5 sm:mt-3">
-        {items.length === 0 ? (
+        {pagination && loading && items.length === 0 ? (
           <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-            {emptyMessage || `Add some ${title.toLowerCase()} now!`}
+            Loading...
+          </p>
+        ) : items.length === 0 ? (
+          <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+            {activeFilterCount > 0
+              ? noMatchMessage
+              : emptyMessage || `Add some ${title.toLowerCase()} now!`}
           </p>
         ) : filteredItems.length === 0 ? (
           <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
@@ -150,11 +189,28 @@ export const FilterView = <T,>({
         )}
       </div>
 
+      {pagination &&
+        onPrevPage &&
+        onNextPage &&
+        onGoToPage &&
+        onPageSizeChange && (
+          <PaginationBar
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            loading={loading}
+            onPrev={onPrevPage}
+            onNext={onNextPage}
+            onGoToPage={onGoToPage}
+            onPageSizeChange={onPageSizeChange}
+          />
+        )}
+
       <StaffFilterModal
         open={showFilterModal}
         onOpenChange={setShowFilterModal}
         agencies={agencies}
-        items={items as Record<string, unknown>[]}
         filters={filters}
         onApply={onFiltersChange}
         tags={tags}

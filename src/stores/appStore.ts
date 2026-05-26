@@ -63,6 +63,24 @@ interface AppState {
   loadTags: (force?: boolean) => Promise<void>;
   addTag: (tag: StaffTag) => void;
   updateStaffInStore: (staffId: string, updates: Partial<BulkStaff>) => void;
+  paginationCache: Record<string, PaginationCacheEntry>;
+  setPaginationPage: (key: string, pageNum: number, items: BulkStaff[], lastCursor: string | null) => void;
+  setPaginationMeta: (key: string, meta: Partial<Pick<PaginationCacheEntry, "currentPage" | "loading" | "totalCount">>) => void;
+  clearPaginationCache: (key: string) => void;
+  clearAllPaginationCache: () => void;
+  updateStaffInPaginationCache: (staffId: string, updates: Partial<BulkStaff>) => void;
+}
+
+export interface CachedPage {
+  items: BulkStaff[];
+  lastCursor: string | null;
+}
+
+export interface PaginationCacheEntry {
+  pages: Record<number, CachedPage>;
+  currentPage: number;
+  loading: boolean;
+  totalCount: number;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -97,7 +115,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadStaff: async (agencyId, force) => {
     const state = get();
     if (!force && (state.staffLoaded || state.staffLoading)) {
-      if (state.staffLoaded) console.log("[store] loadStaff — cache hit, skipping Firestore");
+      if (state.staffLoaded)
+        console.log("[store] loadStaff — cache hit, skipping Firestore");
       return;
     }
     set({ staffLoading: true });
@@ -133,7 +152,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const agencySnap = await getDoc(doc(db, "agencies", targetAgencyId));
       if (!agencySnap.exists()) {
-        set({ assignedStaff: [], assignedStaffLoaded: true, assignedStaffLoading: false });
+        set({
+          assignedStaff: [],
+          assignedStaffLoaded: true,
+          assignedStaffLoading: false,
+        });
         return;
       }
       const agencyData = agencySnap.data() as Agency;
@@ -146,15 +169,24 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const merged = loaded.map((s) => {
         const displayName =
-          [s.Title, s.Forename, s.Surname].filter(Boolean).join(" ") ||
-          s.email;
+          [s.Title, s.Forename, s.Surname].filter(Boolean).join(" ") || s.email;
         return { ...s, fullName: displayName };
       });
 
-      set({ assignedStaff: merged, assignedStaffLoaded: true, assignedStaffLoading: false });
-      console.log(`[store] loadAssignedStaff — loaded ${merged.length} staff records`);
+      set({
+        assignedStaff: merged,
+        assignedStaffLoaded: true,
+        assignedStaffLoading: false,
+      });
+      console.log(
+        `[store] loadAssignedStaff — loaded ${merged.length} staff records`,
+      );
     } catch {
-      set({ assignedStaff: [], assignedStaffLoaded: true, assignedStaffLoading: false });
+      set({
+        assignedStaff: [],
+        assignedStaffLoaded: true,
+        assignedStaffLoading: false,
+      });
       console.error("[store] loadAssignedStaff — failed");
     }
   },
@@ -162,7 +194,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadAdmins: async (agencyId, force) => {
     const state = get();
     if (!force && (state.adminsLoaded || state.adminsLoading)) {
-      if (state.adminsLoaded) console.log("[store] loadAdmins — cache hit, skipping Firestore");
+      if (state.adminsLoaded)
+        console.log("[store] loadAdmins — cache hit, skipping Firestore");
       return;
     }
     set({ adminsLoading: true });
@@ -190,7 +223,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadAgencies: async (agencyId, force) => {
     const state = get();
     if (!force && (state.agenciesLoaded || state.agenciesLoading)) {
-      if (state.agenciesLoaded) console.log("[store] loadAgencies — cache hit, skipping Firestore");
+      if (state.agenciesLoaded)
+        console.log("[store] loadAgencies — cache hit, skipping Firestore");
       return;
     }
     set({ agenciesLoading: true });
@@ -219,7 +253,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadStaffTypes: async (force) => {
     const state = get();
     if (!force && (state.staffTypesLoaded || state.staffTypesLoading)) {
-      if (state.staffTypesLoaded) console.log("[store] loadStaffTypes — cache hit, skipping Firestore");
+      if (state.staffTypesLoaded)
+        console.log("[store] loadStaffTypes — cache hit, skipping Firestore");
       return;
     }
     set({ staffTypesLoading: true });
@@ -243,7 +278,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadClients: async (agencyId, force) => {
     const state = get();
     if (!force && (state.clientsLoaded || state.clientsLoading)) {
-      if (state.clientsLoaded) console.log("[store] loadClients — cache hit, skipping Firestore");
+      if (state.clientsLoaded)
+        console.log("[store] loadClients — cache hit, skipping Firestore");
       return;
     }
     set({ clientsLoading: true });
@@ -297,7 +333,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadLogins: async (agencyId, force) => {
     const state = get();
     if (!force && (state.loginsLoaded || state.loginsLoading)) {
-      if (state.loginsLoaded) console.log("[store] loadLogins — cache hit, skipping Firestore");
+      if (state.loginsLoaded)
+        console.log("[store] loadLogins — cache hit, skipping Firestore");
       return;
     }
     set({ loginsLoading: true });
@@ -311,7 +348,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         ),
       );
       const loaded = snaps.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as { id: string; invitedAt?: Date | { toDate?: () => Date }; email?: string; role?: string; agencyId?: string; assignedTo?: string; invitedByUid?: string })
+        .map(
+          (d) =>
+            ({ id: d.id, ...d.data() }) as {
+              id: string;
+              invitedAt?: Date | { toDate?: () => Date };
+              email?: string;
+              role?: string;
+              agencyId?: string;
+              assignedTo?: string;
+              invitedByUid?: string;
+            },
+        )
         .sort((a, b) => {
           const dateA =
             a.invitedAt instanceof Date
@@ -354,7 +402,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadTags: async (force) => {
     const state = get();
     if (!force && (state.tagsLoaded || state.tagsLoading)) {
-      if (state.tagsLoaded) console.log("[store] loadTags — cache hit, skipping Firestore");
+      if (state.tagsLoaded)
+        console.log("[store] loadTags — cache hit, skipping Firestore");
       return;
     }
     set({ tagsLoading: true });
@@ -379,6 +428,77 @@ export const useAppStore = create<AppState>((set, get) => ({
         member.id === staffId ? { ...member, ...updates } : member,
       ),
     }));
+  },
+
+  paginationCache: {},
+
+  setPaginationPage: (key, pageNum, items, lastCursor) => {
+    set((s) => ({
+      paginationCache: {
+        ...s.paginationCache,
+        [key]: {
+          ...(s.paginationCache[key] ?? {
+            pages: {},
+            currentPage: 1,
+            loading: false,
+            totalCount: 0,
+          }),
+          pages: {
+            ...(s.paginationCache[key]?.pages ?? {}),
+            [pageNum]: { items, lastCursor },
+          },
+        },
+      },
+    }));
+  },
+
+  setPaginationMeta: (key, meta) => {
+    set((s) => ({
+      paginationCache: {
+        ...s.paginationCache,
+        [key]: {
+          ...(s.paginationCache[key] ?? {
+            pages: {},
+            currentPage: 1,
+            loading: false,
+            totalCount: 0,
+          }),
+          ...meta,
+        },
+      },
+    }));
+  },
+
+  clearPaginationCache: (key) => {
+    set((s) => {
+      const next = { ...s.paginationCache };
+      delete next[key];
+      return { paginationCache: next };
+    });
+  },
+
+  clearAllPaginationCache: () => {
+    set({ paginationCache: {} });
+  },
+
+  updateStaffInPaginationCache: (staffId, updates) => {
+    set((s) => {
+      const next: Record<string, PaginationCacheEntry> = {};
+      for (const [key, entry] of Object.entries(s.paginationCache)) {
+        const updatedPages: Record<number, CachedPage> = {};
+        for (const [pageNumStr, page] of Object.entries(entry.pages)) {
+          const pageNum = Number(pageNumStr);
+          updatedPages[pageNum] = {
+            ...page,
+            items: page.items.map((item) =>
+              item.id === staffId ? { ...item, ...updates } : item,
+            ),
+          };
+        }
+        next[key] = { ...entry, pages: updatedPages };
+      }
+      return { paginationCache: next };
+    });
   },
 }));
 
