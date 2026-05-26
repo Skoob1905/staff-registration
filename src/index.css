@@ -1,43 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eaf0ec;
+  --background: #f2f3f5;
   --foreground: #101828;
   --card: #ffffff;
   --card-foreground: #101828;
-  --muted: #d4e0d8;
+  --muted: #dadddf;
   --muted-foreground: #6a7282;
   --primary: #005f57;
   --primary-foreground: #ffffff;
-  --border: #c0d0c4;
+  --border: #c8ccd0;
   --destructive: #c74343;
   --header-bg: rgba(255, 255, 255, 0.9);
   --surface: #ffffff;
   --input-bg: rgba(255, 255, 255, 0.88);
   --input-focus-bg: #ffffff;
-  --placeholder: #6f887a;
+  --placeholder: #7e8489;
   --radius: 0.875rem;
 }
 
 [data-theme="dark"] {
-  --background: #0e1a1a;
+  --background: #111318;
   --foreground: #e2e8f0;
-  --card: #111e20;
+  --card: #1a1d23;
   --card-foreground: #e2e8f0;
-  --muted: #1b2e30;
+  --muted: #25282e;
   --muted-foreground: #94a3b8;
   --primary: #00a89a;
-  --primary-foreground: #dbe7e2;
-  --border: #263e3e;
+  --primary-foreground: #e2e8f0;
+  --border: #2d3338;
   --destructive: #e06a6a;
-  --header-bg: rgba(17, 30, 32, 0.9);
-  --surface: #162828;
-  --input-bg: rgba(25, 42, 42, 0.92);
-  --input-focus-bg: #1c3030;
+  --header-bg: rgba(17, 19, 24, 0.9);
+  --surface: #1e2127;
+  --input-bg: rgba(26, 29, 35, 0.92);
+  --input-focus-bg: #252830;
   --placeholder: #8ea4a8;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 html {
   background-color: var(--header-bg);
@@ -62,7 +64,9 @@ body {
   color: var(--foreground);
 }
 
-#root { min-height: 100vh; }
+#root {
+  min-height: 100vh;
+}
 
 [data-theme="dark"] .text-zinc-900,
 [data-theme="dark"] .text-zinc-800,
@@ -81,7 +85,46 @@ body {
 }
 
 [data-theme="dark"] .hover\:bg-zinc-100:hover {
-  background-color: color-mix(in srgb, var(--primary) 18%, transparent) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--primary) 18%,
+    transparent
+  ) !important;
 }
 
+@keyframes cascade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dissolve {
+  0% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+
+.animate-cascade {
+  animation: cascade-in 20ms ease-out forwards;
+  opacity: 0;
+}
+
+.animate-dissolve {
+  animation: dissolve 0.5s ease-in-out infinite;
+}

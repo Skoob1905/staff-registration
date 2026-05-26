@@ -137,7 +137,7 @@ export const AdminClientsPage = () => {
                     key={client.id}
                     value={client.id}
                     className="animate-cascade"
-                    style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
+                    style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
                     title={
                       <div className="flex min-w-0 w-full items-center gap-2">
                         <span className="truncate pr-4">

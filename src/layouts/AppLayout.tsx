@@ -68,11 +68,13 @@ export const AppLayout = () => {
       >
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex flex-wrap items-center sm:grid sm:grid-cols-[1fr_auto_1fr]">
-            <img
-              src={logo}
-              alt="HandySign"
-              className="max-h-5 w-auto shrink-0 object-contain sm:justify-self-start sm:max-h-6 md:max-h-7"
-            />
+            <a href="https://blackrockconsultancyuk.com" target="_blank" rel="noopener noreferrer" className="justify-self-start">
+              <img
+                src={logo}
+                alt="HandySign"
+                className="max-h-5 w-auto shrink-0 object-contain sm:max-h-6 md:max-h-7"
+              />
+            </a>
             <nav className="order-last flex basis-full justify-center gap-2 pt-2 sm:order-none sm:basis-auto sm:pt-0">
               {navLinks}
             </nav>

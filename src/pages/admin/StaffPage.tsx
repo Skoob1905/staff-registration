@@ -325,7 +325,7 @@ export const AdminStaffPage = () => {
                   key={member.id}
                   value={member.id}
                   className="animate-cascade"
-                  style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
+                   style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
                   title={
                     <div className="flex flex-col min-w-0">
                       <span className="truncate font-medium pr-4">

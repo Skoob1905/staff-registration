@@ -1,4 +1,4 @@
-import logo from "../assets/BlackRockLogo2.jpg";
+import logo from "../assets/splashScreen.jpg";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import {
@@ -140,7 +140,11 @@ export const LoginPage = () => {
                 {loading ? "Signing in..." : "Login"}
               </Button>
             </div>
-            <SecondaryButton type="button" onClick={openForgotModal} className="flex-1">
+            <SecondaryButton
+              type="button"
+              onClick={openForgotModal}
+              className="flex-1"
+            >
               Forgot password?
             </SecondaryButton>
           </div>

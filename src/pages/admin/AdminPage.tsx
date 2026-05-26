@@ -250,7 +250,7 @@ export const AdminPage = () => {
                         key={userRecord.id}
                         value={userRecord.id}
                         className="animate-cascade"
-                        style={{ animationDelay: `${idx * 50}ms` } as React.CSSProperties}
+                        style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
                         title={
                           <span className="truncate font-medium pr-4">
                             {userRecord.email || userRecord.id}

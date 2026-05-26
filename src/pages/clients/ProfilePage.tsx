@@ -38,10 +38,10 @@ export const ProfilePage = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
-        <h2 className="text-base font-bold">Profile</h2>
+        <h2 className="text-base sm:text-lg font-bold">Profile</h2>
         <div className="mt-2 space-y-2">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-[var(--muted-foreground)]" />
+            <Mail className="h-5 w-5 text-[var(--muted-foreground)]" />
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">Email</p>
               <p className="text-xs sm:text-sm font-medium">
@@ -51,7 +51,7 @@ export const ProfilePage = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-[var(--muted-foreground)]" />
+            <Shield className="h-5 w-5 text-[var(--muted-foreground)]" />
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">Role</p>
               <p className="text-xs sm:text-sm font-medium capitalize">
@@ -61,7 +61,7 @@ export const ProfilePage = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-[var(--muted-foreground)]" />
+            <Building className="h-5 w-5 text-[var(--muted-foreground)]" />
             <div>
               <p className="text-xs text-[var(--muted-foreground)]">Company</p>
               <p className="text-xs sm:text-sm font-medium">
