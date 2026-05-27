@@ -252,9 +252,11 @@ export const usePaginatedStaff = ({
     return result;
   }, [rawItems, filters.name, filters.tagIds, filters.agencyIds]);
 
+  const displayTotalCount = items.length === 0 && !loading ? 0 : totalCount;
+
   const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(totalCount / pageSize)),
-    [totalCount, pageSize],
+    () => Math.max(1, Math.ceil(displayTotalCount / pageSize)),
+    [displayTotalCount, pageSize],
   );
 
   const fetchPage = useCallback(
@@ -465,7 +467,7 @@ export const usePaginatedStaff = ({
 
   return {
     items,
-    totalCount,
+    totalCount: displayTotalCount,
     totalPages,
     currentPage,
     pageSize,
