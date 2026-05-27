@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
-import { Button, Input } from "./ui";
+import { Button } from "./ui";
 import type { Agency, StaffFilters, StaffType } from "../types/domain";
 import { findValueByNormalizedKey } from "../utils/staff";
 
@@ -26,7 +26,6 @@ export const StaffFilterModal = ({
   filters,
   onApply,
   tags = {},
-  staffTypes = [],
   enableName = true,
   enableType = false,
   enableTag = false,
@@ -78,13 +77,6 @@ export const StaffFilterModal = ({
     }
     return map;
   }, [agencies]);
-
-  const toggleType = (id: string) => {
-    const next = new Set(selectedTypeIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedTypeIds(next);
-  };
 
   const toggleTag = (id: string) => {
     const next = new Set(selectedTagIds);

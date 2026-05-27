@@ -27,7 +27,7 @@ export function getStaffName(staff: BulkStaff): string {
     return [staff.Title, staff.FullName].filter(Boolean).join(" ");
   }
 
-  const raw = staff as Record<string, string>;
+  const raw = staff as unknown as Record<string, string>;
   const nk = findValueByNormalizedKey(raw, "fullname");
   if (nk) return nk;
 

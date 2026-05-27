@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DocumentData } from "firebase/firestore";
 import {
   collection,
   documentId,
@@ -86,7 +87,6 @@ const describeConstraints = (c: unknown[]): string => {
 };
 
 const buildQueryConstraints = (
-  agencyId: string,
   assignedToId: string | undefined,
   tagIds: string[],
   agencyIds: string[],
@@ -130,7 +130,6 @@ const buildQueryConstraints = (
 };
 
 const countQuery = (
-  agencyId: string,
   assignedToId: string | undefined,
   tagIds: string[],
   agencyIds: string[],
@@ -271,7 +270,6 @@ export const usePaginatedStaff = ({
 
         try {
           const countC = countQuery(
-            agencyId,
             assignedToId,
             filters.tagIds,
             filters.agencyIds,
@@ -289,7 +287,6 @@ export const usePaginatedStaff = ({
 
         try {
           const pageC = buildQueryConstraints(
-            agencyId,
             assignedToId,
             filters.tagIds,
             filters.agencyIds,
@@ -298,11 +295,12 @@ export const usePaginatedStaff = ({
           const q = query(...(pageC as Parameters<typeof query>));
           console.log("[usePaginatedStaff] executing page 1 query");
           const snap = await getDocs(q);
-          console.log("[usePaginatedStaff] page 1 returned docs:", snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: d.data().Forename, surname: d.data().Surname, email: d.data().email, agencyId: d.data().agencyId })));
+          const data = (d: { data: () => unknown }) => d.data() as DocumentData;
+          console.log("[usePaginatedStaff] page 1 returned docs:", snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: data(d).Forename, surname: data(d).Surname, email: data(d).email, agencyId: data(d).agencyId })));
           if (cancelledRef.current) return;
 
           const docs = snap.docs.map(
-            (d) => ({ id: d.id, ...d.data() }) as BulkStaff,
+            (d) => ({ id: d.id, ...data(d) }) as BulkStaff,
           );
           const lastCursor =
             docs.length > 0 ? docs[docs.length - 1].id : null;
@@ -326,7 +324,6 @@ export const usePaginatedStaff = ({
 
       try {
         const pageC = buildQueryConstraints(
-          agencyId,
           assignedToId,
           filters.tagIds,
           filters.agencyIds,
@@ -336,11 +333,12 @@ export const usePaginatedStaff = ({
         const q = query(...(pageC as Parameters<typeof query>));
         console.log(`[usePaginatedStaff] executing page ${pageNum} query`);
         const snap = await getDocs(q);
-        console.log(`[usePaginatedStaff] page ${pageNum} returned docs:`, snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: d.data().Forename, surname: d.data().Surname, email: d.data().email, agencyId: d.data().agencyId })));
+        const data = (d: { data: () => unknown }) => d.data() as DocumentData;
+        console.log(`[usePaginatedStaff] page ${pageNum} returned docs:`, snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: data(d).Forename, surname: data(d).Surname, email: data(d).email, agencyId: data(d).agencyId })));
         if (cancelledRef.current) return;
 
         const docs = snap.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as BulkStaff,
+          (d) => ({ id: d.id, ...data(d) }) as BulkStaff,
         );
         const lastCursor =
           docs.length > 0 ? docs[docs.length - 1].id : null;
