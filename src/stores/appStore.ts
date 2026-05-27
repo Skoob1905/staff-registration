@@ -8,6 +8,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../services/firebase";
+import { getStaffName } from "../utils/staff";
 import type { Agency, BulkStaff, StaffTag, StaffType } from "../types/domain";
 
 export interface AgencyDoc {
@@ -68,6 +69,7 @@ interface AppState {
   setPaginationMeta: (key: string, meta: Partial<Pick<PaginationCacheEntry, "currentPage" | "loading" | "totalCount">>) => void;
   clearPaginationCache: (key: string) => void;
   clearAllPaginationCache: () => void;
+  removeStaffFromPaginationCacheByImport: (importId: string) => void;
   updateStaffInPaginationCache: (staffId: string, updates: Partial<BulkStaff>) => void;
 }
 
@@ -168,9 +170,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         .map((snap) => ({ id: snap.id, ...snap.data() }) as BulkStaff);
 
       const merged = loaded.map((s) => {
-        const displayName =
-          [s.Title, s.Forename, s.Surname].filter(Boolean).join(" ") || s.email;
-        return { ...s, fullName: displayName };
+        return { ...s, fullName: getStaffName(s) };
       });
 
       set({
@@ -479,6 +479,26 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   clearAllPaginationCache: () => {
     set({ paginationCache: {} });
+  },
+
+  removeStaffFromPaginationCacheByImport: (importId) => {
+    set((s) => {
+      const next: Record<string, PaginationCacheEntry> = {};
+      for (const [key, entry] of Object.entries(s.paginationCache)) {
+        const updatedPages: Record<number, CachedPage> = {};
+        for (const [pageNumStr, page] of Object.entries(entry.pages)) {
+          const pageNum = Number(pageNumStr);
+          const remaining = page.items.filter(
+            (item) => item.metadata?.uploadedInFile !== importId,
+          );
+          if (remaining.length > 0 || page.items.length === 0) {
+            updatedPages[pageNum] = { ...page, items: remaining };
+          }
+        }
+        next[key] = { ...entry, pages: updatedPages };
+      }
+      return { paginationCache: next };
+    });
   },
 
   updateStaffInPaginationCache: (staffId, updates) => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
 import { Button, Input } from "./ui";
 import type { Agency, StaffFilters, StaffType } from "../types/domain";
+import { findValueByNormalizedKey } from "../utils/staff";
 
 interface StaffFilterModalProps {
   open: boolean;
@@ -59,7 +60,21 @@ export const StaffFilterModal = ({
     const map: Record<string, string> = {};
     for (const a of agencies) {
       const r = a as unknown as Record<string, string>;
-      map[a.id] = a.name || r.business_name || r.Company_Name || r.company_name || r.name || "Unknown";
+      map[a.id] =
+        a.name ||
+        r.business_name ||
+        r.Company_Name ||
+        r.company_name ||
+        r.name ||
+        findValueByNormalizedKey(
+          r,
+          "businessname",
+          "name",
+          "agencyname",
+          "organisation",
+          "company",
+        ) ||
+        "Unknown";
     }
     return map;
   }, [agencies]);
@@ -98,10 +113,12 @@ export const StaffFilterModal = ({
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogContent onClose={() => onOpenChange(false)}>
-        <DialogTitle className="text-base sm:text-lg font-bold">Filter</DialogTitle>
+        <DialogTitle className="text-base sm:text-lg font-bold">
+          Filter
+        </DialogTitle>
 
         <div className="mt-4 space-y-4">
-          {enableName && (
+          {/* {enableName && (
             <div>
               <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
                 Name
@@ -113,37 +130,7 @@ export const StaffFilterModal = ({
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-          )}
-
-          {enableType && (
-            <div>
-              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
-                Type
-              </label>
-              {staffTypes.length === 0 ? (
-                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                  No types available
-                </p>
-              ) : (
-                <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
-                  {staffTypes.map((t) => (
-                    <label
-                      key={t.id}
-                      className="flex cursor-pointer items-center gap-2 text-xs sm:text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTypeIds.has(t.id)}
-                        onChange={() => toggleType(t.id)}
-                        className="rounded shrink-0"
-                      />
-                      <span className="truncate">{t.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          )} */}
 
           {enableTag && (
             <div>

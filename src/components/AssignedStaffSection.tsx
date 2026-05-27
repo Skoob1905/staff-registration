@@ -7,6 +7,7 @@ import { FilterView } from "./FilterView";
 import { usePaginatedStaff } from "../hooks/usePaginatedStaff";
 import type { StaffFilters } from "../types/domain";
 import { emptyFilters } from "../types/domain";
+import { getStaffName } from "../utils/staff";
 
 interface AssignedStaffSectionProps {
   targetAgencyId?: string;
@@ -48,7 +49,7 @@ export const AssignedStaffSection = ({
       items={pagination.items}
       filters={filters}
       onFiltersChange={setFilters}
-      searchFields={["Forename", "Surname", "email"]}
+      searchFields={["Forename", "Surname", "FullName", "email"]}
       tags={tagsMap}
       enableNameFilter
       enableTagFilter
@@ -69,10 +70,7 @@ export const AssignedStaffSection = ({
         <div className="overflow-hidden rounded-xl border border-[var(--border)]">
           <AccordionRoot type="single" collapsible>
             {filtered.map((member, idx) => {
-              const displayName =
-                [member.Title, member.Forename, member.Surname]
-                  .filter(Boolean)
-                  .join(" ") || member.email;
+              const displayName = getStaffName(member);
               return (
                 <AccordionItem
                   key={member.id}

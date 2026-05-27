@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppStore } from "../stores/appStore";
 import { useAuth } from "../context/AuthProvider";
+import { findValueByNormalizedKey } from "../utils/staff";
 
 interface ClientsDropdownProps {
   value: string;
@@ -35,23 +36,24 @@ export const ClientsDropdown = ({
     }
   }, [appUser?.agencyId, clientsLoaded, clientsLoading, loadClients]);
 
-  const sortedClients = useMemo(
-    () =>
-      [...clients].sort((a, b) => {
-        const nameA = (a.business_name as string) || (a.Company_Name as string) || (a.company_name as string) || (a.name as string) || "";
-        const nameB = (b.business_name as string) || (b.Company_Name as string) || (b.company_name as string) || (b.name as string) || "";
-        return nameA.localeCompare(nameB);
-      }),
-    [clients],
-  );
-
-  const getClientName = (client: (typeof clients)[number]): string =>
+  const getClientName = useCallback((client: (typeof clients)[number]): string =>
     (client.business_name as string) ||
     (client.Company_Name as string) ||
     (client.company_name as string) ||
     (client.name as string) ||
     (client.agencyName as string) ||
-    "Unknown";
+    findValueByNormalizedKey(client as Record<string, unknown>, "businessname", "name", "agencyname", "organisation", "company") ||
+    "Unknown", []);
+
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((a, b) => {
+        const nameA = getClientName(a);
+        const nameB = getClientName(b);
+        return nameA.localeCompare(nameB);
+      }),
+    [clients, getClientName],
+  );
 
   return (
     <select

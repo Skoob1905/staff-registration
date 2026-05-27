@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Plus } from "lucide-react";
 import {
@@ -40,6 +40,21 @@ export const AdminPage = () => {
     unknown
   > | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (deleteLoading) {
+      deleteTimerRef.current = setTimeout(() => {
+        toast({ title: "Still deleting...", variant: "info" });
+      }, 8000);
+    }
+    return () => {
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+        deleteTimerRef.current = null;
+      }
+    };
+  }, [deleteLoading, toast]);
 
   const companies = useAppStore((s) => s.clients);
   const companyCache = useAppStore((s) => s.companyCache);

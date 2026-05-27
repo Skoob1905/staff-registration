@@ -2,7 +2,7 @@ import * as ToastPrimitive from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
-type ToastVariant = "default" | "success" | "error";
+type ToastVariant = "default" | "success" | "error" | "info";
 
 export interface AppToast {
   id: string;
@@ -25,30 +25,51 @@ export const ToastItem = ({
   onOpenChange: (open: boolean) => void;
 }) => {
   const isError = toast.variant === "error";
+  const isInfo = toast.variant === "info";
+
+  const borderColor = isError
+    ? "border-red-300 bg-red-50/90"
+    : isInfo
+      ? "border-blue-300 bg-blue-50/90"
+      : "border-emerald-300 bg-emerald-50/90";
+
+  const textColor = isError
+    ? "text-red-900"
+    : isInfo
+      ? "text-blue-900"
+      : "text-emerald-900";
+
+  const descColor = isError
+    ? "text-red-800"
+    : isInfo
+      ? "text-blue-800"
+      : "text-emerald-800";
+
+  const closeColor = isError
+    ? "text-red-700 hover:text-red-900"
+    : isInfo
+      ? "text-blue-700 hover:text-blue-900"
+      : "text-emerald-700 hover:text-emerald-900";
 
   return (
     <ToastPrimitive.Root
       open
       onOpenChange={onOpenChange}
       duration={5000}
-      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${
-        isError
-          ? "border-red-300 bg-red-50/90"
-          : "border-emerald-300 bg-emerald-50/90"
-      }`}
+      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${borderColor}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <ToastPrimitive.Title className={`text-sm font-semibold ${isError ? "text-red-900" : "text-emerald-900"}`}>
+          <ToastPrimitive.Title className={`text-sm font-semibold ${textColor}`}>
             {toast.title}
           </ToastPrimitive.Title>
           {toast.description ? (
-            <ToastPrimitive.Description className={`mt-1 text-sm ${isError ? "text-red-800" : "text-emerald-800"}`}>
+            <ToastPrimitive.Description className={`mt-1 text-sm ${descColor}`}>
               {toast.description}
             </ToastPrimitive.Description>
           ) : null}
         </div>
-        <ToastPrimitive.Close className={`transition ${isError ? "text-red-700 hover:text-red-900" : "text-emerald-700 hover:text-emerald-900"}`}>
+        <ToastPrimitive.Close className={`transition ${closeColor}`}>
           <X className="h-4 w-4" />
         </ToastPrimitive.Close>
       </div>

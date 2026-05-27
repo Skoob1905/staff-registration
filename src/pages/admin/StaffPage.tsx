@@ -28,6 +28,7 @@ import { useToast } from "../../context/ToastProvider";
 import { useAppStore } from "../../stores/appStore";
 import { db, functions } from "../../services/firebase";
 import { getCompanyName } from "../../utils/company";
+import { getStaffName, getStaffNameFromRawRecord } from "../../utils/staff";
 import { usePaginatedStaff } from "../../hooks/usePaginatedStaff";
 import type { Agency, BulkStaff, StaffFilters } from "../../types/domain";
 import { emptyFilters } from "../../types/domain";
@@ -52,13 +53,14 @@ export const AdminStaffPage = () => {
   const addTag = useAppStore((s) => s.addTag);
   const updateStaffInStore = useAppStore((s) => s.updateStaffInStore);
   const updateStaffInPaginationCache = useAppStore((s) => s.updateStaffInPaginationCache);
-  const clearAllPaginationCache = useAppStore((s) => s.clearAllPaginationCache);
+  const removeStaffFromPaginationCacheByImport = useAppStore((s) => s.removeStaffFromPaginationCacheByImport);
 
   const pagination = usePaginatedStaff({
     agencyId: appUser?.agencyId ?? "",
     filters,
     pageSize: 50,
   });
+  const { refresh } = pagination;
 
   useEffect(() => {
     if (!appUser?.agencyId) return;
@@ -97,6 +99,9 @@ export const AdminStaffPage = () => {
               r.ni_number ||
               r.NI_Number ||
               r.NINO ||
+              r.ninumber ||
+              r["ni no"] ||
+              r["NI NO"] ||
               ""
             )
               .toLowerCase()
@@ -216,7 +221,7 @@ export const AdminStaffPage = () => {
       setUnassignTarget(null);
       toast({
         title: "Unassigned",
-        description: `${[unassignTarget.Title, unassignTarget.Forename, unassignTarget.Surname].filter(Boolean).join(" ")} has been unassigned`,
+        description: `${getStaffName(unassignTarget)} has been unassigned`,
         variant: "success",
       });
     } catch {
@@ -250,7 +255,7 @@ export const AdminStaffPage = () => {
         updateStaffInPaginationCache(staffId, { metadata });
         toast({
           title: "Assigned",
-          description: `${[staffMember?.Title, staffMember?.Forename, staffMember?.Surname].filter(Boolean).join(" ")} has now been assigned to ${assignedToName}`,
+          description: `${staffMember ? getStaffName(staffMember) : ""} has now been assigned to ${assignedToName}`,
           variant: "success",
         });
       } catch {
@@ -266,16 +271,19 @@ export const AdminStaffPage = () => {
     [appUser?.agencyId, staff, companies, updateStaffInStore, updateStaffInPaginationCache, toast],
   );
 
-  const handleDeleteSuccess = async () => {
-    clearAllPaginationCache();
+  const handleDeleteSuccess = async (importId?: string) => {
+    if (importId) {
+      removeStaffFromPaginationCacheByImport(importId);
+    }
+    refresh();
   };
 
   const handleAddSuccess = async () => {
-    clearAllPaginationCache();
     if (appUser?.agencyId) {
       await loadClients(appUser.agencyId, true);
     }
     setImportHistoryVersion((v) => v + 1);
+    refresh();
   };
 
   return (
@@ -285,7 +293,7 @@ export const AdminStaffPage = () => {
         items={pagination.items}
         filters={filters}
         onFiltersChange={setFilters}
-        searchFields={["Forename", "Surname", "email"]}
+        searchFields={["Forename", "Surname", "FullName", "email"]}
         tags={tagsMap}
         agencies={companies as unknown as Agency[]}
         enableNameFilter
@@ -324,9 +332,7 @@ export const AdminStaffPage = () => {
                   title={
                     <div className="flex flex-col min-w-0">
                       <span className="truncate font-medium pr-4">
-                        {[member.Title, member.Forename, member.Surname]
-                          .filter(Boolean)
-                          .join(" ")}
+                        {getStaffName(member)}
                       </span>
                     </div>
                   }
@@ -465,23 +471,17 @@ export const AdminStaffPage = () => {
       <DialogRoot
         open={unassignTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setUnassignTarget(null);
+          if (!open && !unassignLoading) setUnassignTarget(null);
         }}
       >
-        <DialogContent onClose={() => setUnassignTarget(null)}>
+        <DialogContent closeDisabled={unassignLoading} onClose={() => { if (!unassignLoading) setUnassignTarget(null); }}>
           <DialogTitle className="text-base sm:text-lg font-bold">
             Unassign Staff
           </DialogTitle>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">
             Remove{" "}
             <strong>
-              {[
-                unassignTarget?.Title,
-                unassignTarget?.Forename,
-                unassignTarget?.Surname,
-              ]
-                .filter(Boolean)
-                .join(" ")}
+              {unassignTarget ? getStaffName(unassignTarget) : ""}
             </strong>{" "}
             from <strong>{unassignTarget?.metadata?.assignedToName}</strong>?
           </p>
@@ -496,7 +496,12 @@ export const AdminStaffPage = () => {
               disabled={unassignLoading}
               onClick={() => void handleUnassign()}
             >
-              {unassignLoading ? "Removing..." : "Remove"}
+              {unassignLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Removing...
+                </span>
+              ) : "Remove"}
             </Button>
           </div>
         </DialogContent>
@@ -579,31 +584,7 @@ export const AdminStaffPage = () => {
       <ImportHistory
         type="staff"
         cloudFunction="removeStaffImport"
-        getPreviewNames={(rows) =>
-          rows.map((r) => {
-            const keys = Object.keys(r);
-            const findKey = (...names: string[]) => {
-              for (const name of names) {
-                const match = keys.find(
-                  (k) => k.toLowerCase() === name.toLowerCase(),
-                );
-                if (match) return r[match];
-              }
-              return "";
-            };
-            return (
-              [
-                findKey("title"),
-                findKey("forename", "first_name", "firstname", "first name"),
-                findKey("surname", "last_name", "lastname", "last name"),
-              ]
-                .filter(Boolean)
-                .join(" ") ||
-              findKey("email") ||
-              "Unknown"
-            );
-          })
-        }
+        getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
         onDeleteSuccess={handleDeleteSuccess}
         version={importHistoryVersion}
       />

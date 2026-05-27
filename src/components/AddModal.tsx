@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
@@ -10,6 +10,7 @@ import { useToast } from "../context/ToastProvider";
 import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
+import { normalizeKey, findValueByNormalizedKey } from "../utils/staff";
 
 type CsvRow = Record<string, string>;
 
@@ -36,15 +37,26 @@ function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
     return result;
   };
 
-  const headers = parseLine(lines[0]);
+  const rawHeaders = parseLine(lines[0]);
+  const seen = new Set<string>();
+  const headers: string[] = [];
+  const headerIndices: number[] = [];
+  rawHeaders.forEach((h, idx) => {
+    if (!seen.has(h)) {
+      seen.add(h);
+      headers.push(h);
+      headerIndices.push(idx);
+    }
+  });
+
   const rows: CsvRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const values = parseLine(lines[i]);
     if (values.length === 1 && values[0] === "") continue;
     const row: CsvRow = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] ?? "";
+    headerIndices.forEach((rawIdx, mappedIdx) => {
+      row[headers[mappedIdx]] = values[rawIdx] ?? "";
     });
     rows.push(row);
   }
@@ -62,7 +74,7 @@ interface AddModalProps {
   csvType?: string;
   duplicateKey: string;
   existingKeys: Set<string>;
-  onSuccess: () => Promise<void>;
+  onSuccess?: (importId?: string) => Promise<void>;
   clients?: { id: string; name: string }[];
   confirmText?: (additions: number) => string;
 }
@@ -92,10 +104,25 @@ export const AddModal = ({
     rawFile: File;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [autoAssign, setAutoAssign] = useState(false);
   const [selectedClient, setSelectedClient] = useState("");
+
+  useEffect(() => {
+    if (loading) {
+      loadingTimerRef.current = setTimeout(() => {
+        toast({ title: "Still uploading...", variant: "info" });
+      }, 8000);
+    }
+    return () => {
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+    };
+  }, [loading, toast]);
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
@@ -131,12 +158,23 @@ export const AddModal = ({
       }
 
       if (csvType === "staff") {
-        const headersLower = parsed.headers.map((h) => h.toLowerCase().trim());
-        if (!headersLower.includes("ni number")) {
+        const normalizedHeaders = parsed.headers.map(normalizeKey);
+        const hasNi = normalizedHeaders.some((h) => h === "ninumber" || h === "nino");
+        if (!hasNi) {
           toast({
             title: "Invalid staff file",
-            description:
-              "The CSV must contain an 'NI Number' column.",
+            description: "The CSV must contain an NI Number column.",
+            variant: "error",
+          });
+          return;
+        }
+        const hasForename = normalizedHeaders.some((h) => h === "forename" || h === "firstname");
+        const hasSurname = normalizedHeaders.some((h) => h === "surname" || h === "lastname");
+        const hasFullName = normalizedHeaders.some((h) => h === "fullname");
+        if (!(hasForename && hasSurname) && !hasFullName) {
+          toast({
+            title: "Invalid staff file",
+            description: "The CSV must contain First Name + Surname columns, or a Full Name column.",
             variant: "error",
           });
           return;
@@ -144,11 +182,11 @@ export const AddModal = ({
       }
 
       if (csvType === "agency") {
-        const headersLower = parsed.headers.map((h) => h.toLowerCase().trim());
-        if (!headersLower.includes("business_name")) {
+        const normalizedHeaders = parsed.headers.map(normalizeKey);
+        if (!normalizedHeaders.includes("businessname")) {
           toast({
             title: "Invalid client file",
-            description: "The CSV must contain a 'business_name' column.",
+            description: "The CSV must contain a Business Name column.",
             variant: "error",
           });
           return;
@@ -198,6 +236,7 @@ export const AddModal = ({
                 (selectedCompany.Company_Name as string) ||
                 (selectedCompany.company_name as string) ||
                 (selectedCompany.agencyName as string) ||
+                findValueByNormalizedKey(selectedCompany as Record<string, unknown>, "businessname", "name", "agencyname", "organisation", "company") ||
                 "Unknown",
             }
           : {}),
@@ -231,7 +270,7 @@ export const AddModal = ({
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      await onSuccess();
+      await onSuccess?.(data.importId);
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&
@@ -268,9 +307,11 @@ export const AddModal = ({
   }, [csvData, uniqueRows]);
 
   return (
-    <DialogRoot open={open} onOpenChange={onOpenChange}>
+    <DialogRoot open={open} onOpenChange={(o) => { if (o !== false || !loading) onOpenChange(o); }}>
       <DialogContent
+        closeDisabled={loading}
         onClose={() => {
+          if (loading) return;
           onOpenChange(false);
           setCsvData(null);
           setUploadProgress(0);

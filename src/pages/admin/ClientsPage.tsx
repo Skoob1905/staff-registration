@@ -10,6 +10,7 @@ import {
 } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
 import { useAppStore, type AgencyDoc } from "../../stores/appStore";
+import { findValueByNormalizedKey } from "../../utils/staff";
 
 export const AdminClientsPage = () => {
   useEffect(() => {
@@ -36,7 +37,7 @@ export const AdminClientsPage = () => {
       new Set(
         clients
           .map((c) => {
-            const name = (c.business_name as string) || "";
+            const name = findValueByNormalizedKey(c as Record<string, unknown>, "businessname", "name", "agencyname", "organisation", "company") || "";
             return name.toLowerCase().trim();
           })
           .filter(Boolean),
@@ -50,6 +51,7 @@ export const AdminClientsPage = () => {
       (client.company_name as string) ||
       (client.name as string) ||
       (client.agencyName as string) ||
+      findValueByNormalizedKey(client as Record<string, unknown>, "businessname", "name", "agencyname", "organisation", "company") ||
       "Unknown"
     );
   };
@@ -173,7 +175,11 @@ export const AdminClientsPage = () => {
         getPreviewNames={(rows) =>
           rows.map(
             (r) =>
-              r.business_name || r.Company_Name || r.company_name || "Unknown",
+              r.business_name ||
+              r.Company_Name ||
+              r.company_name ||
+              findValueByNormalizedKey(r, "businessname", "name", "agencyname", "organisation", "company") ||
+              "Unknown",
           )
         }
         onDeleteSuccess={handleDeleteSuccess}

@@ -7,7 +7,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
+import { setGlobalOptions } from "firebase-functions";
 // import { onRequest } from "firebase-functions/https";
 // import * as logger from "firebase-functions/logger";
 
@@ -24,20 +24,20 @@ import {setGlobalOptions} from "firebase-functions";
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({maxInstances: 10, region: "europe-west2"});
+setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
 
 // export const helloWorld = onRequest((request, response) => {
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
 
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 
-import {defineString} from "firebase-functions/params";
-import {initializeApp} from "firebase-admin/app";
-import {getAuth} from "firebase-admin/auth";
-import {FieldValue, getFirestore} from "firebase-admin/firestore";
-import {getStorage} from "firebase-admin/storage";
+import { defineString } from "firebase-functions/params";
+import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 initializeApp();
 
@@ -50,6 +50,22 @@ const normalizeEmail = (value: unknown): string =>
     .toLowerCase();
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const namePattern = /^[A-Za-z' -]+$/;
+
+const normalizeKey = (key: string): string =>
+  key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
+const findNormalizedValue = (
+  data: Record<string, unknown>,
+  ...targets: string[]
+): string | null => {
+  for (const [key, value] of Object.entries(data)) {
+    const nk = normalizeKey(key);
+    if (targets.some((t) => normalizeKey(t) === nk)) {
+      return String(value ?? "");
+    }
+  }
+  return null;
+};
 
 export const invitePortalUser = onCall(async (request) => {
   const callerUid = request.auth?.uid;
@@ -112,7 +128,7 @@ export const invitePortalUser = onCall(async (request) => {
   } catch (err: unknown) {
     const authErr = err as { code?: string };
     if (authErr.code === "auth/user-not-found") {
-      user = await adminAuth.createUser({email});
+      user = await adminAuth.createUser({ email });
     } else if (authErr.code === "auth/invalid-email") {
       throw new HttpsError(
         "invalid-argument",
@@ -133,7 +149,7 @@ export const invitePortalUser = onCall(async (request) => {
       status: "awaiting",
       invitedAt: FieldValue.serverTimestamp(),
     },
-    {merge: true},
+    { merge: true },
   );
 
   // Ensure invited staff can authenticate into the app
@@ -148,7 +164,7 @@ export const invitePortalUser = onCall(async (request) => {
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
-    {merge: true},
+    { merge: true },
   );
 
   // Triggers Firebase password-reset email template
@@ -157,7 +173,7 @@ export const invitePortalUser = onCall(async (request) => {
     `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
     {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requestType: "PASSWORD_RESET",
         email,
@@ -180,7 +196,7 @@ export const invitePortalUser = onCall(async (request) => {
     );
   }
 
-  return {ok: true, userId: user.uid};
+  return { ok: true, userId: user.uid };
 });
 
 export const assignClientLogin = onCall(async (request) => {
@@ -256,7 +272,7 @@ export const assignClientLogin = onCall(async (request) => {
   } catch (err: unknown) {
     const authErr = err as { code?: string };
     if (authErr.code === "auth/user-not-found") {
-      user = await adminAuth.createUser({email});
+      user = await adminAuth.createUser({ email });
     } else if (authErr.code === "auth/invalid-email") {
       throw new HttpsError(
         "invalid-argument",
@@ -277,14 +293,14 @@ export const assignClientLogin = onCall(async (request) => {
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
-    {merge: true},
+    { merge: true },
   );
 
   const resp = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
     {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         requestType: "PASSWORD_RESET",
         email,
@@ -307,7 +323,7 @@ export const assignClientLogin = onCall(async (request) => {
     );
   }
 
-  return {ok: true, userId: user.uid};
+  return { ok: true, userId: user.uid };
 });
 
 export const removeUnregisteredStaffUser = onCall(async (request) => {
@@ -374,7 +390,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
     }
   }
 
-  return {ok: true, uid};
+  return { ok: true, uid };
 });
 
 export const registerStaffProfile = onCall(async (request) => {
@@ -468,27 +484,30 @@ export const registerStaffProfile = onCall(async (request) => {
     assignedToId = staffData.metadata?.assignedToId ?? "";
   }
 
-  await db.collection("users").doc(callerUid).set(
-    {
-      uid: callerUid,
-      email: awaiting.email,
-      role: "client",
-      agencyId: awaiting.agencyId,
-      ...(assignedToId ? {assignedToId} : {}),
-      registrationStatus: "registered",
-      firstName,
-      lastName,
-      birthday,
-      address,
-      honestyConfirmed: true,
-      registeredAt: FieldValue.serverTimestamp(),
-    },
-    {merge: true},
-  );
+  await db
+    .collection("users")
+    .doc(callerUid)
+    .set(
+      {
+        uid: callerUid,
+        email: awaiting.email,
+        role: "client",
+        agencyId: awaiting.agencyId,
+        ...(assignedToId ? { assignedToId } : {}),
+        registrationStatus: "registered",
+        firstName,
+        lastName,
+        birthday,
+        address,
+        honestyConfirmed: true,
+        registeredAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
   await awaitingRef.delete();
 
-  return {ok: true};
+  return { ok: true };
 });
 
 export const markContractSent = onCall(async (request) => {
@@ -538,10 +557,10 @@ export const markContractSent = onCall(async (request) => {
         contractSent: FieldValue.serverTimestamp(),
         contractSentBy: caller.email ?? "Unknown",
       },
-      {merge: true},
+      { merge: true },
     );
 
-  return {ok: true};
+  return { ok: true };
 });
 
 export const markContractSigned = onCall(async (request) => {
@@ -591,7 +610,7 @@ export const markContractSigned = onCall(async (request) => {
     const bucket = getStorage().bucket();
     const originalPath = `contracts/unsigned/${callerUid}/${originalFileName}`;
     try {
-      await bucket.file(originalPath).delete({ignoreNotFound: true});
+      await bucket.file(originalPath).delete({ ignoreNotFound: true });
     } catch (error) {
       console.error("Failed deleting original unsigned file", {
         contractId,
@@ -614,10 +633,10 @@ export const markContractSigned = onCall(async (request) => {
       contractSigned: true,
       contractSignedAt: FieldValue.serverTimestamp(),
     },
-    {merge: true},
+    { merge: true },
   );
 
-  return {ok: true, contractId};
+  return { ok: true, contractId };
 });
 
 export const completeUnsignedContract = onCall(async (request) => {
@@ -649,7 +668,7 @@ export const completeUnsignedContract = onCall(async (request) => {
     const bucket = getStorage().bucket();
     const objectPath = `contracts/unsigned/${callerUid}/${fileName}`;
     try {
-      await bucket.file(objectPath).delete({ignoreNotFound: true});
+      await bucket.file(objectPath).delete({ ignoreNotFound: true });
     } catch (error) {
       console.error("Failed to delete unsigned contract object", {
         contractId,
@@ -660,7 +679,7 @@ export const completeUnsignedContract = onCall(async (request) => {
   }
 
   await contractRef.delete();
-  return {ok: true, contractId};
+  return { ok: true, contractId };
 });
 
 export const updatePayslipDownloadedStatus = onCall(async (request) => {
@@ -689,10 +708,10 @@ export const updatePayslipDownloadedStatus = onCall(async (request) => {
       hasDownloaded: true,
       downloadedAt: FieldValue.serverTimestamp(),
     },
-    {merge: true},
+    { merge: true },
   );
 
-  return {ok: true, payslipId};
+  return { ok: true, payslipId };
 });
 
 export const importAgencyCsv = onCall(async (request) => {
@@ -733,7 +752,7 @@ export const importAgencyCsv = onCall(async (request) => {
   const existingNames = new Set<string>();
   for (const doc of existingSnaps.docs) {
     const data = doc.data();
-    const name = String(data.business_name || "")
+    const name = String(findNormalizedValue(data, "businessname") || "")
       .trim()
       .toLowerCase();
     if (name) existingNames.add(name);
@@ -744,7 +763,7 @@ export const importAgencyCsv = onCall(async (request) => {
 
   for (const record of records) {
     if (typeof record !== "object" || record === null) continue;
-    const name = String(record.business_name || "")
+    const name = String(findNormalizedValue(record, "businessname") || "")
       .trim()
       .toLowerCase();
     if (name && existingNames.has(name)) {
@@ -861,6 +880,8 @@ export const importStaffCsv = onCall(async (request) => {
       const match = lowerKeys[name.toLowerCase()];
       if (match) return String(data[match]);
     }
+    const found = findNormalizedValue(data, ...names);
+    if (found) return found;
     return "";
   };
 
@@ -868,17 +889,21 @@ export const importStaffCsv = onCall(async (request) => {
   for (const doc of existingSnaps.docs) {
     const data = doc.data();
     const ni = field(
-      data, "NI Number", "ni_number", "NI_Number", "NINO",
+      data,
+      "NI Number",
+      "ni_number",
+      "NI_Number",
+      "NINO",
     ).toLowerCase();
     if (ni) existingNiNumbers.add(ni);
   }
 
-  const assignedToId = request.data?.assignedToId ?
-    String(request.data.assignedToId) :
-    null;
-  const assignedToName = request.data?.assignedToName ?
-    String(request.data.assignedToName) :
-    null;
+  const assignedToId = request.data?.assignedToId
+    ? String(request.data.assignedToId)
+    : null;
+  const assignedToName = request.data?.assignedToName
+    ? String(request.data.assignedToName)
+    : null;
 
   const newRecords: Array<Record<string, unknown>> = [];
   let duplicateCount = 0;
@@ -886,13 +911,36 @@ export const importStaffCsv = onCall(async (request) => {
   for (const record of records) {
     if (typeof record !== "object" || record === null) continue;
     const ni = field(
-      record, "NI Number", "ni_number", "NI_Number", "NINO",
+      record,
+      "NI Number",
+      "ni_number",
+      "NI_Number",
+      "NINO",
     ).toLowerCase();
     if (ni && existingNiNumbers.has(ni)) {
       duplicateCount++;
       continue;
     }
     existingNiNumbers.add(ni);
+
+    const forename = findNormalizedValue(record, "forename", "firstname");
+    const surname = findNormalizedValue(record, "surname", "lastname");
+    const fullName = findNormalizedValue(record, "fullname");
+
+    if (fullName) {
+      const trimmed = fullName.trim();
+      const firstSpace = trimmed.indexOf(" ");
+      if (firstSpace > 0) {
+        record["Forename"] = trimmed.slice(0, firstSpace).trim();
+        record["Surname"] = trimmed.slice(firstSpace + 1).trim();
+      } else {
+        record["Forename"] = trimmed;
+      }
+    } else if (forename || surname) {
+      record["Forename"] = forename ?? "";
+      record["Surname"] = surname ?? "";
+    }
+
     newRecords.push(record);
   }
 
@@ -923,10 +971,14 @@ export const importStaffCsv = onCall(async (request) => {
           uploadedInFile: importId,
           uploadedBy: caller.agencyId,
           importedAt: FieldValue.serverTimestamp(),
-          ...(assignedToId ? {
-            assignedToId, assignedToName, assignedBy: caller.email,
-            assignedAt: FieldValue.serverTimestamp(),
-          } : {}),
+          ...(assignedToId
+            ? {
+              assignedToId,
+              assignedToName,
+              assignedBy: caller.email,
+              assignedAt: FieldValue.serverTimestamp(),
+            }
+            : {}),
         },
       });
       newStaffIds.push(docRef.id);
@@ -936,9 +988,12 @@ export const importStaffCsv = onCall(async (request) => {
   }
 
   if (assignedToId && newStaffIds.length > 0) {
-    await db.collection("agencies").doc(assignedToId).update({
-      assignedStaff: FieldValue.arrayUnion(...newStaffIds),
-    });
+    await db
+      .collection("agencies")
+      .doc(assignedToId)
+      .update({
+        assignedStaff: FieldValue.arrayUnion(...newStaffIds),
+      });
   }
 
   const totalRecords = Number(request.data?.totalRecords) || records.length;
@@ -990,20 +1045,29 @@ export const assignStaffToAgency = onCall(async (request) => {
     );
   }
 
-  await db.collection("staff").doc(staffId).set({
-    metadata: {
-      assignedToId,
-      assignedToName,
-      assignedBy: caller.email ?? callerUid,
-      assignedAt: FieldValue.serverTimestamp(),
-    },
-  }, {merge: true});
+  await db
+    .collection("staff")
+    .doc(staffId)
+    .set(
+      {
+        metadata: {
+          assignedToId,
+          assignedToName,
+          assignedBy: caller.email ?? callerUid,
+          assignedAt: FieldValue.serverTimestamp(),
+        },
+      },
+      { merge: true },
+    );
 
-  await db.collection("agencies").doc(assignedToId).update({
-    assignedStaff: FieldValue.arrayUnion(staffId),
-  });
+  await db
+    .collection("agencies")
+    .doc(assignedToId)
+    .update({
+      assignedStaff: FieldValue.arrayUnion(staffId),
+    });
 
-  return {ok: true, staffId, assignedToId};
+  return { ok: true, staffId, assignedToId };
 });
 
 export const deleteUserContract = onCall(async (request) => {
@@ -1057,7 +1121,7 @@ export const deleteUserContract = onCall(async (request) => {
       const fileName = String(data.fileName || "").trim();
       if (fileName) {
         const path = `contracts/unsigned/${targetUserId}/${fileName}`;
-        await bucket.file(path).delete({ignoreNotFound: true});
+        await bucket.file(path).delete({ ignoreNotFound: true });
       }
       await docSnap.ref.delete();
     }
@@ -1073,7 +1137,7 @@ export const deleteUserContract = onCall(async (request) => {
       const fileName = String(data.fileName || "").trim();
       if (fileName) {
         const path = `contracts/signed/${targetUserId}/${fileName}`;
-        await bucket.file(path).delete({ignoreNotFound: true});
+        await bucket.file(path).delete({ ignoreNotFound: true });
       }
       await docSnap.ref.delete();
     }
@@ -1086,10 +1150,10 @@ export const deleteUserContract = onCall(async (request) => {
       contractSigned: FieldValue.delete(),
       contractSignedAt: FieldValue.delete(),
     },
-    {merge: true},
+    { merge: true },
   );
 
-  return {ok: true, targetUserId, mode};
+  return { ok: true, targetUserId, mode };
 });
 
 export const bulkUploadStaff = onCall(async (request) => {
@@ -1154,13 +1218,32 @@ export const bulkUploadStaff = onCall(async (request) => {
       continue;
     }
 
+    let forename = String(
+      row.forename || row.firstname || row.Forename || "",
+    ).trim();
+    let surname = String(
+      row.surname || row.lastname || row.Surname || "",
+    ).trim();
+    const fullname = String(row.fullname || row.FullName || "").trim();
+    const title = String(row.title || "").trim();
+
+    if (fullname && !forename && !surname) {
+      const firstSpace = fullname.indexOf(" ");
+      if (firstSpace > 0) {
+        forename = fullname.slice(0, firstSpace).trim();
+        surname = fullname.slice(firstSpace + 1).trim();
+      } else {
+        forename = fullname;
+      }
+    }
+
     const docRef = db.collection("staff").doc();
     batch.set(docRef, {
       email,
-      title: String(row.title || "").trim(),
+      title,
       initial: String(row.initial || "").trim(),
-      forename: String(row.forename || "").trim(),
-      surname: String(row.surname || "").trim(),
+      Forename: forename,
+      Surname: surname,
       address1: String(row.address1 || "").trim(),
       address2: String(row.address2 || "").trim(),
       agencyId,
@@ -1197,7 +1280,7 @@ export const bulkUploadStaff = onCall(async (request) => {
     skippedCount: skipped,
   });
 
-  return {ok: true, added, skipped, errors};
+  return { ok: true, added, skipped, errors };
 });
 
 export const removeAgencies = onCall(async (request) => {
@@ -1294,7 +1377,7 @@ export const removeAgencies = onCall(async (request) => {
 
   await importRef.delete();
 
-  return {ok: true, deletedCount, importId};
+  return { ok: true, deletedCount, importId };
 });
 
 export const removeStaffImport = onCall(async (request) => {
@@ -1381,15 +1464,20 @@ export const removeStaffImport = onCall(async (request) => {
   }
 
   for (const [agencyId, staffIds] of agencyUpdates) {
-    await db.collection("agencies").doc(agencyId).update({
-      assignedStaff: FieldValue.arrayRemove(...staffIds),
-    });
+    await db
+      .collection("agencies")
+      .doc(agencyId)
+      .update({
+        assignedStaff: FieldValue.arrayRemove(...staffIds),
+      });
   }
 
   await importRef.delete();
 
   return {
-    ok: true, deletedCount, importId,
+    ok: true,
+    deletedCount,
+    importId,
     agencyCleanupCount: agencyUpdates.size,
   };
 });
@@ -1448,7 +1536,7 @@ export const backfillAssignedBy = onCall(async (request) => {
     await batch.commit();
   }
 
-  return {ok: true, updatedCount};
+  return { ok: true, updatedCount };
 });
 
 export const unassignStaffFromAgency = onCall(async (request) => {
@@ -1482,20 +1570,29 @@ export const unassignStaffFromAgency = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "Staff not assigned.");
   }
 
-  await db.collection("staff").doc(staffId).set({
-    metadata: {
-      assignedToId: FieldValue.delete(),
-      assignedToName: FieldValue.delete(),
-      assignedBy: FieldValue.delete(),
-      assignedAt: FieldValue.delete(),
-    },
-  }, {merge: true});
+  await db
+    .collection("staff")
+    .doc(staffId)
+    .set(
+      {
+        metadata: {
+          assignedToId: FieldValue.delete(),
+          assignedToName: FieldValue.delete(),
+          assignedBy: FieldValue.delete(),
+          assignedAt: FieldValue.delete(),
+        },
+      },
+      { merge: true },
+    );
 
-  await db.collection("agencies").doc(assignedToId).update({
-    assignedStaff: FieldValue.arrayRemove(staffId),
-  });
+  await db
+    .collection("agencies")
+    .doc(assignedToId)
+    .update({
+      assignedStaff: FieldValue.arrayRemove(staffId),
+    });
 
-  return {ok: true, staffId, assignedToId};
+  return { ok: true, staffId, assignedToId };
 });
 
 export const addStaffTag = onCall(async (request) => {
@@ -1522,17 +1619,20 @@ export const addStaffTag = onCall(async (request) => {
   const tagsSnap = await db.collection("tags").where("value", "==", tag).get();
   let tagId: string;
   if (tagsSnap.empty) {
-    const newTagRef = await db.collection("tags").add({value: tag});
+    const newTagRef = await db.collection("tags").add({ value: tag });
     tagId = newTagRef.id;
   } else {
     tagId = tagsSnap.docs[0].id;
   }
 
-  await db.collection("staff").doc(staffId).update({
-    tags: FieldValue.arrayUnion(tagId),
-  });
+  await db
+    .collection("staff")
+    .doc(staffId)
+    .update({
+      tags: FieldValue.arrayUnion(tagId),
+    });
 
-  return {ok: true, staffId, tagId, tagValue: tag, created: tagsSnap.empty};
+  return { ok: true, staffId, tagId, tagValue: tag, created: tagsSnap.empty };
 });
 
 export const removeClientLogin = onCall(async (request) => {
@@ -1547,9 +1647,7 @@ export const removeClientLogin = onCall(async (request) => {
 
   const callerSnap = await db.collection("users").doc(callerUid).get();
   if (!callerSnap.exists) {
-    throw new HttpsError(
-      "permission-denied", "Caller profile missing.",
-    );
+    throw new HttpsError("permission-denied", "Caller profile missing.");
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
@@ -1557,9 +1655,7 @@ export const removeClientLogin = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Admin only.");
   }
   if (!caller.agencyId) {
-    throw new HttpsError(
-      "failed-precondition", "Admin has no agencyId.",
-    );
+    throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
   const userRef = db.collection("users").doc(uid);
@@ -1567,12 +1663,12 @@ export const removeClientLogin = onCall(async (request) => {
   if (!userSnap.exists) throw new HttpsError("not-found", "User not found.");
 
   const userData = userSnap.data() as {
-    agencyId?: string; role?: string; invitedByAgencyId?: string;
+    agencyId?: string;
+    role?: string;
+    invitedByAgencyId?: string;
   };
   if (userData.role !== "client") {
-    throw new HttpsError(
-      "permission-denied", "Can only remove client users.",
-    );
+    throw new HttpsError("permission-denied", "Can only remove client users.");
   }
 
   try {
@@ -1584,5 +1680,5 @@ export const removeClientLogin = onCall(async (request) => {
 
   await userRef.delete();
 
-  return {ok: true, uid};
+  return { ok: true, uid };
 });

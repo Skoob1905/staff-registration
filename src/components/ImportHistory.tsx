@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import {
   collection,
@@ -71,7 +71,7 @@ interface ImportHistoryProps {
   type?: string;
   cloudFunction: string;
   getPreviewNames: (rows: CsvRow[]) => string[];
-  onDeleteSuccess: () => Promise<void>;
+  onDeleteSuccess?: (importId?: string) => Promise<void>;
   version?: number;
 }
 
@@ -89,7 +89,22 @@ export const ImportHistory = ({
   const [deleteTarget, setDeleteTarget] = useState<CsvImport | null>(null);
   const [deletePreviewNames, setDeletePreviewNames] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    if (deleteLoading) {
+      deleteTimerRef.current = setTimeout(() => {
+        toast({ title: "Still deleting...", variant: "info" });
+      }, 8000);
+    }
+    return () => {
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+        deleteTimerRef.current = null;
+      }
+    };
+  }, [deleteLoading, toast]);
 
   const loadHistory = useCallback(async (): Promise<void> => {
     if (!appUser) return;
@@ -182,14 +197,15 @@ export const ImportHistory = ({
     setDeleteLoading(true);
     try {
       const callable = httpsCallable(functions, cloudFunction);
-      await callable({ importId: deleteTarget.id });
+      const result = await callable({ importId: deleteTarget.id });
+      const data = result.data as { importId?: string } | undefined;
       toast({
         title: "Import removed",
         description: `${deleteTarget.recordCount} record(s) and the import history entry were deleted.`,
       });
       setDeleteTarget(null);
       setDeletePreviewNames([]);
-      await Promise.all([loadHistory(), onDeleteSuccess()]);
+      await Promise.all([loadHistory(), onDeleteSuccess?.(data?.importId)]);
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&
@@ -268,13 +284,13 @@ export const ImportHistory = ({
       <DialogRoot
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !deleteLoading) {
             setDeleteTarget(null);
             setDeletePreviewNames([]);
           }
         }}
       >
-        <DialogContent onClose={() => setDeleteTarget(null)}>
+        <DialogContent closeDisabled={deleteLoading} onClose={() => { if (!deleteLoading) setDeleteTarget(null); }}>
           <DialogTitle className="text-base sm:text-lg font-bold">
             Confirm Delete
           </DialogTitle>
@@ -297,18 +313,18 @@ export const ImportHistory = ({
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
             </div>
           ) : deletePreviewNames.length > 0 ? (
-            <ul
-              className={`mt-3 space-y-1 ${deletePreviewNames.length > 15 ? "max-h-[360px] overflow-y-auto" : ""}`}
+            <div
+              className={`mt-3 columns-2 gap-x-4 ${deletePreviewNames.length > 15 ? "max-h-[360px] overflow-y-auto" : ""}`}
             >
               {deletePreviewNames.map((name, i) => (
-                <li
+                <p
                   key={i}
-                  className="text-xs sm:text-sm font-bold text-[var(--foreground)]"
+                  className="text-xs sm:text-sm font-bold text-[var(--foreground)] break-inside-avoid mb-1"
                 >
                   {name}
-                </li>
+                </p>
               ))}
-            </ul>
+            </div>
           ) : (
             <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
               Unable to load names for this import.
@@ -324,7 +340,12 @@ export const ImportHistory = ({
               {previewLoading
                 ? "Loading..."
                 : deleteLoading
-                  ? "Removing..."
+                  ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      Removing...
+                    </span>
+                  )
                   : "Confirm"}
             </Button>
           </div>

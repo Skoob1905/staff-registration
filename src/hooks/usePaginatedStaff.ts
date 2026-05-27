@@ -32,6 +32,7 @@ interface UsePaginatedStaffResult {
   goPrev: () => void;
   goToPage: (page: number) => void;
   setPageSize: (size: number) => void;
+  refresh: () => void;
 }
 
 const computeCacheKey = (
@@ -53,12 +54,35 @@ const applyNameFilter = (items: BulkStaff[], name: string): BulkStaff[] => {
   if (!name || name.length < 3) return items;
   const q = name.toLowerCase();
   return items.filter(
-    (s) =>
-      (s.Forename?.toLowerCase() ?? "").includes(q) ||
-      (s.Surname?.toLowerCase() ?? "").includes(q) ||
-      (s.Title?.toLowerCase() ?? "").includes(q) ||
-      (s.email?.toLowerCase() ?? "").includes(q),
+    (s) => (s.Forename?.toLowerCase() ?? "").includes(q),
   );
+};
+
+const describeConstraints = (c: unknown[]): string => {
+  const parts: string[] = [];
+  for (const item of c) {
+    if (item && typeof item === "object") {
+      const obj = item as Record<string, unknown>;
+      if (obj.type === "where") {
+        const field = (obj._field as { key?: string })?.key ?? "?";
+        const op = String(obj._op ?? "?");
+        const val = obj._value;
+        parts.push(`where(${field} ${op} ${JSON.stringify(val)})`);
+      } else if (obj.type === "orderBy") {
+        const field = (obj._field as { key?: string })?.key ?? "?";
+        const dir = String(obj._direction ?? "asc");
+        parts.push(`orderBy(${field}, ${dir})`);
+      } else if (obj.type === "limit") {
+        parts.push(`limit(${obj._limit})`);
+      } else if (obj.type === "startAt") {
+        parts.push(`startAfter(...)`);
+      } else if (obj._queryOptions) {
+        const segments = (obj._queryOptions as { collectionGroup?: string; fields?: unknown[] })?.collectionGroup ?? "?";
+        parts.push(`collection(${segments})`);
+      }
+    }
+  }
+  return parts.join(", ");
 };
 
 const buildQueryConstraints = (
@@ -70,7 +94,6 @@ const buildQueryConstraints = (
   cursor?: string | null,
 ) => {
   const c: unknown[] = [collection(db, "staff")];
-  console.log("[usePaginatedStaff] buildQueryConstraints input:", { agencyId, assignedToId, tagIds, agencyIds, pageSize, cursor });
 
   if (assignedToId) {
     c.push(where("metadata.assignedToId", "==", assignedToId));
@@ -95,15 +118,14 @@ const buildQueryConstraints = (
     );
   }
 
-  c.push(orderBy("Forename"));
   c.push(orderBy(documentId()));
 
   if (cursor) {
-    const [forename, docId] = JSON.parse(cursor) as [string, string];
-    c.push(startAfter(forename, docId));
+    c.push(startAfter(cursor));
   }
 
   c.push(limit(pageSize));
+  console.log("[usePaginatedStaff] buildQueryConstraints:", describeConstraints(c));
   return c;
 };
 
@@ -124,7 +146,7 @@ const countQuery = (
     agencyIds.length > 0 && agencyIds.length <= 10 && !assignedToId;
   const bothActive = canFilterTags && canFilterAgencies;
 
-  if (canFilterTags && !bothActive) {
+  if (canFilterTags) {
     c.push(where("tags", "array-contains-any", tagIds));
   }
 
@@ -132,6 +154,7 @@ const countQuery = (
     c.push(where("metadata.assignedToId", "in", agencyIds));
   }
 
+  console.log("[usePaginatedStaff] countQuery:", describeConstraints(c));
   return c;
 };
 
@@ -165,14 +188,14 @@ export const usePaginatedStaff = ({
 
   const setCurrentPage = useCallback(
     (page: number | ((p: number) => number)) => {
-      setCurrentPageState((prev) => {
-        const next = typeof page === "function" ? page(prev) : page;
-        useAppStore.getState().setPaginationMeta(cacheKey, { currentPage: next });
-        return next;
-      });
+      setCurrentPageState(page);
     },
-    [cacheKey],
+    [],
   );
+
+  useEffect(() => {
+    useAppStore.getState().setPaginationMeta(cacheKey, { currentPage });
+  }, [cacheKey, currentPage]);
   const loading = cache?.loading ?? true;
   const totalCount = cache?.totalCount ?? 0;
   const currentPageData = cache?.pages[currentPage];
@@ -187,12 +210,30 @@ export const usePaginatedStaff = ({
       filters.agencyIds.length > 0 && filters.agencyIds.length <= 10;
     const bothActive = canFilterTags && canFilterAgencies;
 
-    if (bothActive && filters.agencyIds.length > 0) {
-      const agencySet = new Set(filters.agencyIds);
-      result = result.filter(
-        (s) =>
-          s.metadata?.assignedToId && agencySet.has(s.metadata.assignedToId),
-      );
+    if (bothActive) {
+      if (filters.agencyIds.length > 0) {
+        const agencySet = new Set(filters.agencyIds);
+        result = result.filter(
+          (s) =>
+            s.metadata?.assignedToId && agencySet.has(s.metadata.assignedToId),
+        );
+      }
+      if (filters.tagIds.length > 0) {
+        const tagSet = new Set(filters.tagIds);
+        result = result.filter((s) => s.tags?.some((t) => tagSet.has(t)));
+      }
+    } else {
+      if (canFilterTags) {
+        const tagSet = new Set(filters.tagIds);
+        result = result.filter((s) => s.tags?.some((t) => tagSet.has(t)));
+      }
+      if (canFilterAgencies) {
+        const agencySet = new Set(filters.agencyIds);
+        result = result.filter(
+          (s) =>
+            s.metadata?.assignedToId && agencySet.has(s.metadata.assignedToId),
+        );
+      }
     }
 
     if (filters.tagIds.length > 10) {
@@ -222,7 +263,7 @@ export const usePaginatedStaff = ({
       const entry = store.paginationCache[cacheKey];
 
       if (pageNum === 1) {
-        console.log("[usePaginatedStaff] fetchPage called with:", { pageNum, agencyId, assignedToId, tagIds: filters.tagIds, agencyIds: filters.agencyIds, pageSize, cacheKey });
+        console.log("[usePaginatedStaff] ===== fetchPage(1) called =====", { agencyId, assignedToId, tagIds: filters.tagIds, agencyIds: filters.agencyIds, pageSize, cacheKey });
         setPaginationMeta(cacheKey, { loading: true, totalCount: 0 });
         cancelledRef.current = false;
 
@@ -233,7 +274,6 @@ export const usePaginatedStaff = ({
             filters.tagIds,
             filters.agencyIds,
           );
-          console.log("[usePaginatedStaff] countQuery constraints length:", countC.length, countC);
           const countQ = query(...(countC as Parameters<typeof query>));
           const countSnap = await getCountFromServer(countQ);
           console.log("[usePaginatedStaff] count result:", countSnap.data().count);
@@ -253,23 +293,17 @@ export const usePaginatedStaff = ({
             filters.agencyIds,
             pageSize,
           );
-          console.log("[usePaginatedStaff] page query constraints length:", pageC.length, pageC);
           const q = query(...(pageC as Parameters<typeof query>));
           console.log("[usePaginatedStaff] executing page 1 query");
           const snap = await getDocs(q);
-          console.log("[usePaginatedStaff] page 1 returned docs:", snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: d.data().Forename })));
+          console.log("[usePaginatedStaff] page 1 returned docs:", snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: d.data().Forename, surname: d.data().Surname, email: d.data().email, agencyId: d.data().agencyId })));
           if (cancelledRef.current) return;
 
           const docs = snap.docs.map(
             (d) => ({ id: d.id, ...d.data() }) as BulkStaff,
           );
           const lastCursor =
-            docs.length > 0
-              ? JSON.stringify([
-                  docs[docs.length - 1].Forename ?? "",
-                  docs[docs.length - 1].id,
-                ])
-              : null;
+            docs.length > 0 ? docs[docs.length - 1].id : null;
 
           setPaginationPage(cacheKey, 1, docs, lastCursor);
           setPaginationMeta(cacheKey, { currentPage: 1 });
@@ -298,19 +332,16 @@ export const usePaginatedStaff = ({
           prevPage.lastCursor,
         );
         const q = query(...(pageC as Parameters<typeof query>));
+        console.log(`[usePaginatedStaff] executing page ${pageNum} query`);
         const snap = await getDocs(q);
+        console.log(`[usePaginatedStaff] page ${pageNum} returned docs:`, snap.docs.length, snap.docs.map(d => ({ id: d.id, forename: d.data().Forename, surname: d.data().Surname, email: d.data().email, agencyId: d.data().agencyId })));
         if (cancelledRef.current) return;
 
         const docs = snap.docs.map(
           (d) => ({ id: d.id, ...d.data() }) as BulkStaff,
         );
         const lastCursor =
-          docs.length > 0
-            ? JSON.stringify([
-                docs[docs.length - 1].Forename ?? "",
-                docs[docs.length - 1].id,
-              ])
-            : null;
+          docs.length > 0 ? docs[docs.length - 1].id : null;
 
         setPaginationPage(cacheKey, pageNum, docs, lastCursor);
       } catch (err) {
@@ -421,9 +452,16 @@ export const usePaginatedStaff = ({
     (size: number) => {
       clearPaginationCache(cacheKey);
       setPageSize(size);
+      setCurrentPage(1);
     },
-    [cacheKey, clearPaginationCache],
+    [cacheKey, clearPaginationCache, setCurrentPage],
   );
+
+  const refresh = useCallback(() => {
+    clearPaginationCache(cacheKey);
+    setCurrentPage(1);
+    fetchPage(1);
+  }, [cacheKey, clearPaginationCache, fetchPage, setCurrentPage]);
 
   return {
     items,
@@ -436,5 +474,6 @@ export const usePaginatedStaff = ({
     goPrev,
     goToPage,
     setPageSize: handleSetPageSize,
+    refresh,
   };
 };

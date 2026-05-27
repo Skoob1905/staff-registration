@@ -100,6 +100,7 @@ export interface BulkStaff {
   Initial: string;
   Forename: string;
   Surname: string;
+  FullName?: string;
   address1: string;
   address2: string;
   agencyId: string;

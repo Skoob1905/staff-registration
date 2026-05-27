@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocFromServer, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Agency, AppUser, AwaitingRegistration, UserRole } from "../types/domain";
+import { findValueByNormalizedKey } from "../utils/staff";
 
 export const getUserProfile = async (
   uid: string,
@@ -22,7 +23,7 @@ export const getAgencyProfile = async (agencyId: string): Promise<Agency | null>
   }
   const data = snap.data();
   const name: string =
-    data.business_name || data.Company_Name || data.company_name || data.name || data.agencyName || "Unknown";
+    data.business_name || data.Company_Name || data.company_name || data.name || data.agencyName || findValueByNormalizedKey(data, "businessname", "name", "agencyname", "organisation", "company") || "Unknown";
   return { id: snap.id, name, slug: data.slug || "", assignedStaff: data.assignedStaff || [] };
 };
 

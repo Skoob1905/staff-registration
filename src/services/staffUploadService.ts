@@ -57,9 +57,22 @@ export interface CsvStaffRow {
   initial: string;
   forename: string;
   surname: string;
+  fullName?: string;
   address1: string;
   address2: string;
 }
+
+const normalizeKey = (key: string): string =>
+  key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
+const findNormalizedIndex = (normalizedHeaders: string[], ...targets: string[]): number => {
+  for (const target of targets) {
+    const nt = normalizeKey(target);
+    const idx = normalizedHeaders.indexOf(nt);
+    if (idx !== -1) return idx;
+  }
+  return -1;
+};
 
 export const parseCsvText = (text: string): { headers: string[]; rows: CsvStaffRow[]; errors: string[] } => {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
@@ -71,12 +84,14 @@ export const parseCsvText = (text: string): { headers: string[]; rows: CsvStaffR
   }
 
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const normalizedHeaders = headers.map(normalizeKey);
 
   const emailIdx = headers.indexOf("email");
-  const titleIdx = headers.indexOf("title");
+  const titleIdx = findNormalizedIndex(normalizedHeaders, "title");
   const initialIdx = headers.indexOf("initial");
-  const forenameIdx = headers.indexOf("forename");
-  const surnameIdx = headers.indexOf("surname");
+  const forenameIdx = findNormalizedIndex(normalizedHeaders, "forename", "firstname");
+  const surnameIdx = findNormalizedIndex(normalizedHeaders, "surname", "lastname");
+  const fullNameIdx = findNormalizedIndex(normalizedHeaders, "fullname");
   const address1Idx = headers.indexOf("address 1");
   const address2Idx = headers.indexOf("address 2");
 
@@ -92,12 +107,28 @@ export const parseCsvText = (text: string): { headers: string[]; rows: CsvStaffR
       continue;
     }
 
+    let forename = cols[forenameIdx] ?? "";
+    let surname = cols[surnameIdx] ?? "";
+    const fullName = cols[fullNameIdx] ?? "";
+
+    if (!forename && !surname && fullName) {
+      const trimmed = fullName.trim();
+      const firstSpace = trimmed.indexOf(" ");
+      if (firstSpace > 0) {
+        forename = trimmed.slice(0, firstSpace).trim();
+        surname = trimmed.slice(firstSpace + 1).trim();
+      } else {
+        forename = trimmed;
+      }
+    }
+
     rows.push({
       email,
       title: cols[titleIdx] ?? "",
       initial: cols[initialIdx] ?? "",
-      forename: cols[forenameIdx] ?? "",
-      surname: cols[surnameIdx] ?? "",
+      forename,
+      surname,
+      fullName: fullName || undefined,
       address1: cols[address1Idx] ?? "",
       address2: cols[address2Idx] ?? "",
     });
