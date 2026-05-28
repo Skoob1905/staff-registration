@@ -9,7 +9,19 @@ import {
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { getStaffName } from "../utils/staff";
-import type { Agency, BulkStaff, StaffTag, StaffType } from "../types/domain";
+import { toDate } from "../utils/date";
+import type { Agency, BulkStaff, StaffTag } from "../types/domain";
+
+export interface CsvImport {
+  id: string;
+  fileName: string;
+  fileUrl: string | null;
+  recordCount: number;
+  importedByUid: string;
+  importedByEmail?: string | null;
+  importedAt?: Date | { toDate?: () => Date };
+  type?: string;
+}
 
 export interface AgencyDoc {
   id: string;
@@ -24,10 +36,6 @@ interface AppState {
   agencies: Agency[];
   agenciesLoaded: boolean;
   agenciesLoading: boolean;
-
-  staffTypes: StaffType[];
-  staffTypesLoaded: boolean;
-  staffTypesLoading: boolean;
 
   clients: AgencyDoc[];
   clientsLoaded: boolean;
@@ -55,7 +63,6 @@ interface AppState {
   loadAssignedStaff: (targetAgencyId: string) => Promise<void>;
   loadAdmins: (agencyId: string, force?: boolean) => Promise<void>;
   loadAgencies: (agencyId: string, force?: boolean) => Promise<void>;
-  loadStaffTypes: (force?: boolean) => Promise<void>;
   loadClients: (agencyId: string, force?: boolean) => Promise<void>;
   fetchCompanyById: (companyId: string) => Promise<AgencyDoc | undefined>;
   loadLogins: (agencyId: string, force?: boolean) => Promise<void>;
@@ -65,12 +72,44 @@ interface AppState {
   addTag: (tag: StaffTag) => void;
   updateStaffInStore: (staffId: string, updates: Partial<BulkStaff>) => void;
   paginationCache: Record<string, PaginationCacheEntry>;
-  setPaginationPage: (key: string, pageNum: number, items: BulkStaff[], lastCursor: string | null) => void;
-  setPaginationMeta: (key: string, meta: Partial<Pick<PaginationCacheEntry, "currentPage" | "loading" | "totalCount">>) => void;
+  setPaginationPage: (
+    key: string,
+    pageNum: number,
+    items: BulkStaff[],
+    lastCursor: string | null,
+  ) => void;
+  setPaginationMeta: (
+    key: string,
+    meta: Partial<
+      Pick<PaginationCacheEntry, "currentPage" | "loading" | "totalCount">
+    >,
+  ) => void;
   clearPaginationCache: (key: string) => void;
   clearAllPaginationCache: () => void;
   removeStaffFromPaginationCacheByImport: (importId: string) => void;
-  updateStaffInPaginationCache: (staffId: string, updates: Partial<BulkStaff>) => void;
+  updateStaffInPaginationCache: (
+    staffId: string,
+    updates: Partial<BulkStaff>,
+  ) => void;
+
+  importHistoryCache: Record<string, CsvImport[]>;
+  importHistoryCacheLoaded: Record<string, boolean>;
+  loadImportHistory: (
+    agencyId: string,
+    type?: string,
+    force?: boolean,
+  ) => Promise<void>;
+  addImportEntry: (
+    agencyId: string,
+    type: string | undefined,
+    entry: CsvImport,
+  ) => void;
+  removeImportEntry: (
+    agencyId: string,
+    type: string | undefined,
+    importId: string,
+  ) => void;
+  clearImportHistoryCache: () => void;
 }
 
 export interface CachedPage {
@@ -92,9 +131,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   agencies: [],
   agenciesLoaded: false,
   agenciesLoading: false,
-  staffTypes: [],
-  staffTypesLoaded: false,
-  staffTypesLoading: false,
   clients: [],
   clientsLoaded: false,
   clientsLoading: false,
@@ -247,31 +283,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch {
       set({ agencies: [], agenciesLoaded: true, agenciesLoading: false });
       console.error("[store] loadAgencies — failed");
-    }
-  },
-
-  loadStaffTypes: async (force) => {
-    const state = get();
-    if (!force && (state.staffTypesLoaded || state.staffTypesLoading)) {
-      if (state.staffTypesLoaded)
-        console.log("[store] loadStaffTypes — cache hit, skipping Firestore");
-      return;
-    }
-    set({ staffTypesLoading: true });
-    console.log("[store] loadStaffTypes — querying Firestore...");
-    try {
-      const snaps = await getDocs(collection(db, "staffType"));
-      set({
-        staffTypes: snaps.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as StaffType,
-        ),
-        staffTypesLoaded: true,
-        staffTypesLoading: false,
-      });
-      console.log(`[store] loadStaffTypes — loaded ${snaps.docs.length} types`);
-    } catch {
-      set({ staffTypes: [], staffTypesLoaded: true, staffTypesLoading: false });
-      console.error("[store] loadStaffTypes — failed");
     }
   },
 
@@ -432,6 +443,93 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   paginationCache: {},
 
+  importHistoryCache: {},
+  importHistoryCacheLoaded: {},
+
+  loadImportHistory: async (agencyId, type, force) => {
+    const cacheKey = `${agencyId}|${type ?? "all"}`;
+    const state = get();
+    if (!force && state.importHistoryCacheLoaded[cacheKey]) {
+      return;
+    }
+    try {
+      const conditions = [where("agencyId", "==", agencyId)];
+      if (type) conditions.push(where("type", "==", type));
+      const q = query(collection(db, "csv_imports"), ...conditions);
+      const snaps = await getDocs(q);
+      const items = snaps.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<CsvImport, "id">),
+      }));
+      items.sort((a, b) => {
+        const dateA = toDate(a.importedAt)?.getTime() ?? 0;
+        const dateB = toDate(b.importedAt)?.getTime() ?? 0;
+        return dateB - dateA;
+      });
+      set((s) => ({
+        importHistoryCache: {
+          ...s.importHistoryCache,
+          [cacheKey]: items.slice(0, 20),
+        },
+        importHistoryCacheLoaded: {
+          ...s.importHistoryCacheLoaded,
+          [cacheKey]: true,
+        },
+      }));
+    } catch (err) {
+      console.error("[store] loadImportHistory — failed", err);
+      set((s) => ({
+        importHistoryCacheLoaded: {
+          ...s.importHistoryCacheLoaded,
+          [cacheKey]: true,
+        },
+      }));
+    }
+  },
+
+  addImportEntry: (agencyId, type, entry) => {
+    const cacheKey = `${agencyId}|${type ?? "all"}`;
+    set((s) => {
+      const entries = s.importHistoryCache[cacheKey] ?? [];
+      const exists = entries.some((e) => e.id === entry.id);
+      if (exists) return s;
+      const updated = [entry, ...entries]
+        .sort((a, b) => {
+          const dateA = toDate(a.importedAt)?.getTime() ?? 0;
+          const dateB = toDate(b.importedAt)?.getTime() ?? 0;
+          return dateB - dateA;
+        })
+        .slice(0, 20);
+      return {
+        importHistoryCache: {
+          ...s.importHistoryCache,
+          [cacheKey]: updated,
+        },
+        importHistoryCacheLoaded: {
+          ...s.importHistoryCacheLoaded,
+          [cacheKey]: true,
+        },
+      };
+    });
+  },
+
+  removeImportEntry: (agencyId, type, importId) => {
+    const cacheKey = `${agencyId}|${type ?? "all"}`;
+    set((s) => {
+      const entries = s.importHistoryCache[cacheKey] ?? [];
+      return {
+        importHistoryCache: {
+          ...s.importHistoryCache,
+          [cacheKey]: entries.filter((e) => e.id !== importId),
+        },
+      };
+    });
+  },
+
+  clearImportHistoryCache: () => {
+    set({ importHistoryCache: {}, importHistoryCacheLoaded: {} });
+  },
+
   setPaginationPage: (key, pageNum, items, lastCursor) => {
     set((s) => ({
       paginationCache: {
@@ -528,8 +626,6 @@ useAppStore.subscribe((state) => {
     staffLoaded: state.staffLoaded,
     agenciesCount: state.agencies.length,
     agenciesLoaded: state.agenciesLoaded,
-    staffTypesCount: state.staffTypes.length,
-    staffTypesLoaded: state.staffTypesLoaded,
     clientsCount: state.clients.length,
     clientsLoaded: state.clientsLoaded,
     loginsCount: state.logins.length,

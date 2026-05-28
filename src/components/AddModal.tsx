@@ -254,6 +254,16 @@ export const AddModal = ({
           recordCount: recordsToSend.length,
           staff: recordsToSend,
         });
+        useAppStore.getState().addImportEntry(appUser.agencyId, csvType, {
+          id: data.importId,
+          fileName: csvData.fileName,
+          fileUrl,
+          recordCount: data.added,
+          importedByUid: appUser.uid,
+          importedByEmail: appUser.email,
+          importedAt: new Date(),
+          type: csvType,
+        });
       }
 
       const dupMsg =

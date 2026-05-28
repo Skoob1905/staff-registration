@@ -1,32 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
 import { Download } from "lucide-react";
 import { Button, Card } from "./ui";
 import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { db, functions } from "../services/firebase";
-import { formatInvitedAt, toDate } from "../utils/date";
+import { functions } from "../services/firebase";
+import { formatInvitedAt } from "../utils/date";
+import { useAppStore, type CsvImport } from "../stores/appStore";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 
 type CsvRow = Record<string, string>;
 
-interface CsvImport {
-  id: string;
-  fileName: string;
-  fileUrl: string | null;
-  recordCount: number;
-  importedByUid: string;
-  importedByEmail?: string | null;
-  importedAt?: Date;
-  type?: string;
-}
+const EMPTY: CsvImport[] = [];
 
 function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
   const lines = text.trim().split("\n");
@@ -72,7 +58,6 @@ interface ImportHistoryProps {
   cloudFunction: string;
   getPreviewNames: (rows: CsvRow[]) => string[];
   onDeleteSuccess?: (importId?: string) => Promise<void>;
-  version?: number;
 }
 
 export const ImportHistory = ({
@@ -80,17 +65,21 @@ export const ImportHistory = ({
   cloudFunction,
   getPreviewNames,
   onDeleteSuccess,
-  version,
 }: ImportHistoryProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const [history, setHistory] = useState<CsvImport[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<CsvImport | null>(null);
   const [deletePreviewNames, setDeletePreviewNames] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  const cacheKey = `${appUser?.agencyId}|${type ?? "all"}`;
+  const history = useAppStore((s) => s.importHistoryCache[cacheKey] ?? EMPTY);
+  const loaded = useAppStore((s) => s.importHistoryCacheLoaded[cacheKey]);
+  const loadImportHistory = useAppStore((s) => s.loadImportHistory);
+  const removeImportEntry = useAppStore((s) => s.removeImportEntry);
 
   useEffect(() => {
     if (deleteLoading) {
@@ -106,36 +95,14 @@ export const ImportHistory = ({
     };
   }, [deleteLoading, toast]);
 
-  const loadHistory = useCallback(async (): Promise<void> => {
-    if (!appUser) return;
-    try {
-      const conditions = [where("agencyId", "==", appUser.agencyId)];
-      if (type) conditions.push(where("type", "==", type));
-      const q = query(
-        collection(db, "csv_imports"),
-        ...conditions,
-      );
-
-      const snaps = await getDocs(q);
-      const items = snaps.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<CsvImport, "id">),
-      }));
-      items.sort((a, b) => {
-        const dateA = toDate(a.importedAt)?.getTime() ?? 0;
-        const dateB = toDate(b.importedAt)?.getTime() ?? 0;
-        return dateB - dateA;
-      });
-      setHistory(items.slice(0, 20));
-    } catch (err) {
-      console.error("Failed to load import history:", err);
-    }
-  }, [appUser, type]);
-
   useEffect(() => {
+    if (!appUser || loaded) {
+      setLoading(!loaded);
+      return;
+    }
     setLoading(true);
-    loadHistory().finally(() => setLoading(false));
-  }, [loadHistory, version]);
+    loadImportHistory(appUser.agencyId, type);
+  }, [appUser?.agencyId, type, loaded]);
 
   const onDeleteClick = async (entry: CsvImport) => {
     setDeleteTarget(entry);
@@ -203,9 +170,10 @@ export const ImportHistory = ({
         title: "Import removed",
         description: `${deleteTarget.recordCount} record(s) and the import history entry were deleted.`,
       });
+      removeImportEntry(appUser!.agencyId, type, deleteTarget.id);
       setDeleteTarget(null);
       setDeletePreviewNames([]);
-      await Promise.all([loadHistory(), onDeleteSuccess?.(data?.importId)]);
+      await onDeleteSuccess?.(data?.importId);
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&

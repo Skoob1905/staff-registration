@@ -9,6 +9,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [react(), tailwindcss()],
+  test: {
+    exclude: ["node_modules", "functions"],
+  },
   server: {
     host: "localhost",
     port: 5000,

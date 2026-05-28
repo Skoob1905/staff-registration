@@ -23,5 +23,6 @@ export type Config = {
   loading: string;
   name: string;
   homepage: string;
+  allowedDomains: string[];
   theme: Theme;
 };

@@ -20,7 +20,6 @@ export const AdminClientsPage = () => {
   const { appUser } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [openClientId, setOpenClientId] = useState<string | undefined>();
-  const [importHistoryVersion, setImportHistoryVersion] = useState(0);
 
   const clients = useAppStore((s) => s.clients);
   const clientsLoading = useAppStore((s) => s.clientsLoading);
@@ -94,7 +93,6 @@ export const AdminClientsPage = () => {
     if (appUser?.agencyId) {
       await loadClients(appUser.agencyId, true);
     }
-    setImportHistoryVersion((v) => v + 1);
   };
 
   const sortedClients = useMemo(
@@ -183,7 +181,6 @@ export const AdminClientsPage = () => {
           )
         }
         onDeleteSuccess={handleDeleteSuccess}
-        version={importHistoryVersion}
       />
 
       <AddModal

@@ -22,7 +22,7 @@ export const DialogContent = ({
     <Dialog.Content
       className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--border)] bg-white p-5 shadow-xl ${className}`}
       onInteractOutside={(e) => {
-        if (closeDisabled) e.preventDefault();
+        e.preventDefault();
       }}
       onEscapeKeyDown={(e) => {
         if (closeDisabled) e.preventDefault();

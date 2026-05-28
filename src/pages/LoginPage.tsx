@@ -16,7 +16,8 @@ import {
 } from "../components/ui/dialog";
 import { loginWithEmail, sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
-import { config } from "../config";
+import { config, slug } from "../config";
+import { validateLoginEmail } from "../utils/loginValidation";
 
 const emailSchema = z.string().email("Enter a valid email address.");
 
@@ -43,6 +44,12 @@ export const LoginPage = () => {
     }
     if (!/.+@.+\..+/.test(email)) {
       setError("Enter a valid email address.");
+      return;
+    }
+
+    const error = validateLoginEmail(email, config.allowedDomains, slug);
+    if (error) {
+      toast({ title: "Invalid login", description: error, variant: "error" });
       return;
     }
 

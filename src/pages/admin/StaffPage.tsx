@@ -113,7 +113,6 @@ export const AdminStaffPage = () => {
     [staff],
   );
 
-  const [importHistoryVersion, setImportHistoryVersion] = useState(0);
   const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
   const [activeAssignMenu, setActiveAssignMenu] = useState<string | null>(null);
@@ -282,7 +281,6 @@ export const AdminStaffPage = () => {
     if (appUser?.agencyId) {
       await loadClients(appUser.agencyId, true);
     }
-    setImportHistoryVersion((v) => v + 1);
     refresh();
   };
 
@@ -586,7 +584,6 @@ export const AdminStaffPage = () => {
         cloudFunction="removeStaffImport"
         getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
         onDeleteSuccess={handleDeleteSuccess}
-        version={importHistoryVersion}
       />
 
       <AddModal

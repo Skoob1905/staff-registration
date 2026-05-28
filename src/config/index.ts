@@ -19,6 +19,7 @@ const images: Record<string, Config> = {
     loading: blackrockLoading,
     name: "Blackrock Consultancy UK",
     homepage: "https://blackrockconsultancyuk.com/",
+    allowedDomains: ["blackrockconsultancyuk.com"],
     theme: {
       appBackground: "#f8faf9", // A crisp, clean off-white with a tiny hint of sage/cool undertone
       primaryTextColour: "#1e293b", // Deep slate-charcoal for excellent readability and contrast
@@ -44,6 +45,7 @@ const images: Record<string, Config> = {
     loading: cerobiLoading,
     name: "Cerobi Group Ltd",
     homepage: "https://cerobigroup-uk.com/",
+    allowedDomains: ["cerobi.com"],
     theme: {
       appBackground: "#f8fafc", // Ultra-clean, cool-tinted slate for a modern SaaS backdrop
       primaryTextColour: "#0f172a", // Slate-900 (deep obsidian) for sharp, premium typography
@@ -69,6 +71,7 @@ const images: Record<string, Config> = {
     loading: crsLoading,
     name: "CRS Group Holding",
     homepage: "https://crs-staffing.com/",
+    allowedDomains: ["crs-staffing.com"],
     theme: {
       appBackground: "#f4f7f5", // An incredibly soft, mint-tinted gray that makes the green pop
       primaryTextColour: "#0f172a", // Slate-900 (deep charcoal/navy-gray) for maximum readability
