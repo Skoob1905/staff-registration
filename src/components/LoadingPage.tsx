@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import loadingImg from "../assets/Loading.png";
 import { Loader2 } from "lucide-react";
+import { config } from "../config";
 
 export const LoadingPage = () => {
   useEffect(() => {
@@ -12,7 +12,7 @@ export const LoadingPage = () => {
     <div className="flex min-h-screen flex-col items-center justify-center">
       <div className="relative flex items-center justify-center mt-4 sm:mt-12">
         <img
-          src={loadingImg}
+          src={config.loading}
           alt="Loading"
           className="max-h-70 sm:max-h-72 w-auto object-contain"
           style={{ animation: "fade-in 1.5s ease-out forwards", opacity: 0 }}

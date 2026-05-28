@@ -1,4 +1,3 @@
-import logo from "../assets/splashScreen.jpg";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import {
@@ -17,6 +16,7 @@ import {
 } from "../components/ui/dialog";
 import { loginWithEmail, sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
+import { config } from "../config";
 
 const emailSchema = z.string().email("Enter a valid email address.");
 
@@ -103,8 +103,8 @@ export const LoginPage = () => {
             </p>
           </div>
           <img
-            src={logo}
-            alt="BlackRock"
+            src={config.login}
+            alt={config.name}
             className="max-h-12 w-auto object-contain"
           />
         </div>
@@ -135,7 +135,11 @@ export const LoginPage = () => {
           {error ? <Alert>{error}</Alert> : null}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading} className="flex-1 h-auto md:h-auto py-2 text-sm">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 h-auto md:h-auto py-2 text-sm"
+            >
               {loading ? "Signing in..." : "Login"}
             </Button>
             <SecondaryButton
@@ -148,7 +152,7 @@ export const LoginPage = () => {
           </div>
 
           <a
-            href="https://blackrockconsultancyuk.com"
+            href={config.homepage}
             target="_blank"
             rel="noopener noreferrer"
             className="block text-right text-xs text-[var(--muted-foreground)] hover:text-[var(--primary)] transition"

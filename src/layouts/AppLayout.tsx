@@ -1,9 +1,9 @@
-import logo from "../assets/BlackRock.jpg";
 import { NavLink, Outlet } from "react-router-dom";
 import { logoutUser } from "../services/authService";
 import { useAuth } from "../context/AuthProvider";
 import { Button } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { config } from "../config";
 
 document.documentElement.setAttribute("data-theme", "light");
 
@@ -52,10 +52,15 @@ export const AppLayout = () => {
       >
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex flex-wrap items-center sm:grid sm:grid-cols-[1fr_auto_1fr]">
-            <a href="https://blackrockconsultancyuk.com" target="_blank" rel="noopener noreferrer" className="justify-self-start">
+            <a
+              href={config.homepage}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="justify-self-start"
+            >
               <img
-                src={logo}
-                alt="HandySign"
+                src={config.navbar}
+                alt={config.name}
                 className="max-h-5 w-auto shrink-0 object-contain sm:max-h-6 md:max-h-7"
               />
             </a>

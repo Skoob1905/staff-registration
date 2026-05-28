@@ -39,7 +39,7 @@ export const Button = ({
   <button
     {...props}
     className={cls(
-      "h-8 rounded-xl border border-transparent bg-[color:rgba(0,95,87,0.80)] px-3 text-xs font-semibold text-[var(--primary-foreground)] shadow-[0_3px_10px_rgba(0,95,87,0.12)] transition hover:bg-[color:rgba(0,95,87,0.92)] disabled:cursor-not-allowed disabled:opacity-60 md:h-8 md:px-4 md:text-sm",
+      "h-8 rounded-xl border border-transparent bg-[var(--primary)]/80 px-3 text-xs font-semibold text-[var(--primary-foreground)] shadow-[0_3px_10px_var(--primary)/12] transition hover:bg-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60 md:h-8 md:px-4 md:text-sm",
       className,
     )}
   />
@@ -52,7 +52,7 @@ export const SecondaryButton = ({
   <button
     {...props}
     className={cls(
-      "rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)]",
+      "rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--primary)]/[0.06]",
       className,
     )}
   />
@@ -74,7 +74,7 @@ export const Label = ({
 );
 
 export const Alert = ({ children }: { children: ReactNode }) => (
-  <div className="rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.08)] px-3 py-2 text-sm text-[var(--foreground)]">
+  <div className="rounded-xl border border-[var(--border)] bg-[var(--primary)]/[0.08] px-3 py-2 text-sm text-[var(--foreground)]">
     {children}
   </div>
 );
@@ -84,7 +84,8 @@ export const Separator = () => (
 );
 
 export const ProgressBar = ({ value }: { value: number }) => (
-  <div className="h-2 w-full rounded-full bg-[color:rgba(0,95,87,0.15)]">
+      <div
+      className="h-2 w-full rounded-full bg-[var(--primary)]/15">
     <div
       className="h-2 rounded-full bg-[var(--primary)] transition-all"
       style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
