@@ -87,6 +87,7 @@ const describeConstraints = (c: unknown[]): string => {
 };
 
 const buildQueryConstraints = (
+  agencyId: string,
   assignedToId: string | undefined,
   tagIds: string[],
   agencyIds: string[],
@@ -94,6 +95,7 @@ const buildQueryConstraints = (
   cursor?: string | null,
 ) => {
   const c: unknown[] = [collection(db, "staff")];
+  c.push(where("metadata.uploadedBy", "==", agencyId));
 
   if (assignedToId) {
     c.push(where("metadata.assignedToId", "==", assignedToId));
@@ -130,11 +132,13 @@ const buildQueryConstraints = (
 };
 
 const countQuery = (
+  agencyId: string,
   assignedToId: string | undefined,
   tagIds: string[],
   agencyIds: string[],
 ) => {
   const c: unknown[] = [collection(db, "staff")];
+  c.push(where("metadata.uploadedBy", "==", agencyId));
 
   if (assignedToId) {
     c.push(where("metadata.assignedToId", "==", assignedToId));
@@ -270,6 +274,7 @@ export const usePaginatedStaff = ({
 
         try {
           const countC = countQuery(
+            agencyId,
             assignedToId,
             filters.tagIds,
             filters.agencyIds,
@@ -287,6 +292,7 @@ export const usePaginatedStaff = ({
 
         try {
           const pageC = buildQueryConstraints(
+            agencyId,
             assignedToId,
             filters.tagIds,
             filters.agencyIds,
@@ -324,6 +330,7 @@ export const usePaginatedStaff = ({
 
       try {
         const pageC = buildQueryConstraints(
+          agencyId,
           assignedToId,
           filters.tagIds,
           filters.agencyIds,
