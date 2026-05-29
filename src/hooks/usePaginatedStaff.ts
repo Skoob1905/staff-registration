@@ -95,10 +95,11 @@ const buildQueryConstraints = (
   cursor?: string | null,
 ) => {
   const c: unknown[] = [collection(db, "staff")];
-  c.push(where("metadata.uploadedBy", "==", agencyId));
 
   if (assignedToId) {
     c.push(where("metadata.assignedToId", "==", assignedToId));
+  } else {
+    c.push(where("metadata.uploadedBy", "==", agencyId));
   }
 
   const canFilterTags = tagIds.length > 0 && tagIds.length <= 10;
@@ -138,10 +139,11 @@ const countQuery = (
   agencyIds: string[],
 ) => {
   const c: unknown[] = [collection(db, "staff")];
-  c.push(where("metadata.uploadedBy", "==", agencyId));
 
   if (assignedToId) {
     c.push(where("metadata.assignedToId", "==", assignedToId));
+  } else {
+    c.push(where("metadata.uploadedBy", "==", agencyId));
   }
 
   const canFilterTags = tagIds.length > 0 && tagIds.length <= 10;

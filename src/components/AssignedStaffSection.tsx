@@ -17,7 +17,8 @@ export const AssignedStaffSection = ({
   targetAgencyId,
 }: AssignedStaffSectionProps) => {
   const { appUser } = useAuth();
-  const agencyId = targetAgencyId || appUser?.agencyId;
+  const currentAgencyId = appUser?.agencyId;
+  const assignedToId = targetAgencyId || currentAgencyId;
 
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
@@ -33,10 +34,10 @@ export const AssignedStaffSection = ({
   const [filters, setFilters] = useState<StaffFilters>(emptyFilters);
 
   const pagination = usePaginatedStaff({
-    agencyId: agencyId ?? "",
+    agencyId: currentAgencyId ?? "",
     filters,
     pageSize: 50,
-    assignedToId: targetAgencyId || agencyId,
+    assignedToId,
   });
 
   useEffect(() => {
