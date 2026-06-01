@@ -142,7 +142,7 @@ export const AdminPage = () => {
     setSubmitting(true);
     try {
       const assignFn = httpsCallable(functions, "assignClientLogin");
-      const result = await assignFn({
+      await assignFn({
         email: email.trim().toLowerCase(),
         agencyDocId: selectedCompanyId,
         continueUrl: window.location.origin + "/login",

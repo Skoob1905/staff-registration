@@ -68,20 +68,14 @@ export const AssignModal = ({
         className="z-[70]"
       >
         <DialogTitle asChild>
-          <H1>
-            Auto-assign
-          </H1>
+          <H1>Auto-assign</H1>
         </DialogTitle>
 
         <div className="mt-4 space-y-4">
           <div>
-            <H2 as="label">
-              Tags
-            </H2>
+            <H2 as="label">Tags</H2>
             {Object.keys(tagsMap).length === 0 ? (
-              <Muted className="mt-1">
-                No tags have been assigned
-              </Muted>
+              <Muted className="mt-1">No tags have been assigned</Muted>
             ) : (
               <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                 {Object.keys(tagsMap).map((id) => (
@@ -103,13 +97,9 @@ export const AssignModal = ({
           </div>
 
           <div>
-            <H2 as="label">
-              Clients
-            </H2>
+            <H2 as="label">Clients</H2>
             {clients.length === 0 ? (
-              <Muted className="mt-1">
-                No clients available
-              </Muted>
+              <Muted className="mt-1">No clients available</Muted>
             ) : (
               <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                 {clients.map((c) => (

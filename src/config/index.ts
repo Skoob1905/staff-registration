@@ -10,7 +10,6 @@ import crsLoading from "../assets/crs/loading.jpg";
 import orbitNavbar from "../assets/crs/navbar.jpg";
 import orbitLogin from "../assets/crs/login.jpg";
 import orbitLoading from "../assets/crs/loading.jpg";
-import { lightTheme } from "./theme";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -141,7 +140,6 @@ const images: Record<string, Config> = {
 };
 
 export const config = images[slug] ?? images.blackrock;
-config.theme = lightTheme;
 
 const cssVarMap: Record<keyof Theme, string> = {
   appBackground: "--background",

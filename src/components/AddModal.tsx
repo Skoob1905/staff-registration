@@ -91,7 +91,6 @@ export const AddModal = ({
   storagePath,
   itemLabel,
   itemLabelPlural,
-  duplicateKey,
   csvType,
   onSuccess,
   confirmText,
@@ -129,8 +128,6 @@ export const AddModal = ({
   >();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
-
-
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -562,13 +559,11 @@ export const AddModal = ({
         </DialogContent>
       </DialogRoot>
 
-
-
       <AssignModal
         open={showAssignModal}
         onOpenChange={setShowAssignModal}
         clients={clients.map((c) => ({
-          id: c.id,
+          id: c.id as string,
           name:
             (c.name as string) ||
             (c.business_name as string) ||
