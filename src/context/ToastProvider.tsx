@@ -1,8 +1,11 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { ToastItem, ToastProviderRoot, ToastRegion, ToastViewport } from "../components/ui/toast";
-import type { AppToast } from "../components/ui/toast";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { ToastItem, ToastProviderRoot, ToastRegion, ToastViewport, type AppToast } from "../components/ui";
 
-type ToastInput = Omit<AppToast, "id">;
+interface ToastEntry extends AppToast {
+  open: boolean;
+}
+
+type ToastInput = Omit<AppToast, "id"> & { replaceToast?: boolean };
 
 interface ToastContextValue {
   toast: (input: ToastInput) => void;
@@ -11,11 +14,24 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
-  const [toasts, setToasts] = useState<AppToast[]>([]);
+  const [toasts, setToasts] = useState<ToastEntry[]>([]);
+  const replacingRef = useRef(false);
 
   const toast = useCallback((input: ToastInput) => {
+    const { replaceToast, ...toastInput } = input;
     const id = crypto.randomUUID();
-    setToasts((prev) => [...prev, { id, ...input }]);
+
+    if (replaceToast) {
+      replacingRef.current = true;
+      setToasts((prev) => prev.map((t) => ({ ...t, open: false })));
+      setTimeout(() => {
+        replacingRef.current = false;
+        setToasts([{ id, ...toastInput, open: true }]);
+      }, 300);
+    } else {
+      setToasts((prev) => [...prev, { id, ...toastInput, open: true }]);
+    }
+
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 10000);
@@ -33,7 +49,16 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
         {children}
         <ToastRegion>
           {toasts.map((item) => (
-            <ToastItem key={item.id} toast={item} onOpenChange={(open) => !open && removeToast(item.id)} />
+            <ToastItem
+              key={item.id}
+              toast={item}
+              open={item.open}
+              onOpenChange={(open) => {
+                if (!open && !replacingRef.current) {
+                  removeToast(item.id);
+                }
+              }}
+            />
           ))}
           <ToastViewport />
         </ToastRegion>

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 export interface FileStaffEntry {
   importId: string;
@@ -15,7 +16,8 @@ interface FileStaffState {
   clear: () => void;
 }
 
-export const useFileStaffStore = create<FileStaffState>((set) => ({
+export const useFileStaffStore = create<FileStaffState>()(
+  devtools((set) => ({
   fileStaffMap: {},
 
   setFileStaff: (importId, entry) =>
@@ -30,4 +32,5 @@ export const useFileStaffStore = create<FileStaffState>((set) => ({
     }),
 
   clear: () => set({ fileStaffMap: {} }),
-}));
+  })),
+);

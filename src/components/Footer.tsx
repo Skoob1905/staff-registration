@@ -2,7 +2,6 @@ declare const __APP_VERSION__: string;
 
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
-import { config } from "../config";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `text-xs transition hover:text-[var(--primary)] ${
@@ -42,14 +41,6 @@ export const Footer = () => {
           </nav>
 
           <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
-            <a
-              href={config.homepage}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition hover:text-[var(--primary)]"
-            >
-              {config.name}
-            </a>
             <span>v{__APP_VERSION__}</span>
           </div>
         </div>

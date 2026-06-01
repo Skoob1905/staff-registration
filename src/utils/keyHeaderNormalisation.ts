@@ -4,6 +4,63 @@ export function normalizeKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
+const NI_NORMALIZED_VARIANTS = new Set([
+  "ninumber",
+  "nino",
+  "nationalinsurancenumber",
+  "nationalinsuranceno",
+  "nationalinsurance",
+  "nin",
+  "ni",
+  "natinsnumber",
+  "natinsno",
+  "natins",
+  "nationalins",
+  "ninsurance",
+  "insurance",
+  "ssn",
+  "socialsecuritynumber",
+  "nidentifier",
+  "nationalid",
+  "natid",
+  "niid",
+]);
+
+const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
+  "businessname",
+  "business",
+  "companyname",
+  "company",
+]);
+
+export function hasNIColumn(headers: string[]): boolean {
+  return headers.some((h) => NI_NORMALIZED_VARIANTS.has(normalizeKey(h)));
+}
+
+export function getNINumber(row: Record<string, string>): string {
+  for (const [key, value] of Object.entries(row)) {
+    if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return value;
+    }
+  }
+  return "";
+}
+
+export function hasBusinessNameColumn(headers: string[]): boolean {
+  return headers.some((h) =>
+    BUSINESS_NAME_NORMALIZED_VARIANTS.has(normalizeKey(h)),
+  );
+}
+
+export function getBusinessName(row: Record<string, string>): string {
+  for (const [key, value] of Object.entries(row)) {
+    if (BUSINESS_NAME_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return value;
+    }
+  }
+  return "";
+}
+
 export function findValueByNormalizedKey(
   data: Record<string, unknown>,
   ...targets: string[]
@@ -20,7 +77,9 @@ export function findValueByNormalizedKey(
 export function getStaffName(staff: BulkStaff): string {
   const hasName = staff.Forename || staff.Surname;
   if (hasName) {
-    return [staff.Title, staff.Forename, staff.Surname].filter(Boolean).join(" ");
+    return [staff.Title, staff.Forename, staff.Surname]
+      .filter(Boolean)
+      .join(" ");
   }
 
   if (staff.FullName) {
@@ -34,7 +93,9 @@ export function getStaffName(staff: BulkStaff): string {
   return staff.email || "";
 }
 
-export function getStaffNameFromRawRecord(record: Record<string, string>): string {
+export function getStaffNameFromRawRecord(
+  record: Record<string, string>,
+): string {
   const keys = Object.keys(record);
 
   const findKey = (...names: string[]) => {

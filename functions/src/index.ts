@@ -54,6 +54,53 @@ const namePattern = /^[A-Za-z' -]+$/;
 const normalizeKey = (key: string): string =>
   key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
+const NI_NORMALIZED_VARIANTS = new Set([
+  "ninumber",
+  "nino",
+  "nationalinsurancenumber",
+  "nationalinsuranceno",
+  "nationalinsurance",
+  "nin",
+  "ni",
+  "natinsnumber",
+  "natinsno",
+  "natins",
+  "nationalins",
+  "ninsurance",
+  "insurance",
+  "ssn",
+  "socialsecuritynumber",
+  "nidentifier",
+  "nationalid",
+  "natid",
+  "niid",
+]);
+
+const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
+  "businessname",
+  "business",
+  "companyname",
+  "company",
+]);
+
+const getNINumber = (row: Record<string, unknown>): string => {
+  for (const [key, value] of Object.entries(row)) {
+    if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return String(value ?? "");
+    }
+  }
+  return "";
+};
+
+const getBusinessName = (row: Record<string, unknown>): string => {
+  for (const [key, value] of Object.entries(row)) {
+    if (BUSINESS_NAME_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return String(value ?? "");
+    }
+  }
+  return "";
+};
+
 const findNormalizedValue = (
   data: Record<string, unknown>,
   ...targets: string[]
@@ -169,6 +216,10 @@ export const invitePortalUser = onCall(async (request) => {
 
   // Triggers Firebase password-reset email template
   // (used as set-password invite).
+  const continueUrl = String(
+    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
+  );
+
   const resp = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
     {
@@ -177,7 +228,7 @@ export const invitePortalUser = onCall(async (request) => {
       body: JSON.stringify({
         requestType: "PASSWORD_RESET",
         email,
-        continueUrl: RESET_CONTINUE_URL.value(),
+        continueUrl,
       }),
     },
   );
@@ -296,6 +347,10 @@ export const assignClientLogin = onCall(async (request) => {
     { merge: true },
   );
 
+  const continueUrl = String(
+    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
+  );
+
   const resp = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
     {
@@ -304,7 +359,7 @@ export const assignClientLogin = onCall(async (request) => {
       body: JSON.stringify({
         requestType: "PASSWORD_RESET",
         email,
-        continueUrl: RESET_CONTINUE_URL.value(),
+        continueUrl,
       }),
     },
   );
@@ -744,17 +799,19 @@ export const importAgencyCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const existingSnaps = await db
-    .collection("agencies")
-    .where("importedByAgencyId", "==", caller.agencyId)
-    .get();
+  const agenciesRef = db.collection("agencies");
+  const [oldSnaps, newSnaps] = await Promise.all([
+    agenciesRef.where("importedByAgencyId", "==", caller.agencyId).get(),
+    agenciesRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
+  ]);
 
+  const docSeen = new Set<string>();
   const existingNames = new Set<string>();
-  for (const doc of existingSnaps.docs) {
+  for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
+    if (docSeen.has(doc.id)) continue;
+    docSeen.add(doc.id);
     const data = doc.data();
-    const name = String(findNormalizedValue(data, "businessname") || "")
-      .trim()
-      .toLowerCase();
+    const name = getBusinessName(data).toLowerCase().trim();
     if (name) existingNames.add(name);
   }
 
@@ -763,9 +820,7 @@ export const importAgencyCsv = onCall(async (request) => {
 
   for (const record of records) {
     if (typeof record !== "object" || record === null) continue;
-    const name = String(findNormalizedValue(record, "businessname") || "")
-      .trim()
-      .toLowerCase();
+    const name = getBusinessName(record).toLowerCase().trim();
     if (name && existingNames.has(name)) {
       duplicateCount++;
       continue;
@@ -859,64 +914,49 @@ export const importStaffCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const existingSnaps = await db
-    .collection("staff")
-    .where("agencyId", "==", caller.agencyId)
-    .get();
+  const staffRef = db.collection("staff");
+  const [oldSnaps, newSnaps] = await Promise.all([
+    staffRef.where("agencyId", "==", caller.agencyId).get(),
+    staffRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
+  ]);
 
-  const field = (data: Record<string, unknown>, ...names: string[]): string => {
-    for (const name of names) {
-      const v = data[name];
-      if (v !== undefined && v !== null) return String(v);
-    }
-    const lowerKeys = Object.keys(data).reduce<Record<string, string>>(
-      (acc, k) => {
-        acc[k.toLowerCase()] = k;
-        return acc;
-      },
-      {},
-    );
-    for (const name of names) {
-      const match = lowerKeys[name.toLowerCase()];
-      if (match) return String(data[match]);
-    }
-    const found = findNormalizedValue(data, ...names);
-    if (found) return found;
-    return "";
-  };
-
+  const docSeen = new Set<string>();
   const existingNiNumbers = new Set<string>();
-  for (const doc of existingSnaps.docs) {
+  for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
+    if (docSeen.has(doc.id)) continue;
+    docSeen.add(doc.id);
     const data = doc.data();
-    const ni = field(
-      data,
-      "NI Number",
-      "ni_number",
-      "NI_Number",
-      "NINO",
-    ).toLowerCase();
+    const ni = getNINumber(data).toLowerCase();
     if (ni) existingNiNumbers.add(ni);
   }
 
-  const assignedToId = request.data?.assignedToId
+  let assignedToId = request.data?.assignedToId
     ? String(request.data.assignedToId)
     : null;
-  const assignedToName = request.data?.assignedToName
+  const assignedToNameInput = request.data?.assignedToName
     ? String(request.data.assignedToName)
     : null;
+
+  if (!assignedToId) {
+    assignedToId = caller.agencyId ?? null;
+  }
+  const callerAgencySnap = assignedToId
+    ? await db.collection("agencies").doc(assignedToId).get()
+    : null;
+  const assignedToName =
+    assignedToNameInput ||
+    (callerAgencySnap?.exists
+      ? (callerAgencySnap.data() as { name?: string }).name ?? ""
+      : "");
+
+  const tagIds = request.data?.tagIds as string[] | undefined;
 
   const newRecords: Array<Record<string, unknown>> = [];
   let duplicateCount = 0;
 
   for (const record of records) {
     if (typeof record !== "object" || record === null) continue;
-    const ni = field(
-      record,
-      "NI Number",
-      "ni_number",
-      "NI_Number",
-      "NINO",
-    ).toLowerCase();
+    const ni = getNINumber(record).toLowerCase();
     if (ni && existingNiNumbers.has(ni)) {
       duplicateCount++;
       continue;
@@ -967,6 +1007,7 @@ export const importStaffCsv = onCall(async (request) => {
       const docRef = db.collection("staff").doc();
       batch.set(docRef, {
         ...record,
+        ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
         metadata: {
           uploadedInFile: importId,
           uploadedBy: caller.agencyId,
@@ -1313,15 +1354,8 @@ export const removeAgencies = onCall(async (request) => {
   }
 
   const importData = importSnap.data() as {
-    agencyId?: string;
     fileUrl?: string | null;
   };
-  if (importData.agencyId !== caller.agencyId) {
-    throw new HttpsError(
-      "permission-denied",
-      "Import record does not belong to your agency.",
-    );
-  }
 
   if (importData.fileUrl) {
     try {
@@ -1410,15 +1444,8 @@ export const removeStaffImport = onCall(async (request) => {
   }
 
   const importData = importSnap.data() as {
-    agencyId?: string;
     fileUrl?: string | null;
   };
-  if (importData.agencyId !== caller.agencyId) {
-    throw new HttpsError(
-      "permission-denied",
-      "Import record does not belong to your agency.",
-    );
-  }
 
   if (importData.fileUrl) {
     try {
@@ -1682,3 +1709,108 @@ export const removeClientLogin = onCall(async (request) => {
 
   return { ok: true, uid };
 });
+
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { algoliasearch } from "algoliasearch";
+
+const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
+const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
+
+const getAlgoliaClient = () =>
+  algoliasearch(ALGOLIA_APP_ID.value(), ALGOLIA_ADMIN_API_KEY.value());
+
+// ── Agencies → clients index ──
+export const syncAgencyToAlgolia = onDocumentWritten(
+  { document: "agencies/{docId}", maxInstances: 10 },
+  async (event) => {
+    const client = getAlgoliaClient();
+    const snap = event.data;
+    if (!snap) return;
+
+    if (!snap.after.exists) {
+      await client.deleteObject({
+        indexName: "clients",
+        objectID: event.params.docId,
+      });
+      console.log(
+        `Deleted agency ${event.params.docId} from clients index`,
+      );
+      return;
+    }
+
+    await client.saveObject({
+      indexName: "clients",
+      body: { objectID: event.params.docId, ...snap.after.data() },
+    });
+    console.log(`Saved agency ${event.params.docId} to clients index`);
+  },
+);
+
+// ── Staff → staff index ──
+export const syncStaffToAlgolia = onDocumentWritten(
+  { document: "staff/{docId}", maxInstances: 10 },
+  async (event) => {
+    const client = getAlgoliaClient();
+    const snap = event.data;
+    if (!snap) return;
+
+    if (!snap.after.exists) {
+      await client.deleteObject({
+        indexName: "staff",
+        objectID: event.params.docId,
+      });
+      console.log(
+        `Deleted staff ${event.params.docId} from staff index`,
+      );
+      return;
+    }
+
+    await client.saveObject({
+      indexName: "staff",
+      body: { objectID: event.params.docId, ...snap.after.data() },
+    });
+    console.log(`Saved staff ${event.params.docId} to staff index`);
+  },
+);
+
+// ── Users → logins index (only role=client) ──
+export const syncClientUserToAlgolia = onDocumentWritten(
+  { document: "users/{docId}", maxInstances: 10 },
+  async (event) => {
+    const client = getAlgoliaClient();
+    const snap = event.data;
+    if (!snap) return;
+
+    const wasClient =
+      snap.before.exists && snap.before.data()?.role === "client";
+    const isClient =
+      snap.after.exists && snap.after.data()?.role === "client";
+
+    if (!isClient && !wasClient) return;
+
+    if (!isClient && wasClient) {
+      await client.deleteObject({
+        indexName: "logins",
+        objectID: event.params.docId,
+      });
+      console.log(
+        "Deleted user" +
+          ` ${event.params.docId} from logins index (no longer client)`,
+      );
+      return;
+    }
+
+    const data = snap.after.data();
+    if (!data) return;
+    await client.saveObject({
+      indexName: "logins",
+      body: {
+        objectID: event.params.docId,
+        ...data,
+        invitedByAgencyId: data.invitedByAgencyId ?? "",
+        assignedTo: data.agencyId ?? "",
+      },
+    });
+    console.log(`Saved user ${event.params.docId} to logins index`);
+  },
+);

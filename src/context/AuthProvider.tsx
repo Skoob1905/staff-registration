@@ -4,6 +4,7 @@ import type { Agency, AppUser } from "../types/domain";
 import { initAuthPersistence, onAuthUserChanged } from "../services/authService";
 import { getAgencyProfile, getUserProfile } from "../services/userService";
 import { useToast } from "./ToastProvider";
+import { useAppStore } from "../stores/appStore";
 
 interface AuthContextValue {
   firebaseUser: User | null;
@@ -55,6 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(true);
         try {
           await loadProfileForUser(user);
+          if (user) {
+            useAppStore.getState().loadTags().catch(() => {});
+          }
         } catch (err) {
           console.error("Failed to load user profile", err);
           toast({

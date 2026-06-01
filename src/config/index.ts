@@ -1,12 +1,16 @@
 import blackrockNavbar from "../assets/blackrock/navbar.jpg";
 import blackrockLogin from "../assets/blackrock/login.jpg";
-import blackrockLoading from "../assets/blackrock/loading.png";
+import blackrockLoading from "../assets/blackrock/loading.jpg";
 import cerobiNavbar from "../assets/cerobi/navbar.jpg";
 import cerobiLogin from "../assets/cerobi/login.jpg";
-import cerobiLoading from "../assets/cerobi/loading.png";
+import cerobiLoading from "../assets/cerobi/loading.jpg";
 import crsNavbar from "../assets/crs/navbar.jpg";
 import crsLogin from "../assets/crs/login.jpg";
-import crsLoading from "../assets/crs/loading.png";
+import crsLoading from "../assets/crs/loading.jpg";
+import orbitNavbar from "../assets/crs/navbar.jpg";
+import orbitLogin from "../assets/crs/login.jpg";
+import orbitLoading from "../assets/crs/loading.jpg";
+import { lightTheme } from "./theme";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -19,7 +23,6 @@ const images: Record<string, Config> = {
     loading: blackrockLoading,
     name: "Blackrock Consultancy UK",
     homepage: "https://blackrockconsultancyuk.com/",
-    allowedDomains: ["blackrockconsultancyuk.com"],
     theme: {
       appBackground: "#f8faf9", // A crisp, clean off-white with a tiny hint of sage/cool undertone
       primaryTextColour: "#1e293b", // Deep slate-charcoal for excellent readability and contrast
@@ -37,6 +40,7 @@ const images: Record<string, Config> = {
       inputFocusBg: "#ffffff", // Solid white focus state
       placeholder: "#94a3b8", // Soft gray for input placeholders
       radius: "0.5rem", // standard 8px corners for a clean, professional, structured feel
+      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
     },
   },
   cerobi: {
@@ -45,7 +49,6 @@ const images: Record<string, Config> = {
     loading: cerobiLoading,
     name: "Cerobi Group Ltd",
     homepage: "https://cerobigroup-uk.com/",
-    allowedDomains: ["cerobi.com"],
     theme: {
       appBackground: "#f8fafc", // Ultra-clean, cool-tinted slate for a modern SaaS backdrop
       primaryTextColour: "#0f172a", // Slate-900 (deep obsidian) for sharp, premium typography
@@ -63,6 +66,7 @@ const images: Record<string, Config> = {
       inputFocusBg: "#ffffff", // Solid white focus state
       placeholder: "#94a3b8", // Soft gray for input placeholders
       radius: "0.625rem", // Modern 10px corners—not too sharp, not too round
+      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
     },
   },
   crs: {
@@ -71,7 +75,6 @@ const images: Record<string, Config> = {
     loading: crsLoading,
     name: "CRS Group Holding",
     homepage: "https://crs-staffing.com/",
-    allowedDomains: ["crs-staffing.com"],
     theme: {
       appBackground: "#f4f7f5", // An incredibly soft, mint-tinted gray that makes the green pop
       primaryTextColour: "#0f172a", // Slate-900 (deep charcoal/navy-gray) for maximum readability
@@ -89,11 +92,56 @@ const images: Record<string, Config> = {
       inputFocusBg: "#ffffff", // Pure white on input focus
       placeholder: "#94a3b8", // Muted gray for placeholder text
       radius: "0.5rem", // A sleek, standard 8px radius for a clean digital look
+      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
+    },
+  },
+  orbit: {
+    navbar: orbitNavbar,
+    login: orbitLogin,
+    loading: orbitLoading,
+    name: "",
+    homepage: "",
+    theme: {
+      appBackground: "#040916", // Deep space navy, almost black
+      primaryTextColour: "#E2E8F0", // Soft cool white
+      card: "#040916", // Rich navy card background
+      cardForeground: "#F8FAFC", // Clean white text on cards
+
+      muted: "#172554", // Dark orbital blue
+      mutedForeground: "#94A3B8", // Subtle slate gray
+
+      primary: "#4F7DAA", // Modern steel-blue from the rocket body
+      primaryForeground: "#FFFFFF",
+
+      border: "#0F2A4A", // Muted blue border, subtle presence against dark bg
+
+      destructive: "#DC2626", // Clean red for destructive actions
+
+      headerBg: "#0A1220", // Slightly elevated from background
+
+      surface: "#111C2F", // Secondary panels, sidebars, code blocks
+
+      inputBg: "rgba(15, 23, 42, 0.85)",
+      inputFocusBg: "#162338",
+
+      placeholder: "#64748B",
+
+      // Accent colours for charts, badges, indicators
+      // accent: "#FF8A1F", // Rocket exhaust orange
+      // accentForeground: "#FFFFFF",
+
+      // success: "#22C55E",
+      // warning: "#F59E0B",
+      // info: "#60A5FA",
+
+      radius: "8px", // 12px feels more modern and premium
+      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
     },
   },
 };
 
 export const config = images[slug] ?? images.blackrock;
+config.theme = lightTheme;
 
 const cssVarMap: Record<keyof Theme, string> = {
   appBackground: "--background",
@@ -112,12 +160,46 @@ const cssVarMap: Record<keyof Theme, string> = {
   inputFocusBg: "--input-focus-bg",
   placeholder: "--placeholder",
   radius: "--radius",
+  typeface: "--font-family",
 };
 
 export function applyTheme() {
   const root = document.documentElement;
-  const theme = config.theme;
   for (const [key, cssVar] of Object.entries(cssVarMap)) {
-    root.style.setProperty(cssVar, theme[key as keyof Theme]);
+    root.style.setProperty(cssVar, config.theme[key as keyof Theme]);
   }
 }
+
+applyTheme();
+
+/**
+ * THEME SWITCHING LOGIC — uncomment to enable
+ */
+// import { darkTheme } from "./theme";
+
+// const STORAGE_KEY = "handysign-theme";
+
+// export function getStoredTheme(): "dark" | "light" {
+//   if (typeof window === "undefined") return "dark";
+//   return (localStorage.getItem(STORAGE_KEY) as "dark" | "light") ?? "dark";
+// }
+
+// export function applyTheme(mode?: "dark" | "light") {
+//   const theme = mode === "light" ? lightTheme : darkTheme;
+//   const root = document.documentElement;
+//   for (const [key, cssVar] of Object.entries(cssVarMap)) {
+//     root.style.setProperty(cssVar, theme[key as keyof Theme]);
+//   }
+// }
+
+// export function switchTheme(mode: "dark" | "light") {
+//   localStorage.setItem(STORAGE_KEY, mode);
+//   applyTheme(mode);
+// }
+
+// Apply stored theme on load
+// const stored = getStoredTheme();
+// if (stored === "light") {
+//   config.theme = lightTheme;
+// }
+// applyTheme(stored);

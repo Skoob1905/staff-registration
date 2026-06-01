@@ -11,16 +11,20 @@ export const DialogContent = ({
   onClose,
   className = "",
   closeDisabled = false,
+  overlayClassName,
 }: {
   children: ReactNode;
   onClose: () => void;
   className?: string;
   closeDisabled?: boolean;
+  overlayClassName?: string;
 }) => (
   <Dialog.Portal>
-    <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35" />
+    <Dialog.Overlay
+      className={`fixed inset-0 z-40 bg-slate-800/60 ${overlayClassName ?? ""}`}
+    />
     <Dialog.Content
-      className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--border)] bg-white p-5 shadow-xl ${className}`}
+      className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl ${className}`}
       onInteractOutside={(e) => {
         e.preventDefault();
       }}

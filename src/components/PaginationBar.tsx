@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { Caption } from "../config/typography";
 
 interface PaginationBarProps {
   currentPage: number;
@@ -13,7 +14,7 @@ interface PaginationBarProps {
   onPageSizeChange: (size: number) => void;
 }
 
-const PAGE_SIZES = [25, 50, 75];
+const PAGE_SIZES = [10, 25, 50];
 
 export const PaginationBar = ({
   currentPage,
@@ -80,12 +81,13 @@ export const PaginationBar = ({
         <div className="mx-1 flex items-center gap-0.5">
           {pageNumbers.map((page, idx) =>
             page === "..." ? (
-              <span
+              <Caption
+                as="span"
                 key={`ellipsis-${idx}`}
-                className="px-1 text-xs text-[var(--muted-foreground)]"
+                className="px-1"
               >
                 ...
-              </span>
+              </Caption>
             ) : (
               <button
                 key={page}
@@ -136,9 +138,9 @@ export const PaginationBar = ({
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-xs text-[var(--muted-foreground)]">
+        <Caption as="span">
           {startItem}–{endItem} of {totalCount}
-        </span>
+        </Caption>
 
         <select
           value={pageSize}

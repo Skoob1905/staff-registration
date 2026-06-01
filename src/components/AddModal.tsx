@@ -2,15 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
-import { Button } from "./ui";
-import { ClientsDropdown } from "./ClientsDropdown";
-import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
+import { Body, BodyMedium, Caption, Muted } from "../config/typography";
+import { AssignModal } from "./AssignModal";
+import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
+import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
-import { normalizeKey, findValueByNormalizedKey } from "../utils/staff";
+import {
+  normalizeKey,
+  findValueByNormalizedKey,
+  hasNIColumn,
+  hasBusinessNameColumn,
+} from "../utils/keyHeaderNormalisation";
 
 type CsvRow = Record<string, string>;
 
@@ -73,7 +79,6 @@ interface AddModalProps {
   itemLabelPlural: string;
   csvType?: string;
   duplicateKey: string;
-  existingKeys: Set<string>;
   onSuccess?: (importId?: string) => Promise<void>;
   clients?: { id: string; name: string }[];
   confirmText?: (additions: number) => string;
@@ -87,14 +92,25 @@ export const AddModal = ({
   itemLabel,
   itemLabelPlural,
   duplicateKey,
-  existingKeys,
   csvType,
   onSuccess,
   confirmText,
 }: AddModalProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const clients = useAppStore((s) => s.clients);
+  const tags = useAppStore((s) => s.tags);
+
+  const clientFacetFilters = useMemo(
+    () => [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
+    [appUser?.agencyId],
+  );
+
+  const { items: clients } = usePaginatedRecords({
+    indexName: "clients",
+    agencyId: appUser?.agencyId ?? "",
+    facetFilters: clientFacetFilters,
+    hitsPerPage: 1000,
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvData, setCsvData] = useState<{
@@ -107,14 +123,58 @@ export const AddModal = ({
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [autoAssign, setAutoAssign] = useState(false);
-  const [selectedClient, setSelectedClient] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<
+    string | undefined
+  >();
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+
+
+
+  const tagsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const tag of tags) {
+      map[tag.id] = tag.value;
+    }
+    return map;
+  }, [tags]);
+
+  const hasAssignment =
+    selectedClientId !== undefined || selectedTagIds.length > 0;
+
+  const selectedClientName = useMemo(() => {
+    if (!selectedClientId) return "";
+    const c = clients.find((c) => c.id === selectedClientId);
+    if (!c) return "Unknown";
+    return (
+      (c.name as string) ||
+      (c.business_name as string) ||
+      (c.Company_Name as string) ||
+      (c.company_name as string) ||
+      (c.agencyName as string) ||
+      findValueByNormalizedKey(
+        c as Record<string, unknown>,
+        "businessname",
+        "companyname",
+        "name",
+        "agencyname",
+        "organisation",
+        "company",
+      ) ||
+      "Unknown"
+    );
+  }, [clients, selectedClientId]);
 
   useEffect(() => {
     if (loading) {
       loadingTimerRef.current = setTimeout(() => {
-        toast({ title: "Still uploading...", variant: "info" });
-      }, 8000);
+        toast({
+          title: "Still uploading...",
+          variant: "info",
+          replaceToast: true,
+        });
+      }, 5000);
     }
     return () => {
       if (loadingTimerRef.current) {
@@ -159,8 +219,11 @@ export const AddModal = ({
 
       if (csvType === "staff") {
         const normalizedHeaders = parsed.headers.map(normalizeKey);
-        const hasNi = normalizedHeaders.some((h) => h === "ninumber" || h === "nino");
-        if (!hasNi) {
+        if (!hasNIColumn(parsed.headers)) {
+          console.warn(
+            "[AddModal] No NI column found. Headers:",
+            parsed.headers,
+          );
           toast({
             title: "Invalid staff file",
             description: "The CSV must contain an NI Number column.",
@@ -168,13 +231,18 @@ export const AddModal = ({
           });
           return;
         }
-        const hasForename = normalizedHeaders.some((h) => h === "forename" || h === "firstname");
-        const hasSurname = normalizedHeaders.some((h) => h === "surname" || h === "lastname");
+        const hasForename = normalizedHeaders.some(
+          (h) => h === "forename" || h === "firstname",
+        );
+        const hasSurname = normalizedHeaders.some(
+          (h) => h === "surname" || h === "lastname",
+        );
         const hasFullName = normalizedHeaders.some((h) => h === "fullname");
         if (!(hasForename && hasSurname) && !hasFullName) {
           toast({
             title: "Invalid staff file",
-            description: "The CSV must contain First Name + Surname columns, or a Full Name column.",
+            description:
+              "The CSV must contain First Name + Surname columns, or a Full Name column.",
             variant: "error",
           });
           return;
@@ -182,11 +250,11 @@ export const AddModal = ({
       }
 
       if (csvType === "agency") {
-        const normalizedHeaders = parsed.headers.map(normalizeKey);
-        if (!normalizedHeaders.includes("businessname")) {
+        if (!hasBusinessNameColumn(parsed.headers)) {
           toast({
             title: "Invalid client file",
-            description: "The CSV must contain a Business Name column.",
+            description:
+              "The CSV must contain a Company/Company Name/Business/Business Name column.",
             variant: "error",
           });
           return;
@@ -202,26 +270,27 @@ export const AddModal = ({
     if (!csvData || !appUser) return;
     setLoading(true);
     setUploadProgress(0);
+    setProcessing(false);
     try {
       const path = `${storagePath}/${appUser.agencyId}/${Date.now()}-${csvData.fileName}`;
       const storageRef = ref(storage, path);
       const task = uploadBytesResumable(storageRef, csvData.rawFile);
       task.on("state_changed", (snapshot) => {
-        const pct = Math.round(
+        const raw = Math.round(
           (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
         );
-        setUploadProgress(pct);
+        setUploadProgress(Math.min(raw, 90));
       });
       await task;
+      setProcessing(true);
       const fileUrl = await getDownloadURL(storageRef);
 
-      const recordsToSend = uniqueRows ?? csvData.rows;
+      const recordsToSend = csvData.rows;
 
       const callable = httpsCallable(functions, cloudFunction);
-      const selectedCompany =
-        autoAssign && selectedClient
-          ? clients.find((c) => c.id === selectedClient)
-          : null;
+      const selectedCompany = selectedClientId
+        ? clients.find((c) => c.id === selectedClientId)
+        : null;
       const result = await callable({
         records: recordsToSend,
         totalRecords: csvData.rows.length,
@@ -236,11 +305,21 @@ export const AddModal = ({
                 (selectedCompany.Company_Name as string) ||
                 (selectedCompany.company_name as string) ||
                 (selectedCompany.agencyName as string) ||
-                findValueByNormalizedKey(selectedCompany as Record<string, unknown>, "businessname", "name", "agencyname", "organisation", "company") ||
+                findValueByNormalizedKey(
+                  selectedCompany as Record<string, unknown>,
+                  "businessname",
+                  "name",
+                  "agencyname",
+                  "organisation",
+                  "company",
+                ) ||
                 "Unknown",
             }
           : {}),
+        ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
       });
+      setProcessing(false);
+
       const data = result.data as {
         added: number;
         duplicates: number;
@@ -254,7 +333,7 @@ export const AddModal = ({
           recordCount: recordsToSend.length,
           staff: recordsToSend,
         });
-        useAppStore.getState().addImportEntry(appUser.agencyId, csvType, {
+        useAppStore.getState().addImportEntry(csvType, {
           id: data.importId,
           fileName: csvData.fileName,
           fileUrl,
@@ -274,9 +353,12 @@ export const AddModal = ({
       toast({
         title: "File uploaded",
         description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}.`,
+        replaceToast: true,
       });
-      setCsvData(null);
       setUploadProgress(0);
+      setCsvData(null);
+      setSelectedClientId(undefined);
+      setSelectedTagIds([]);
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
@@ -293,192 +375,224 @@ export const AddModal = ({
         title: "Upload failed",
         description: message,
         variant: "error",
+        replaceToast: true,
       });
     } finally {
       setLoading(false);
+      setProcessing(false);
     }
   };
 
-  const uniqueRows = useMemo(() => {
-    if (!csvData) return null;
-    return csvData.rows.filter((row) => {
-      const key = (row[duplicateKey] || "").toLowerCase().trim();
-      return !(key && existingKeys.has(key));
-    });
-  }, [csvData, existingKeys, duplicateKey]);
-
   const csvDupInfo = useMemo(() => {
-    if (!csvData) return { additions: 0, duplicates: 0 };
-    const additions = uniqueRows?.length ?? 0;
-    return {
-      additions,
-      duplicates: csvData.rows.length - additions,
-    };
-  }, [csvData, uniqueRows]);
+    if (!csvData) return { total: 0 };
+    return { total: csvData.rows.length };
+  }, [csvData]);
 
   return (
-    <DialogRoot open={open} onOpenChange={(o) => { if (o !== false || !loading) onOpenChange(o); }}>
-      <DialogContent
-        closeDisabled={loading}
-        onClose={() => {
-          if (loading) return;
-          onOpenChange(false);
-          setCsvData(null);
-          setUploadProgress(0);
-          setAutoAssign(false);
-          setSelectedClient("");
-          if (fileInputRef.current) fileInputRef.current.value = "";
+    <>
+      <DialogRoot
+        open={open}
+        onOpenChange={(o) => {
+          if (o !== false || !loading) onOpenChange(o);
         }}
-        className={`max-w-none flex flex-col overflow-hidden ${
-          csvData
-            ? "max-sm:w-[90vw] max-sm:h-[80vh] sm:w-[80vw] sm:h-[60vh]"
-            : "max-sm:w-[95vw] sm:max-w-lg"
-        }`}
       >
-        <DialogTitle className="text-base sm:text-lg font-bold">Bulk Upload</DialogTitle>
+        <DialogContent
+          closeDisabled={loading}
+          onClose={() => {
+            if (loading) return;
+            onOpenChange(false);
+            setCsvData(null);
+            setUploadProgress(0);
+            setSelectedClientId(undefined);
+            setSelectedTagIds([]);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }}
+          className={`max-w-none flex flex-col overflow-hidden ${
+            csvData
+              ? "max-sm:w-[90vw] max-sm:h-[80vh] sm:w-[80vw] sm:h-[60vh]"
+              : "max-sm:w-[95vw] sm:max-w-lg"
+          }`}
+        >
+          <DialogTitle className="text-base sm:text-lg font-bold">
+            Bulk Upload
+          </DialogTitle>
 
-        {!csvData ? (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              handleFile(e.dataTransfer.files[0]);
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 transition ${
-              dragOver
-                ? "border-[var(--primary)] bg-[color:rgba(0,95,87,0.06)]"
-                : "border-[var(--border)] hover:border-[var(--primary)] hover:bg-[color:rgba(0,95,87,0.04)]"
-            }`}
-          >
-            <Upload className="h-6 w-6 text-[var(--muted-foreground)]" />
-            <p className="text-xs sm:text-sm font-medium text-[var(--foreground)]">
-              Drop your CSV here or click to browse
-            </p>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Only .csv files are accepted
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])}
-            />
-          </div>
-        ) : null}
-
-        {csvData ? (
-          <div className="mt-4 flex flex-1 min-h-0 flex-col">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold">{csvData.fileName}</h3>
-              <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                {uniqueRows?.length ?? 0} {itemLabelPlural} |{" "}
-                {csvDupInfo.duplicates} duplicate
-                {csvDupInfo.duplicates !== 1 ? "s" : ""} skipped
-              </span>
+          {!csvData ? (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                handleFile(e.dataTransfer.files[0]);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={`mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 transition ${
+                dragOver
+                  ? "border-[var(--primary)] bg-[color:rgba(0,95,87,0.06)]"
+                  : "border-[var(--border)] hover:border-[var(--primary)] hover:bg-[color:rgba(0,95,87,0.04)]"
+              }`}
+            >
+              <Upload className="h-6 w-6 text-[var(--muted-foreground)]" />
+              <BodyMedium>Drop your CSV here or click to browse</BodyMedium>
+              <Caption>Only .csv files are accepted</Caption>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
             </div>
+          ) : null}
 
-            <div className="mt-2 flex-1 min-h-0 overflow-auto rounded-xl border border-[var(--border)]">
-              <table className="min-w-full text-left text-xs sm:text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] bg-[color:rgba(0,95,87,0.06)]">
-                    {csvData.headers.map((h) => (
-                      <th
-                        key={h}
-                        className="px-3 py-2 font-medium text-[var(--foreground)]"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(uniqueRows ?? csvData.rows).map((row, i) => (
-                    <tr
-                      key={i}
-                      className="border-b border-[var(--border)] last:border-0"
-                    >
+          {csvData ? (
+            <div className="mt-4 flex flex-1 min-h-0 flex-col">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold">{csvData.fileName}</h3>
+                <Muted as="span">
+                  {csvDupInfo.total} {itemLabelPlural}
+                </Muted>
+              </div>
+
+              <div className="mt-2 flex-1 min-h-0 overflow-auto rounded-xl border border-[var(--border)]">
+                <table className="min-w-full text-left text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] bg-[color:rgba(0,95,87,0.06)]">
                       {csvData.headers.map((h) => (
-                        <td
+                        <th
                           key={h}
-                          className="px-3 py-2 text-[var(--muted-foreground)]"
+                          className="px-3 py-2 font-medium text-[var(--foreground)]"
                         >
-                          {row[h]}
-                        </td>
+                          {h}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {loading && uploadProgress > 0 ? (
-              <div className="mt-3">
-                <div className="h-2 w-full rounded-full bg-[color:rgba(0,95,87,0.15)]">
-                  <div
-                    className="h-2 rounded-full bg-[var(--primary)] transition-all"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                  Uploading... {uploadProgress}%
-                </p>
+                  </thead>
+                  <tbody>
+                    {csvData.rows.map((row, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-[var(--border)] last:border-0"
+                      >
+                        {csvData.headers.map((h) => (
+                          <td
+                            key={h}
+                            className="px-3 py-2 text-[var(--muted-foreground)]"
+                          >
+                            {row[h]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : null}
 
-            <div className="mt-4 flex items-center justify-end gap-2">
-              {csvType === "staff" ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="auto-assign"
-                    checked={autoAssign}
-                    onChange={(e) => {
-                      setAutoAssign(e.target.checked);
-                      if (!e.target.checked) setSelectedClient("");
-                    }}
-                    className="h-4 w-4"
-                  />
-                  <label
-                    htmlFor="auto-assign"
-                    className="text-xs sm:text-sm text-[var(--foreground)]"
-                  >
-                    Auto-assign
-                  </label>
-                  <ClientsDropdown
-                    disabled={!autoAssign}
-                    value={selectedClient}
-                    onChange={setSelectedClient}
-                    className="h-8 rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)] disabled:opacity-50"
-                  />
+              {loading && uploadProgress > 0 ? (
+                <div className="mt-3">
+                  <div className="h-2 w-full rounded-full bg-[color:rgba(0,95,87,0.15)]">
+                    <div
+                      className="h-2 rounded-full bg-[var(--primary)] transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <Caption className="mt-1">
+                    {processing
+                      ? "Processing..."
+                      : `Uploading... ${uploadProgress}%`}
+                  </Caption>
                 </div>
               ) : null}
-              <Button
-                type="button"
-                disabled={loading}
-                onClick={() => void onUpload()}
-              >
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    Importing...
-                  </span>
-                ) : confirmText ? (
-                  confirmText(csvDupInfo.additions)
-                ) : (
-                  `Import ${csvDupInfo.additions} record(s)`
-                )}
-              </Button>
+
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <div>
+                  {csvType === "staff" && hasAssignment && (
+                    <Body as="div">
+                      {selectedTagIds.length > 0 && (
+                        <div>
+                          <span className="font-semibold">Tags:</span>{" "}
+                          {selectedTagIds
+                            .map((id) => tagsMap[id] || id)
+                            .join(", ")}
+                        </div>
+                      )}
+                      {selectedClientId && (
+                        <div>
+                          <span className="font-semibold">Client:</span>{" "}
+                          {selectedClientName}
+                        </div>
+                      )}
+                    </Body>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {csvType === "staff" && (
+                    <Button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setShowAssignModal(true)}
+                    >
+                      {hasAssignment ? "Edit" : "Auto-Assign"}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => void onUpload()}
+                  >
+                    {loading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        Importing...
+                      </span>
+                    ) : confirmText ? (
+                      confirmText(csvDupInfo.total)
+                    ) : (
+                      `Import ${csvDupInfo.total} record(s)`
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        ) : null}
-      </DialogContent>
-    </DialogRoot>
+          ) : null}
+        </DialogContent>
+      </DialogRoot>
+
+
+
+      <AssignModal
+        open={showAssignModal}
+        onOpenChange={setShowAssignModal}
+        clients={clients.map((c) => ({
+          id: c.id,
+          name:
+            (c.name as string) ||
+            (c.business_name as string) ||
+            (c.Company_Name as string) ||
+            (c.company_name as string) ||
+            (c.agencyName as string) ||
+            findValueByNormalizedKey(
+              c as Record<string, unknown>,
+              "businessname",
+              "name",
+              "agencyname",
+              "organisation",
+              "company",
+            ) ||
+            "Unknown",
+        }))}
+        tags={tags}
+        selectedClientId={selectedClientId}
+        selectedTagIds={selectedTagIds}
+        onConfirm={(clientId, tagIds) => {
+          setSelectedClientId(clientId);
+          setSelectedTagIds(tagIds);
+        }}
+      />
+    </>
   );
 };

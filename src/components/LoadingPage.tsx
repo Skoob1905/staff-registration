@@ -4,25 +4,23 @@ import { config } from "../config";
 
 export const LoadingPage = () => {
   useEffect(() => {
-    const el = document.getElementById("splash");
-    if (el) el.style.display = "none";
+    const splash = document.getElementById("splash");
+    if (splash) splash.style.display = "none";
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="relative flex items-center justify-center mt-4 sm:mt-12">
+    <div className="fixed inset-0 z-10 flex flex-col items-center justify-center">
+      <div className="relative flex items-center justify-center">
         <img
           src={config.loading}
           alt="Loading"
-          className="max-h-70 sm:max-h-72 w-auto object-contain"
-          style={{ animation: "fade-in 1.5s ease-out forwards", opacity: 0 }}
+          className="w-auto max-w-[260px] object-contain"
+          style={{
+            animation: "loading-fade-in 3s ease-out forwards",
+          }}
         />
         <Loader2
-          className="absolute left-1/2 -translate-x-1/2 top-[65%] h-5 w-5 sm:h-9 sm:w-9 animate-spin text-[var(--muted-foreground)] opacity-0"
-          style={{
-            animation:
-              "spin 1s linear infinite, fade-in 0.3s ease-out 0.2s forwards",
-          }}
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-3 h-6 w-6 sm:h-10 sm:w-10 animate-spin text-[var(--primary)]"
         />
       </div>
     </div>

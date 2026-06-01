@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { useAppStore } from "../stores/appStore";
+import { useCallback, useMemo } from "react";
 import { useAuth } from "../context/AuthProvider";
-import { findValueByNormalizedKey } from "../utils/staff";
+import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 
 interface ClientsDropdownProps {
   value: string;
@@ -25,25 +25,37 @@ export const ClientsDropdown = ({
   onBlur,
 }: ClientsDropdownProps) => {
   const { appUser } = useAuth();
-  const clients = useAppStore((s) => s.clients);
-  const clientsLoading = useAppStore((s) => s.clientsLoading);
-  const clientsLoaded = useAppStore((s) => s.clientsLoaded);
-  const loadClients = useAppStore((s) => s.loadClients);
 
-  useEffect(() => {
-    if (appUser?.agencyId && !clientsLoaded && !clientsLoading) {
-      loadClients(appUser.agencyId);
-    }
-  }, [appUser?.agencyId, clientsLoaded, clientsLoading, loadClients]);
+  const clientFacetFilters = useMemo(
+    () => [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
+    [appUser?.agencyId],
+  );
 
-  const getClientName = useCallback((client: (typeof clients)[number]): string =>
-    (client.business_name as string) ||
-    (client.Company_Name as string) ||
-    (client.company_name as string) ||
-    (client.name as string) ||
-    (client.agencyName as string) ||
-    findValueByNormalizedKey(client as Record<string, unknown>, "businessname", "name", "agencyname", "organisation", "company") ||
-    "Unknown", []);
+  const { items: clients, loading } = usePaginatedRecords({
+    indexName: "clients",
+    agencyId: appUser?.agencyId ?? "",
+    facetFilters: clientFacetFilters,
+    hitsPerPage: 1000,
+  });
+
+  const getClientName = useCallback(
+    (client: Record<string, unknown>): string =>
+      (client.business_name as string) ||
+      (client.Company_Name as string) ||
+      (client.company_name as string) ||
+      (client.name as string) ||
+      (client.agencyName as string) ||
+      findValueByNormalizedKey(
+        client,
+        "businessname",
+        "name",
+        "agencyname",
+        "organisation",
+        "company",
+      ) ||
+      "Unknown",
+    [],
+  );
 
   const sortedClients = useMemo(
     () =>
@@ -66,14 +78,14 @@ export const ClientsDropdown = ({
       className={className}
     >
       <option value="">{placeholder}</option>
-      {clientsLoading && (
+      {loading && (
         <option disabled>Loading clients...</option>
       )}
-      {!clientsLoading && clients.length === 0 && (
+      {!loading && clients.length === 0 && (
         <option disabled>No clients</option>
       )}
       {sortedClients.map((c) => (
-        <option key={c.id} value={c.id}>
+        <option key={c.id as string} value={c.id as string}>
           {getClientName(c)}
         </option>
       ))}

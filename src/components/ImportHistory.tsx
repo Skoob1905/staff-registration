@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { Download } from "lucide-react";
-import { Button, Card } from "./ui";
-import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
+import { ActionButton, Button, Card, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
 import { formatInvitedAt } from "../utils/date";
 import { useAppStore, type CsvImport } from "../stores/appStore";
 import { useFileStaffStore } from "../stores/fileStaffStore";
+import { BodyMedium, Caption, Muted } from "../config/typography";
 
 type CsvRow = Record<string, string>;
 
@@ -75,7 +74,7 @@ export const ImportHistory = ({
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const cacheKey = `${appUser?.agencyId}|${type ?? "all"}`;
+  const cacheKey = type ?? "all";
   const history = useAppStore((s) => s.importHistoryCache[cacheKey] ?? EMPTY);
   const loaded = useAppStore((s) => s.importHistoryCacheLoaded[cacheKey]);
   const loadImportHistory = useAppStore((s) => s.loadImportHistory);
@@ -84,7 +83,7 @@ export const ImportHistory = ({
   useEffect(() => {
     if (deleteLoading) {
       deleteTimerRef.current = setTimeout(() => {
-        toast({ title: "Still deleting...", variant: "info" });
+        toast({ title: "Still deleting...", variant: "info", replaceToast: true });
       }, 8000);
     }
     return () => {
@@ -101,8 +100,8 @@ export const ImportHistory = ({
       return;
     }
     setLoading(true);
-    loadImportHistory(appUser.agencyId, type);
-  }, [appUser?.agencyId, type, loaded]);
+    loadImportHistory(type);
+  }, [appUser, type, loaded]);
 
   const onDeleteClick = async (entry: CsvImport) => {
     setDeleteTarget(entry);
@@ -169,8 +168,9 @@ export const ImportHistory = ({
       toast({
         title: "Import removed",
         description: `${deleteTarget.recordCount} record(s) and the import history entry were deleted.`,
+        replaceToast: true,
       });
-      removeImportEntry(appUser!.agencyId, type, deleteTarget.id);
+      removeImportEntry(type, deleteTarget.id);
       setDeleteTarget(null);
       setDeletePreviewNames([]);
       await onDeleteSuccess?.(data?.importId);
@@ -186,6 +186,7 @@ export const ImportHistory = ({
         title: "Remove failed",
         description: message,
         variant: "error",
+        replaceToast: true,
       });
     } finally {
       setDeleteLoading(false);
@@ -197,13 +198,13 @@ export const ImportHistory = ({
       <Card>
         <h2 className="text-base sm:text-lg font-bold">Import History</h2>
         {loading ? (
-          <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
+          <Muted className="mt-3">
             Loading...
-          </p>
+          </Muted>
         ) : history.length === 0 ? (
-          <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
+          <Muted className="mt-3">
             No imports yet.
-          </p>
+          </Muted>
         ) : (
           <div className="mt-3 space-y-2">
             {history.map((entry) => (
@@ -211,37 +212,32 @@ export const ImportHistory = ({
                 key={entry.id}
                 className="flex items-center rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.04)] px-3 py-2"
               >
-                <button
-                  type="button"
-                  aria-label={`Remove ${entry.fileName}`}
+                <ActionButton
+                  variant="delete"
+                  ariaLabel={`Remove ${entry.fileName}`}
                   disabled={deleteTarget?.id === entry.id && deleteLoading}
                   onClick={() => onDeleteClick(entry)}
-                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-red-300 text-red-500 opacity-80 transition hover:bg-red-500 hover:text-white hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  ×
-                </button>
+                />
                 {entry.fileUrl ? (
-                  <a
+                  <ActionButton
+                    variant="download"
+                    size="md"
                     href={entry.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-1.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-blue-300 text-blue-500 transition hover:bg-blue-500 hover:text-white"
-                    aria-label="Download CSV"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </a>
+                    ariaLabel="Download CSV"
+                    className="ml-1.5"
+                  />
                 ) : null}
                 <div className="ml-2 min-w-0 flex-1">
-                  <p className="truncate text-xs sm:text-sm font-medium text-[var(--foreground)]">
+                  <BodyMedium className="truncate">
                     {entry.fileName}
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
+                  </BodyMedium>
+                  <Caption>
                     {entry.recordCount} record(s) &middot;{" "}
                     {entry.importedByEmail ?? "Unknown"} &middot;{" "}
                     {entry.importedAt
                       ? formatInvitedAt(entry.importedAt)
                       : "Unknown date"}
-                  </p>
+                  </Caption>
                 </div>
               </div>
             ))}
@@ -262,11 +258,11 @@ export const ImportHistory = ({
           <DialogTitle className="text-base sm:text-lg font-bold">
             Confirm Delete
           </DialogTitle>
-          <p className="mt-2 text-xs sm:text-sm text-[var(--muted-foreground)]">
+          <Muted className="mt-2">
             This will permanently delete the following{" "}
             {deletePreviewNames.length} record(s) and the import history entry.
             This action cannot be undone.
-          </p>
+          </Muted>
           <p className="mt-2 text-xs font-medium text-amber-600">
             Any staff assigned to agencies will be unassigned and must be
             re-assigned after deletion.
@@ -294,9 +290,9 @@ export const ImportHistory = ({
               ))}
             </div>
           ) : (
-            <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
+            <Muted className="mt-3">
               Unable to load names for this import.
-            </p>
+            </Muted>
           )}
           <div className="mt-4 flex justify-end">
             <Button

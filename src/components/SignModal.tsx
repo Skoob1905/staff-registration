@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { Button } from "./ui";
-import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
+import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import {
   parseSigningForm,
   type SigningFormInput,
 } from "../services/signingValidation";
 import type { UnsignedContract } from "../types/domain";
+import { H1 } from "../config/typography";
 
 interface SignModalProps {
   open: boolean;
@@ -101,8 +101,10 @@ export const SignModal = ({
   return (
     <DialogRoot open={open} onOpenChange={(next) => (!next ? onClose() : null)}>
       <DialogContent onClose={onClose}>
-        <DialogTitle className="text-base sm:text-lg font-bold">
-          SignModal
+        <DialogTitle asChild>
+          <H1>
+            SignModal
+          </H1>
         </DialogTitle>
         <p className="mt-1 text-xs sm:text-sm text-zinc-600">
           Review your contract, then sign at the bottom.

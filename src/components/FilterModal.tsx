@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui";
+import { Button, DialogContent, DialogRoot, DialogTitle, Input } from "./ui";
 import type { Agency, StaffFilters, StaffType } from "../types/domain";
-import { findValueByNormalizedKey } from "../utils/staff";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { H1, H2, Muted } from "../config/typography";
 
-interface StaffFilterModalProps {
+interface FilterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agencies?: Agency[];
@@ -19,7 +19,7 @@ interface StaffFilterModalProps {
   hideClear?: boolean;
 }
 
-export const StaffFilterModal = ({
+export const FilterModal = ({
   open,
   onOpenChange,
   agencies,
@@ -31,7 +31,7 @@ export const StaffFilterModal = ({
   enableTag = false,
   enableAgency = false,
   hideClear = false,
-}: StaffFilterModalProps) => {
+}: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(
     new Set(filters.typeIds),
@@ -105,16 +105,14 @@ export const StaffFilterModal = ({
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogContent onClose={() => onOpenChange(false)}>
-        <DialogTitle className="text-base sm:text-lg font-bold">
-          Filter
+        <DialogTitle asChild>
+          <H1>Filter</H1>
         </DialogTitle>
 
         <div className="mt-4 space-y-4">
-          {/* {enableName && (
+          {enableName && (
             <div>
-              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
-                Name
-              </label>
+              <H2 as="label">Name</H2>
               <Input
                 className="mt-1"
                 placeholder="Type at least 3 characters..."
@@ -122,23 +120,17 @@ export const StaffFilterModal = ({
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-          )} */}
+          )}
 
           {enableTag && (
             <div>
-              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
-                Tags
-              </label>
+              <H2 as="label">Tags</H2>
               {Object.keys(tags).length === 0 ? (
-                <p className="mt-1 text-xs sm:text-sm text-[var(--muted-foreground)]">
-                  No tags have been assigned
-                </p>
+                <Muted className="mt-1">No tags have been assigned</Muted>
               ) : (
                 <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                   {tagKeys.length === 0 ? (
-                    <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                      No tags have been assigned
-                    </p>
+                    <Muted>No tags have been assigned</Muted>
                   ) : (
                     tagKeys.map((id) => (
                       <label
@@ -162,13 +154,9 @@ export const StaffFilterModal = ({
 
           {enableAgency && (
             <div>
-              <label className="text-sm sm:text-base font-bold text-[var(--foreground)]">
-                Clients
-              </label>
+              <H2 as="label">Clients</H2>
               {Object.keys(agencyList).length === 0 ? (
-                <p className="mt-1 text-xs sm:text-sm text-[var(--muted-foreground)]">
-                  No clients have been assigned
-                </p>
+                <Muted className="mt-1">No clients have been assigned</Muted>
               ) : (
                 <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                   {Object.entries(agencyList).map(([id, name]) => (

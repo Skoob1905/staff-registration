@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import {
   Alert,
   Button,
   Card,
+  DialogContent,
+  DialogRoot,
+  DialogTitle,
   Input,
   Label,
-  Separator,
   SecondaryButton,
 } from "../components/ui";
-import {
-  DialogRoot,
-  DialogContent,
-  DialogTitle,
-} from "../components/ui/dialog";
 import { loginWithEmail, sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
-import { config, slug } from "../config";
-import { validateLoginEmail } from "../utils/loginValidation";
+import { config } from "../config";
+
+/**
+ * THEME SWITCHER LOGIC — uncomment to enable
+ */
+// import { config, applyTheme, getStoredTheme } from "../config";
 
 const emailSchema = z.string().email("Enter a valid email address.");
 
@@ -44,12 +46,6 @@ export const LoginPage = () => {
     }
     if (!/.+@.+\..+/.test(email)) {
       setError("Enter a valid email address.");
-      return;
-    }
-
-    const error = validateLoginEmail(email, config.allowedDomains, slug);
-    if (error) {
-      toast({ title: "Invalid login", description: error, variant: "error" });
       return;
     }
 
@@ -100,22 +96,18 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center px-4 app-bg">
       <Card className="w-full max-w-md">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold">Log In</h1>
-            <p className="text-xs sm:text-sm text-[var(--muted-foreground)] mt-0.5">
-              Access your staff portal here
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-8 mb-6">
           <img
             src={config.login}
             alt={config.name}
-            className="max-h-12 w-auto object-contain"
+            className="w-auto h-auto max-h-[20vh] object-contain"
           />
+          {loading && (
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--muted-foreground)]" />
+          )}
         </div>
-        <Separator />
 
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="space-y-1">
@@ -157,15 +149,6 @@ export const LoginPage = () => {
               Forgot password?
             </SecondaryButton>
           </div>
-
-          <a
-            href={config.homepage}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-right text-xs text-[var(--muted-foreground)] hover:text-[var(--primary)] transition"
-          >
-            &larr; Return to Homepage
-          </a>
         </form>
       </Card>
 

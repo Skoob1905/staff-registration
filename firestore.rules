@@ -133,7 +133,7 @@ service cloud.firestore {
 
     // CSV import history
     match /csv_imports/{docId} {
-      allow read: if isAdmin() && resource.data.agencyId == userAgencyId();
+      allow read: if isAdmin();
       allow write: if isAdmin() && request.resource.data.agencyId == userAgencyId();
     }
 

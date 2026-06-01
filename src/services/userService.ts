@@ -1,14 +1,29 @@
-import { collection, doc, getDoc, getDocFromServer, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocFromServer,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "./firebase";
-import type { Agency, AppUser, AwaitingRegistration, UserRole } from "../types/domain";
-import { findValueByNormalizedKey } from "../utils/staff";
+import type {
+  Agency,
+  AppUser,
+  AwaitingRegistration,
+  UserRole,
+} from "../types/domain";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 
 export const getUserProfile = async (
   uid: string,
   options?: { fromServer?: boolean },
 ): Promise<AppUser | null> => {
   const ref = doc(db, "users", uid);
-  const snap = options?.fromServer ? await getDocFromServer(ref) : await getDoc(ref);
+  const snap = options?.fromServer
+    ? await getDocFromServer(ref)
+    : await getDoc(ref);
   if (!snap.exists()) {
     return null;
   }
@@ -16,15 +31,35 @@ export const getUserProfile = async (
   return { uid: snap.id, ...data };
 };
 
-export const getAgencyProfile = async (agencyId: string): Promise<Agency | null> => {
+export const getAgencyProfile = async (
+  agencyId: string,
+): Promise<Agency | null> => {
   const snap = await getDoc(doc(db, "agencies", agencyId));
   if (!snap.exists()) {
     return null;
   }
   const data = snap.data();
   const name: string =
-    data.business_name || data.Company_Name || data.company_name || data.name || data.agencyName || findValueByNormalizedKey(data, "businessname", "name", "agencyname", "organisation", "company") || "Unknown";
-  return { id: snap.id, name, slug: data.slug || "", assignedStaff: data.assignedStaff || [] };
+    data.business_name ||
+    data.Company_Name ||
+    data.company_name ||
+    data.name ||
+    data.agencyName ||
+    findValueByNormalizedKey(
+      data,
+      "businessname",
+      "name",
+      "agencyname",
+      "organisation",
+      "company",
+    ) ||
+    "Unknown";
+  return {
+    id: snap.id,
+    name,
+    slug: data.slug || "",
+    assignedStaff: data.assignedStaff || [],
+  };
 };
 
 export const getUserRole = async (uid: string): Promise<UserRole | null> => {
@@ -37,16 +72,34 @@ export const isAdminUser = async (uid: string): Promise<boolean> => {
   return role === "admin";
 };
 
-export const getStaffUsersByAgency = async (agencyId: string): Promise<AppUser[]> => {
+export const getStaffUsersByAgency = async (
+  agencyId: string,
+): Promise<AppUser[]> => {
   const usersRef = collection(db, "users");
   const [byAgencyId, byInvited] = await Promise.all([
-    getDocs(query(usersRef, where("agencyId", "==", agencyId), where("role", "==", "client"))),
-    getDocs(query(usersRef, where("invitedByAgencyId", "==", agencyId), where("role", "==", "client"))),
+    getDocs(
+      query(
+        usersRef,
+        where("agencyId", "==", agencyId),
+        where("role", "==", "client"),
+      ),
+    ),
+    getDocs(
+      query(
+        usersRef,
+        where("invitedByAgencyId", "==", agencyId),
+        where("role", "==", "client"),
+      ),
+    ),
   ]);
   const seen = new Set<string>();
-  const snaps = [...byAgencyId.docs, ...byInvited.docs]
-    .filter((d) => !seen.has(d.id) && !!seen.add(d.id));
-  return snaps.map((d) => ({ uid: d.id, ...(d.data() as Omit<AppUser, "uid">) }));
+  const snaps = [...byAgencyId.docs, ...byInvited.docs].filter(
+    (d) => !seen.has(d.id) && !!seen.add(d.id),
+  );
+  return snaps.map((d) => ({
+    uid: d.id,
+    ...(d.data() as Omit<AppUser, "uid">),
+  }));
 };
 
 export const getAwaitingRegistrationsByAgency = async (
@@ -93,7 +146,11 @@ export const getStatus = async (
 export const checkEmailStatus = async (
   email: string,
   agencyId: string,
-): Promise<{ exists: boolean; role?: UserRole; state?: "staff" | "awaiting" }> => {
+): Promise<{
+  exists: boolean;
+  role?: UserRole;
+  state?: "staff" | "awaiting";
+}> => {
   const normalizedEmail = email.trim().toLowerCase();
   const usersQuery = query(
     collection(db, "users"),

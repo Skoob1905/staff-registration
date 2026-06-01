@@ -139,15 +139,11 @@ export const UserHomePage = () => {
                 <b>Contract:</b>{" "}
                 {contracts[0]?.fileName ?? signedContracts[0]?.fileName}
                 {contracts[0]?.fileUrl || signedContracts[0]?.fileUrl ? (
-                  <a
+                  <ActionButton
+                    variant="download"
                     href={contracts[0]?.fileUrl ?? signedContracts[0]?.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="Download contract"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </a>
+                    ariaLabel="Download contract"
+                  />
                 ) : null}
               </div>
             ) : null}
@@ -181,18 +177,15 @@ export const UserHomePage = () => {
                           New
                         </span>
                       )}
-                      <button
-                        type="button"
-                        aria-label="Download payslip"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void onDownloadPayslip(payslip);
-                        }}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-300 text-blue-500 opacity-80 transition hover:bg-blue-500 hover:text-white hover:opacity-100"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </button>
+                      <ActionButton
+                          variant="download"
+                          ariaLabel="Download payslip"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void onDownloadPayslip(payslip);
+                          }}
+                        />
                     </div>
                   }
                 >

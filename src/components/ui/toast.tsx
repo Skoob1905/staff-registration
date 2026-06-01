@@ -2,7 +2,7 @@ import * as ToastPrimitive from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
-type ToastVariant = "default" | "success" | "error" | "info";
+type ToastVariant = "default" | "success" | "error" | "info" | "warning";
 
 export interface AppToast {
   id: string;
@@ -19,9 +19,11 @@ export const ToastViewport = () => (
 
 export const ToastItem = ({
   toast,
+  open,
   onOpenChange,
 }: {
   toast: AppToast;
+  open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
   const isError = toast.variant === "error";
@@ -53,7 +55,7 @@ export const ToastItem = ({
 
   return (
     <ToastPrimitive.Root
-      open
+      open={open}
       onOpenChange={onOpenChange}
       duration={5000}
       className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${borderColor}`}

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Mail, Key, Building, Shield } from "lucide-react";
-import { Card, Button } from "../../components/ui";
+import { Button } from "../../components/ui";
+import { Section } from "../../components/Section";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { sendForgotPassword } from "../../services/authService";
 import { getCompanyName } from "../../utils/company";
+import { Caption } from "../../config/typography";
 
 export const ProfilePage = () => {
   useEffect(() => {
@@ -37,45 +39,9 @@ export const ProfilePage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <Card>
-        <h2 className="text-base sm:text-lg font-bold">Profile</h2>
-        <div className="mt-2 space-y-2">
-          <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-[var(--muted-foreground)]" />
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">Email</p>
-              <p className="text-xs sm:text-sm font-medium">
-                {appUser?.email || "—"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-[var(--muted-foreground)]" />
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">Role</p>
-              <p className="text-xs sm:text-sm font-medium capitalize">
-                {appUser?.role || "—"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Building className="h-5 w-5 text-[var(--muted-foreground)]" />
-            <div>
-              <p className="text-xs text-[var(--muted-foreground)]">Company</p>
-              <p className="text-xs sm:text-sm font-medium">
-                {agency
-                  ? getCompanyName(agency as unknown as Record<string, unknown>)
-                  : "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <hr className="my-3 border-[var(--border)]" />
-
-        <div>
+      <Section
+        title="Profile"
+        action={
           <Button
             type="button"
             disabled={resetLoading}
@@ -85,8 +51,42 @@ export const ProfilePage = () => {
             <Key className="h-3.5 w-3.5" />
             {resetLoading ? "Sending..." : "Reset Password"}
           </Button>
+        }
+      >
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-[var(--muted-foreground)]" />
+            <div>
+              <Caption>Email</Caption>
+              <p className="text-xs sm:text-sm font-medium">
+                {appUser?.email || "—"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-[var(--muted-foreground)]" />
+            <div>
+              <Caption>Role</Caption>
+              <p className="text-xs sm:text-sm font-medium capitalize">
+                {appUser?.role || "—"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Building className="h-5 w-5 text-[var(--muted-foreground)]" />
+            <div>
+              <Caption>Company</Caption>
+              <p className="text-xs sm:text-sm font-medium">
+                {agency
+                  ? getCompanyName(agency as unknown as Record<string, unknown>)
+                  : "—"}
+              </p>
+            </div>
+          </div>
         </div>
-      </Card>
+      </Section>
     </div>
   );
 };
