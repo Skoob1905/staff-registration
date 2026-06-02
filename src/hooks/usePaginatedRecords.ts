@@ -67,11 +67,9 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     let cancelled = false;
     dispatch({ type: "loading" });
 
-    const prefixedIndexName = `${ALGOLIA_INDEX_PREFIX}${indexName}`;
-
     algoliaClient
       .searchSingleIndex<T>({
-        indexName: prefixedIndexName,
+        indexName: `${ALGOLIA_INDEX_PREFIX}${indexName}`,
         searchParams: {
           query,
           page,
