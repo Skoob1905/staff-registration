@@ -98,15 +98,21 @@ export const AddModal = ({
   const { appUser } = useAuth();
   const { toast } = useToast();
   const tags = useAppStore((s) => s.tags);
+  const loadTags = useAppStore((s) => s.loadTags);
+  const isAdmin = appUser?.role === "admin";
+
+  useEffect(() => {
+    if (open) loadTags(true).catch(() => {});
+  }, [open, loadTags]);
 
   const clientFacetFilters = useMemo(
-    () => [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
-    [appUser?.agencyId],
+    () => isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
+    [isAdmin, appUser?.agencyId],
   );
 
   const { items: clients } = usePaginatedRecords({
     indexName: "clients_name_desc",
-    agencyId: appUser?.agencyId ?? "",
+    agencyId: isAdmin ? "all" : (appUser?.agencyId ?? ""),
     facetFilters: clientFacetFilters,
     hitsPerPage: 1000,
   });
