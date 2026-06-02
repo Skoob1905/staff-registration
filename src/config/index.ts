@@ -13,6 +13,9 @@ import orbitLoading from "../assets/orbit/loading.jpg";
 import tierOneNavbar from "../assets/tierOne/navbar.jpg";
 import tierOneLogin from "../assets/tierOne/login.jpg";
 import tierOneLoading from "../assets/tierOne/loading.jpg";
+import mumentumNavbar from "../assets/mumentum/navbar.jpg";
+import mumentumLogin from "../assets/mumentum/login.jpg";
+import mumentumLoading from "../assets/mumentum/loading.jpg";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -179,6 +182,48 @@ const images: Record<string, Config> = {
       info: "#2563EB", // Sharp blue for info alerts
 
       radius: "8px", // Clean geometric rounding
+      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
+    },
+  },
+  mumentum: {
+    navbar: mumentumNavbar,
+    login: mumentumLogin,
+    loading: mumentumLoading,
+    name: "",
+    homepage: "",
+    theme: {
+      appBackground: "#F8FAFC", // Bright, clean slate-white for a crisp light background
+      primaryTextColour: "#0F172A", // Near-black slate for excellent text readability
+      card: "#FFFFFF", // Pure white for cards to pop against the background
+      cardForeground: "#0F172A", // Dark text for card content
+
+      muted: "#E2E8F0", // Soft, light gray-blue for non-interactive elements
+      mutedForeground: "#64748B", // Muted slate gray for secondary text
+
+      primary: "#143C70", // Your requested primary deep blue for main actions and branding
+      primaryForeground: "#FFFFFF", // White text for sharp contrast on primary elements
+
+      border: "#CBD5E1", // Defined, clean border to structure the layout
+
+      destructive: "#DC2626", // Clean red for destructive actions
+
+      headerBg: "#FFFFFF", // Clean white header to anchor the top navigation
+
+      surface: "#F1F5F9", // Soft gray-blue for sidebars, tables, or structural panels
+
+      inputBg: "#FFFFFF", // White background for form fields
+      inputFocusBg: "#F8FAFC", // Subtle shift on focus
+      placeholder: "#346296", // Your secondary blue, adapted here for a visible placeholder
+
+      // Accent colors utilizing your requested gold accent color
+      accent: "#BB9149", // Your requested warm gold for badges, highlights, and active states
+      accentForeground: "#FFFFFF", // White text to stand out against the gold accent
+
+      success: "#16A34A", // Balanced green for success states
+      warning: "#D97706", // Amber for warnings
+      info: "#2563EB", // Sharp blue for info alerts
+
+      radius: "8px", // Modern geometric rounding
       typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
     },
   },
