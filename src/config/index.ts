@@ -7,9 +7,12 @@ import cerobiLoading from "../assets/cerobi/loading.jpg";
 import crsNavbar from "../assets/crs/navbar.jpg";
 import crsLogin from "../assets/crs/login.jpg";
 import crsLoading from "../assets/crs/loading.jpg";
-import orbitNavbar from "../assets/crs/navbar.jpg";
-import orbitLogin from "../assets/crs/login.jpg";
-import orbitLoading from "../assets/crs/loading.jpg";
+import orbitNavbar from "../assets/orbit/navbar.jpg";
+import orbitLogin from "../assets/orbit/login.jpg";
+import orbitLoading from "../assets/orbit/loading.jpg";
+import tierOneNavbar from "../assets/tierOne/navbar.jpg";
+import tierOneLogin from "../assets/tierOne/login.jpg";
+import tierOneLoading from "../assets/tierOne/loading.jpg";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -134,6 +137,48 @@ const images: Record<string, Config> = {
       // info: "#60A5FA",
 
       radius: "8px", // 12px feels more modern and premium
+      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
+    },
+  },
+  tierone: {
+    navbar: tierOneNavbar,
+    login: tierOneLogin,
+    loading: tierOneLoading,
+    name: "",
+    homepage: "",
+    theme: {
+      appBackground: "#F9FAFB", // Crisp, bright off-white for a clean canvas
+      primaryTextColour: "#111827", // Near-black for sharp typography contrast
+      card: "#FFFFFF", // Pure white for cards to stand out crisply against the background
+      cardForeground: "#111827", // High-contrast text on cards
+
+      muted: "#F3F4F6", // Ultra-light gray for subtle non-interactive blocks
+      mutedForeground: "#6B7280", // Medium neutral gray for secondary text
+
+      primary: "#374151", // Charcoal gray for primary actions and prominent branding
+      primaryForeground: "#FFFFFF", // White text to ensure legibility on primary buttons
+
+      border: "#E5E7EB", // Clean, minimal gray border to separate layouts
+
+      destructive: "#DC2626", // Classic vivid red for destructive actions
+
+      headerBg: "#FFFFFF", // Clean white header to anchor the top navigation
+
+      surface: "#F3F4F6", // Light gray for sidebars, tables, or structural panels
+
+      inputBg: "#FFFFFF", // White background for crisp input fields
+      inputFocusBg: "#F9FAFB", // Subtle tint shift on input focus
+      placeholder: "#9CA3AF", // Soft gray for placeholder text
+
+      // Accent colors utilizing a monochromatic gray scale
+      accent: "#4B5563", // Slate gray for focal points, badges, and active states
+      accentForeground: "#FFFFFF",
+
+      success: "#16A34A", // Clean green for success states
+      warning: "#D97706", // Balanced amber for warnings
+      info: "#2563EB", // Sharp blue for info alerts
+
+      radius: "8px", // Clean geometric rounding
       typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
     },
   },
