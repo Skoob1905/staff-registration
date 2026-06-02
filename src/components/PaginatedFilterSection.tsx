@@ -30,7 +30,6 @@ interface PaginatedFilterSectionProps<T> {
   enableTypeFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
-  hideClear?: boolean;
 
   tags?: Record<string, string>;
   agencies?: Agency[];
@@ -63,7 +62,6 @@ export const PaginatedFilterSection = <T,>({
   enableTypeFilter = false,
   enableTagFilter = false,
   enableAgencyFilter = false,
-  hideClear = false,
 
   tags,
   agencies,
@@ -142,11 +140,6 @@ export const PaginatedFilterSection = <T,>({
         onApply={onFiltersChange}
         tags={tags}
         staffTypes={staffTypes}
-        enableName={enableNameFilter}
-        enableType={enableTypeFilter}
-        enableTag={enableTagFilter}
-        enableAgency={enableAgencyFilter}
-        hideClear={hideClear}
       />
     </>
   );

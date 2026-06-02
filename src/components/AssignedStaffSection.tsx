@@ -74,7 +74,6 @@ export const AssignedStaffSection = ({
       tags={tagsMap}
       enableNameFilter
       enableTagFilter
-      hideClear
       emptyMessage="You've not been assigned any staff yet"
       renderItem={(member, idx) => {
         const displayName = getStaffName(member);

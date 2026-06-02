@@ -251,7 +251,6 @@ export const AdminPage = () => {
         enableNameFilter={false}
         enableAgencyFilter
         agencies={companies as any}
-        hideClear
         emptyMessage="No users created yet."
         action={
           <Button

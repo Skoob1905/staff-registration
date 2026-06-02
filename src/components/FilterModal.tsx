@@ -16,7 +16,6 @@ interface FilterModalProps {
   enableType?: boolean;
   enableTag?: boolean;
   enableAgency?: boolean;
-  hideClear?: boolean;
 }
 
 export const FilterModal = ({
@@ -30,7 +29,6 @@ export const FilterModal = ({
   enableType = false,
   enableTag = false,
   enableAgency = false,
-  hideClear = false,
 }: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(
@@ -179,21 +177,7 @@ export const FilterModal = ({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          {!hideClear && (
-            <Button
-              type="button"
-              className="border border-[var(--border)] bg-transparent text-[var(--foreground)] shadow-none hover:bg-[color:rgba(0,95,87,0.06)]"
-              onClick={() => {
-                setName("");
-                setSelectedTypeIds(new Set());
-                setSelectedTagIds(new Set());
-                setSelectedAgencyIds(new Set());
-              }}
-            >
-              Clear
-            </Button>
-          )}
+        <div className="mt-6 flex justify-end">
           <Button type="button" onClick={handleApply}>
             Apply Filters
           </Button>
