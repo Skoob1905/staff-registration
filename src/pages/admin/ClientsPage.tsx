@@ -25,7 +25,7 @@ export const AdminClientsPage = () => {
   const [clientFilters, setClientFilters] = useState<StaffFilters>(emptyFilters);
 
   const { items: clients, loading, refresh, totalPages, totalResults } = usePaginatedRecords({
-    indexName: "clients",
+    indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     query: clientFilters.name,
     page,
@@ -87,19 +87,13 @@ export const AdminClientsPage = () => {
     setPage(0);
   }, []);
 
-  const sortedClients = useMemo(
-    () =>
-      [...clients].sort((a, b) =>
-        getPrimaryLabel(a).localeCompare(getPrimaryLabel(b)),
-      ),
-    [clients],
-  );
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PaginatedFilterSection
         title="Clients"
-        items={sortedClients}
+        items={clients}
         loading={loading}
         totalResults={totalResults}
         renderItem={(client, idx) => (

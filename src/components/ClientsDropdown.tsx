@@ -32,7 +32,7 @@ export const ClientsDropdown = ({
   );
 
   const { items: clients, loading } = usePaginatedRecords({
-    indexName: "clients",
+    indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     facetFilters: clientFacetFilters,
     hitsPerPage: 1000,
@@ -57,15 +57,7 @@ export const ClientsDropdown = ({
     [],
   );
 
-  const sortedClients = useMemo(
-    () =>
-      [...clients].sort((a, b) => {
-        const nameA = getClientName(a);
-        const nameB = getClientName(b);
-        return nameA.localeCompare(nameB);
-      }),
-    [clients, getClientName],
-  );
+
 
   return (
     <select
@@ -84,7 +76,7 @@ export const ClientsDropdown = ({
       {!loading && clients.length === 0 && (
         <option disabled>No clients</option>
       )}
-      {sortedClients.map((c) => (
+      {clients.map((c) => (
         <option key={c.id as string} value={c.id as string}>
           {getClientName(c)}
         </option>

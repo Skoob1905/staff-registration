@@ -44,7 +44,11 @@ export const AdminPage = () => {
   useEffect(() => {
     if (deleteLoading) {
       deleteTimerRef.current = setTimeout(() => {
-        toast({ title: "Still deleting...", variant: "info", replaceToast: true });
+        toast({
+          title: "Still deleting...",
+          variant: "info",
+          replaceToast: true,
+        });
       }, 8000);
     }
     return () => {
@@ -61,12 +65,13 @@ export const AdminPage = () => {
   const fetchCompanyById = useAppStore((s) => s.fetchCompanyById);
 
   const { items: companies } = usePaginatedRecords({
-    indexName: "clients",
+    indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     hitsPerPage: 1000,
   });
 
-  const [loginsFilters, setLoginsFilters] = useState<StaffFilters>(emptyFilters);
+  const [loginsFilters, setLoginsFilters] =
+    useState<StaffFilters>(emptyFilters);
   const [loginsPage, setLoginsPage] = useState(0);
   const [loginsPageSize, setLoginsPageSize] = useState(50);
 
@@ -78,8 +83,14 @@ export const AdminPage = () => {
     return ffs;
   }, [loginsFilters.agencyIds]);
 
-  const { items: logins, loading: loginsLoading, totalPages: loginsTotalPages, totalResults: loginsTotalResults, refresh: refreshLogins } = usePaginatedRecords({
-    indexName: "logins",
+  const {
+    items: logins,
+    loading: loginsLoading,
+    totalPages: loginsTotalPages,
+    totalResults: loginsTotalResults,
+    refresh: refreshLogins,
+  } = usePaginatedRecords({
+    indexName: "logins_email_desc",
     agencyId: appUser?.agencyId ?? "",
     facetFilters: loginsFacetFilters,
     query: loginsFilters.name,
@@ -207,7 +218,12 @@ export const AdminPage = () => {
         typeof (error as { message?: string }).message === "string"
           ? (error as { message: string }).message
           : "Could not remove login.";
-      toast({ title: "Remove failed", description: message, variant: "error", replaceToast: true });
+      toast({
+        title: "Remove failed",
+        description: message,
+        variant: "error",
+        replaceToast: true,
+      });
     } finally {
       setDeleteLoading(false);
     }
@@ -226,7 +242,10 @@ export const AdminPage = () => {
         onPrevPage={() => setLoginsPage((p) => Math.max(0, p - 1))}
         onNextPage={() => setLoginsPage((p) => p + 1)}
         onGoToPage={setLoginsPage}
-        onPageSizeChange={(s) => { setLoginsPageSize(s); setLoginsPage(0); }}
+        onPageSizeChange={(s) => {
+          setLoginsPageSize(s);
+          setLoginsPage(0);
+        }}
         filters={loginsFilters}
         onFiltersChange={setLoginsFilters}
         enableNameFilter={false}
@@ -258,9 +277,7 @@ export const AdminPage = () => {
             ? companies.find((c) => c.id === companyId) ||
               companyCache[companyId]
             : undefined;
-          const companyName = company
-            ? getCompanyName(company)
-            : "Unknown";
+          const companyName = company ? getCompanyName(company) : "Unknown";
           const invitedByEmail =
             adminEmailByUid[userRecord.invitedByUid ?? ""] ||
             userRecord.invitedByUid ||
@@ -287,8 +304,7 @@ export const AdminPage = () => {
                   <span className="font-medium text-[var(--foreground)]">
                     Invited by:{" "}
                   </span>
-                  {invitedByEmail} at{" "}
-                  {formatInvitedAt(userRecord.invitedAt)}
+                  {invitedByEmail} at {formatInvitedAt(userRecord.invitedAt)}
                 </p>
                 <button
                   type="button"

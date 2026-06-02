@@ -80,7 +80,15 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
       .then((response) => {
         if (cancelled) return;
         const formattedHits = response.hits.map((hit) => {
-          const { objectID, _highlightResult, _snippetResult, _rankingInfo, ...rest } = hit;
+          const {
+            objectID,
+            _highlightResult,
+            _snippetResult,
+            _rankingInfo,
+            sortableName,
+            sortableEmail,
+            ...rest
+          } = hit;
           return { id: objectID, ...rest } as unknown as T;
         });
 

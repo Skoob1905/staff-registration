@@ -105,7 +105,7 @@ export const AddModal = ({
   );
 
   const { items: clients } = usePaginatedRecords({
-    indexName: "clients",
+    indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     facetFilters: clientFacetFilters,
     hitsPerPage: 1000,

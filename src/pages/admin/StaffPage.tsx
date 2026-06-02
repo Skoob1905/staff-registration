@@ -51,7 +51,7 @@ export const AdminStaffPage = () => {
   );
 
   const { items: companies } = usePaginatedRecords({
-    indexName: "clients",
+    indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     facetFilters: clientFacetFilters,
     hitsPerPage: 1000,
@@ -72,7 +72,7 @@ export const AdminStaffPage = () => {
   }, [filters.tagIds, filters.agencyIds]);
 
   const { items, loading, refresh, totalPages, totalResults } = usePaginatedRecords<BulkStaff>({
-    indexName: "staff",
+    indexName: "staff_name_desc",
     agencyId: appUser?.agencyId ?? "",
     facetFilters: staffFacetFilters,
     query: filters.name,
@@ -83,11 +83,6 @@ export const AdminStaffPage = () => {
   useEffect(() => {
     loadTags().catch(() => {});
   }, [loadTags]);
-
-  const sortedItems = useMemo(
-    () => [...items].sort((a, b) => getStaffName(a).localeCompare(getStaffName(b))),
-    [items],
-  );
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -241,7 +236,7 @@ export const AdminStaffPage = () => {
     <div className="mx-auto max-w-2xl space-y-4">
       <PaginatedFilterSection
         title="Staff"
-        items={sortedItems}
+        items={items}
         loading={loading}
         page={page}
         totalPages={totalPages}

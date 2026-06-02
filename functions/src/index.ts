@@ -1741,9 +1741,13 @@ export const syncAgencyToAlgolia = onDocumentWritten(
       return;
     }
 
+    const data = snap.after.data();
+    if (!data) return;
+    const sortableName = getBusinessName(data).toLowerCase().trim();
+
     await client.saveObject({
       indexName: algoliaIndex("clients"),
-      body: { objectID: event.params.docId, ...snap.after.data() },
+      body: { objectID: event.params.docId, ...data, sortableName },
     });
     console.log(`Saved agency ${event.params.docId} to clients index`);
   },
@@ -1768,9 +1772,17 @@ export const syncStaffToAlgolia = onDocumentWritten(
       return;
     }
 
+    const data = snap.after.data();
+    const sortableName = (
+      [data?.Forename, data?.Surname].filter(Boolean).join(" ") ||
+      data?.FullName ||
+      data?.email ||
+      ""
+    ).toLowerCase();
+
     await client.saveObject({
       indexName: algoliaIndex("staff"),
-      body: { objectID: event.params.docId, ...snap.after.data() },
+      body: { objectID: event.params.docId, ...data, sortableName },
     });
     console.log(`Saved staff ${event.params.docId} to staff index`);
   },
@@ -1805,6 +1817,7 @@ export const syncClientUserToAlgolia = onDocumentWritten(
 
     const data = snap.after.data();
     if (!data) return;
+    const sortableEmail = (data.email ?? "").toLowerCase();
     await client.saveObject({
       indexName: algoliaIndex("logins"),
       body: {
@@ -1812,8 +1825,91 @@ export const syncClientUserToAlgolia = onDocumentWritten(
         ...data,
         invitedByAgencyId: data.invitedByAgencyId ?? "",
         assignedTo: data.agencyId ?? "",
+        sortableEmail,
       },
     });
     console.log(`Saved user ${event.params.docId} to logins index`);
+  },
+);
+
+export const backfillAlgoliaIndices = onCall(
+  { maxInstances: 1, timeoutSeconds: 540 },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Sign in required.");
+    }
+
+    const client = getAlgoliaClient();
+    const db = getFirestore();
+    let totalStaff = 0;
+    let totalAgencies = 0;
+    let totalLogins = 0;
+
+    // ── Staff ──
+    const staffSnap = await db.collection("staff").get();
+    const staffObjects: Array<Record<string, unknown>> = [];
+    for (const doc of staffSnap.docs) {
+      const data = doc.data();
+      const sortableName = (
+        [data?.Forename, data?.Surname].filter(Boolean).join(" ") ||
+        data?.FullName ||
+        data?.email ||
+        ""
+      ).toLowerCase();
+      staffObjects.push({ objectID: doc.id, ...data, sortableName });
+    }
+    if (staffObjects.length > 0) {
+      await client.saveObjects({
+        indexName: algoliaIndex("staff"),
+        objects: staffObjects,
+      });
+      totalStaff = staffObjects.length;
+    }
+
+    // ── Agencies (clients index) ──
+    const agencySnap = await db.collection("agencies").get();
+    const agencyObjects: Array<Record<string, unknown>> = [];
+    for (const doc of agencySnap.docs) {
+      const data = doc.data();
+      const sortableName = getBusinessName(data ?? {}).toLowerCase().trim();
+      agencyObjects.push({ objectID: doc.id, ...data, sortableName });
+    }
+    if (agencyObjects.length > 0) {
+      await client.saveObjects({
+        indexName: algoliaIndex("clients"),
+        objects: agencyObjects,
+      });
+      totalAgencies = agencyObjects.length;
+    }
+
+    // ── Users / logins (role=client) ──
+    const loginSnap = await db
+      .collection("users").where("role", "==", "client").get();
+    const loginObjects: Array<Record<string, unknown>> = [];
+    for (const doc of loginSnap.docs) {
+      const data = doc.data();
+      const sortableEmail = (data.email ?? "").toLowerCase();
+      loginObjects.push({
+        objectID: doc.id,
+        ...data,
+        invitedByAgencyId: data.invitedByAgencyId ?? "",
+        assignedTo: data.agencyId ?? "",
+        sortableEmail,
+      });
+    }
+    if (loginObjects.length > 0) {
+      await client.saveObjects({
+        indexName: algoliaIndex("logins"),
+        objects: loginObjects,
+      });
+      totalLogins = loginObjects.length;
+    }
+
+    return {
+      ok: true,
+      staffBackfilled: totalStaff,
+      agenciesBackfilled: totalAgencies,
+      loginsBackfilled: totalLogins,
+    };
   },
 );
