@@ -173,14 +173,6 @@ const images: Record<string, Config> = {
       inputFocusBg: "#F9FAFB", // Subtle tint shift on input focus
       placeholder: "#9CA3AF", // Soft gray for placeholder text
 
-      // Accent colors utilizing a monochromatic gray scale
-      accent: "#4B5563", // Slate gray for focal points, badges, and active states
-      accentForeground: "#FFFFFF",
-
-      success: "#16A34A", // Clean green for success states
-      warning: "#D97706", // Balanced amber for warnings
-      info: "#2563EB", // Sharp blue for info alerts
-
       radius: "8px", // Clean geometric rounding
       typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
     },
@@ -214,14 +206,6 @@ const images: Record<string, Config> = {
       inputBg: "#FFFFFF", // White background for form fields
       inputFocusBg: "#F8FAFC", // Subtle shift on focus
       placeholder: "#346296", // Your secondary blue, adapted here for a visible placeholder
-
-      // Accent colors utilizing your requested gold accent color
-      accent: "#BB9149", // Your requested warm gold for badges, highlights, and active states
-      accentForeground: "#FFFFFF", // White text to stand out against the gold accent
-
-      success: "#16A34A", // Balanced green for success states
-      warning: "#D97706", // Amber for warnings
-      info: "#2563EB", // Sharp blue for info alerts
 
       radius: "8px", // Modern geometric rounding
       typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
