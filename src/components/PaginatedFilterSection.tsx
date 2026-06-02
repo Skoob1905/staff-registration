@@ -87,7 +87,7 @@ export const PaginatedFilterSection = <T,>({
 
   const renderHeaderAction = () => (
     <div className="flex items-center gap-2">
-      {hasAnyFilter && (
+      {hasAnyFilter && (totalResults > 0 || activeFilterCount > 0) && (
         <button
           type="button"
           onClick={() => setShowFilterModal(true)}
