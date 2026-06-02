@@ -88,7 +88,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
             sortableName,
             sortableEmail,
             ...rest
-          } = hit;
+          } = hit as Record<string, unknown>;
           return { id: objectID, ...rest } as unknown as T;
         });
 
