@@ -1,6 +1,8 @@
 import { useEffect, useReducer, useCallback, useState } from "react";
 import { searchClient } from "@algolia/client-search";
 
+const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+
 const algoliaClient = searchClient(
   import.meta.env.VITE_ALGOLIA_APP_ID,
   import.meta.env.VITE_ALGOLIA_SEARCH_ONLY_API_KEY,
@@ -67,7 +69,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
 
     algoliaClient
       .searchSingleIndex<T>({
-        indexName,
+        indexName: `${ALGOLIA_INDEX_PREFIX}${indexName}`,
         searchParams: {
           query,
           page,
