@@ -1742,7 +1742,7 @@ export const syncAgencyToAlgolia = onDocumentWritten(
     }
 
     await client.saveObject({
-      indexName: "clients",
+      indexName: algoliaIndex("clients"),
       body: { objectID: event.params.docId, ...snap.after.data() },
     });
     console.log(`Saved agency ${event.params.docId} to clients index`);
@@ -1769,7 +1769,7 @@ export const syncStaffToAlgolia = onDocumentWritten(
     }
 
     await client.saveObject({
-      indexName: "staff",
+      indexName: algoliaIndex("staff"),
       body: { objectID: event.params.docId, ...snap.after.data() },
     });
     console.log(`Saved staff ${event.params.docId} to staff index`);
@@ -1806,7 +1806,7 @@ export const syncClientUserToAlgolia = onDocumentWritten(
     const data = snap.after.data();
     if (!data) return;
     await client.saveObject({
-      indexName: "logins",
+      indexName: algoliaIndex("logins"),
       body: {
         objectID: event.params.docId,
         ...data,
