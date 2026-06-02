@@ -68,17 +68,21 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     dispatch({ type: "loading" });
 
     algoliaClient
-      .searchSingleIndex<T>({
-        indexName: `${ALGOLIA_INDEX_PREFIX}${indexName}`,
-        searchParams: {
-          query,
-          page,
-          hitsPerPage,
-          facetFilters: facetFilters ?? [],
-        },
+      .clearCache()
+      .then(() => {
+        if (cancelled) return;
+        return algoliaClient.searchSingleIndex<T>({
+          indexName: `${ALGOLIA_INDEX_PREFIX}${indexName}`,
+          searchParams: {
+            query,
+            page,
+            hitsPerPage,
+            facetFilters: facetFilters ?? [],
+          },
+        });
       })
       .then((response) => {
-        if (cancelled) return;
+        if (cancelled || !response) return;
         const formattedHits = response.hits.map((hit) => {
           const {
             objectID,
