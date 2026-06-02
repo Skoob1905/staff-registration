@@ -1,7 +1,9 @@
-name: CI
+name: CI/CD
 
 on:
   pull_request:
+  push:
+    branches: [dev, main]
 
 jobs:
   ci:
@@ -16,3 +18,37 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+
+  deploy:
+    if: github.ref_name == 'dev' || github.ref_name == 'main'
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ github.ref_name == 'main' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
+
+      - name: Build client
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            npx vite build --mode development
+          else
+            npm run build
+          fi
+
+      - name: Deploy to Firebase
+        run: |
+          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          npx firebase-tools deploy --project $PROJECT
+
+      - name: Output deployment URL
+        run: |
+          URL=${{ github.ref_name == 'main' && 'https://handysign-ab77f.web.app' || 'https://handysign-dev.web.app' }}
+          echo "Deployed to: $URL"

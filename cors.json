@@ -2,7 +2,9 @@
     {
         "origin": [
             "https://localhost:5000",
-            "https://handysign.vercel.app"
+            "https://handysign.vercel.app",
+            "https://handysign-ab77f.web.app",
+            "https://handysign-dev.web.app"
         ],
         "method": [
             "GET",

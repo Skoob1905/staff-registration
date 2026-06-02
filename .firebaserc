@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "handysign-ab77f"
+    "default": "handysign-ab77f",
+    "prod": "handysign-ab77f",
+    "dev": "handysign-dev"
   }
 }

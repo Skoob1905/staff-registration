@@ -1715,9 +1715,12 @@ import { algoliasearch } from "algoliasearch";
 
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
+const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
 
 const getAlgoliaClient = () =>
   algoliasearch(ALGOLIA_APP_ID.value(), ALGOLIA_ADMIN_API_KEY.value());
+
+const algoliaIndex = (name: string) => `${ALGOLIA_INDEX_PREFIX.value()}${name}`;
 
 // ── Agencies → clients index ──
 export const syncAgencyToAlgolia = onDocumentWritten(
@@ -1729,7 +1732,7 @@ export const syncAgencyToAlgolia = onDocumentWritten(
 
     if (!snap.after.exists) {
       await client.deleteObject({
-        indexName: "clients",
+        indexName: algoliaIndex("clients"),
         objectID: event.params.docId,
       });
       console.log(
@@ -1756,7 +1759,7 @@ export const syncStaffToAlgolia = onDocumentWritten(
 
     if (!snap.after.exists) {
       await client.deleteObject({
-        indexName: "staff",
+        indexName: algoliaIndex("staff"),
         objectID: event.params.docId,
       });
       console.log(
@@ -1790,7 +1793,7 @@ export const syncClientUserToAlgolia = onDocumentWritten(
 
     if (!isClient && wasClient) {
       await client.deleteObject({
-        indexName: "logins",
+        indexName: algoliaIndex("logins"),
         objectID: event.params.docId,
       });
       console.log(
