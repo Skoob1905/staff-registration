@@ -41,6 +41,7 @@ export const StaffListSection = ({
   const [pageSize, setPageSize] = useState(50);
   const isClient = view === "client";
   const assignedToId = targetAgencyId || appUser?.agencyId || "";
+  const facets = useMemo<string[]>(() => ["tags", "metadata.assignedToId"], []);
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -66,7 +67,7 @@ export const StaffListSection = ({
       indexName: "staff_name_desc",
       agencyId: "all",
       facetFilters: staffFacetFilters,
-      facets: ["tags", "metadata.assignedToId"],
+      facets,
       query: filters.name,
       page,
       hitsPerPage: pageSize,
