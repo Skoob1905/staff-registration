@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, DialogContent, DialogRoot, DialogTitle, Input } from "./ui";
-import type { Agency, StaffFilters, StaffType } from "../types/domain";
+import { Button, Checkbox, DialogContent, DialogRoot, DialogTitle, Input } from "./ui";
+import type { Agency, StaffFilters } from "../types/domain";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { H1, H2, Muted } from "../config/typography";
 
@@ -11,12 +11,10 @@ interface FilterModalProps {
   filters: StaffFilters;
   onApply: (filters: StaffFilters) => void;
   tags?: Record<string, string>;
-  staffTypes?: StaffType[];
+  tagCounts?: Record<string, number>;
   enableName?: boolean;
-  enableType?: boolean;
   enableTag?: boolean;
   enableAgency?: boolean;
-  hideClear?: boolean;
 }
 
 export const FilterModal = ({
@@ -26,16 +24,12 @@ export const FilterModal = ({
   filters,
   onApply,
   tags = {},
+  tagCounts,
   enableName = true,
-  enableType = false,
   enableTag = false,
   enableAgency = false,
-  hideClear = false,
 }: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
-  const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(
-    new Set(filters.typeIds),
-  );
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
     new Set(filters.tagIds),
   );
@@ -45,8 +39,8 @@ export const FilterModal = ({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(filters.name);
-      setSelectedTypeIds(new Set(filters.typeIds));
       setSelectedTagIds(new Set(filters.tagIds));
       setSelectedAgencyIds(new Set(filters.agencyIds));
     }
@@ -95,7 +89,7 @@ export const FilterModal = ({
   const handleApply = () => {
     onApply({
       name: enableName ? name.trim() : "",
-      typeIds: enableType ? Array.from(selectedTypeIds) : [],
+      typeIds: [],
       tagIds: enableTag ? Array.from(selectedTagIds) : [],
       agencyIds: enableAgency ? Array.from(selectedAgencyIds) : [],
     });
@@ -133,18 +127,14 @@ export const FilterModal = ({
                     <Muted>No tags have been assigned</Muted>
                   ) : (
                     tagKeys.map((id) => (
-                      <label
+                      <Checkbox
                         key={id}
-                        className="flex cursor-pointer items-center gap-2 text-xs sm:text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedTagIds.has(id)}
-                          onChange={() => toggleTag(id)}
-                          className="rounded shrink-0"
-                        />
-                        <span className="truncate">{tags[id]}</span>
-                      </label>
+                        id={id}
+                        label={tags[id]}
+                        count={tagCounts?.[id]}
+                        checked={selectedTagIds.has(id)}
+                        onChange={() => toggleTag(id)}
+                      />
                     ))
                   )}
                 </div>
@@ -179,21 +169,7 @@ export const FilterModal = ({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          {!hideClear && (
-            <Button
-              type="button"
-              className="border border-[var(--border)] bg-transparent text-[var(--foreground)] shadow-none hover:bg-[color:rgba(0,95,87,0.06)]"
-              onClick={() => {
-                setName("");
-                setSelectedTypeIds(new Set());
-                setSelectedTagIds(new Set());
-                setSelectedAgencyIds(new Set());
-              }}
-            >
-              Clear
-            </Button>
-          )}
+        <div className="mt-6 flex justify-end">
           <Button type="button" onClick={handleApply}>
             Apply Filters
           </Button>

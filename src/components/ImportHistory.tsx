@@ -95,12 +95,15 @@ export const ImportHistory = ({
   }, [deleteLoading, toast]);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!appUser || loaded) {
       setLoading(!loaded);
       return;
     }
     setLoading(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
     loadImportHistory(type);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [appUser, type, loaded]);
 
   const onDeleteClick = async (entry: CsvImport) => {

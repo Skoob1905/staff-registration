@@ -35,8 +35,10 @@ export const AssignModal = ({
 
   useEffect(() => {
     if (open) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setClientId(initialClientId);
       setTagIds(new Set(initialTagIds));
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open, initialClientId, initialTagIds]);
 

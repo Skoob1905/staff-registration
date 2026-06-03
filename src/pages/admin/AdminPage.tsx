@@ -20,7 +20,7 @@ import { getCompanyName } from "../../utils/company";
 import { Muted } from "../../config/typography";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { emptyFilters, type StaffFilters } from "../../types/domain";
+import { emptyFilters, type Agency, type StaffFilters } from "../../types/domain";
 
 export const AdminPage = () => {
   useEffect(() => {
@@ -248,10 +248,8 @@ export const AdminPage = () => {
         }}
         filters={loginsFilters}
         onFiltersChange={setLoginsFilters}
-        enableNameFilter={false}
         enableAgencyFilter
-        agencies={companies as any}
-        hideClear
+        agencies={companies as unknown as Agency[]}
         emptyMessage="No users created yet."
         action={
           <Button

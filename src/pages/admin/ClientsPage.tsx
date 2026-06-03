@@ -2,10 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { AddModal } from "../../components/AddModal";
 import { ImportHistory } from "../../components/ImportHistory";
-import {
-  AccordionItem,
-  Button,
-} from "../../components/ui";
+import { AccordionItem, Button } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
 import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
@@ -22,9 +19,16 @@ export const AdminClientsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
-  const [clientFilters, setClientFilters] = useState<StaffFilters>(emptyFilters);
+  const [clientFilters, setClientFilters] =
+    useState<StaffFilters>(emptyFilters);
 
-  const { items: clients, loading, refresh, totalPages, totalResults } = usePaginatedRecords({
+  const {
+    items: clients,
+    loading,
+    refresh,
+    totalPages,
+    totalResults,
+  } = usePaginatedRecords({
     indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     query: clientFilters.name,
@@ -40,7 +44,15 @@ export const AdminClientsPage = () => {
       (client.company_name as string) ||
       (client.name as string) ||
       (client.agencyName as string) ||
-      findValueByNormalizedKey(client as Record<string, unknown>, "businessname", "companyname", "name", "agencyname", "organisation", "company") ||
+      findValueByNormalizedKey(
+        client as Record<string, unknown>,
+        "businessname",
+        "companyname",
+        "name",
+        "agencyname",
+        "organisation",
+        "company",
+      ) ||
       "Unknown"
     );
   };
@@ -80,14 +92,15 @@ export const AdminClientsPage = () => {
   };
 
   const onPrevPage = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
-  const onNextPage = useCallback(() => setPage((p) => Math.min(totalPages - 1, p + 1)), [totalPages]);
+  const onNextPage = useCallback(
+    () => setPage((p) => Math.min(totalPages - 1, p + 1)),
+    [totalPages],
+  );
   const onGoToPage = useCallback((p: number) => setPage(p), []);
   const onPageSizeChange = useCallback((size: number) => {
     setPageSize(size);
     setPage(0);
   }, []);
-
-
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -104,18 +117,13 @@ export const AdminClientsPage = () => {
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
               <div className="flex min-w-0 w-full items-center gap-2">
-                <span className="truncate pr-4">
-                  {getPrimaryLabel(client)}
-                </span>
+                <span className="truncate pr-4">{getPrimaryLabel(client)}</span>
               </div>
             }
           >
             <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
               {getDisplayFields(client).map((field) => (
-                <p
-                  key={field.label}
-                  className="truncate break-inside-avoid"
-                >
+                <p key={field.label} className="truncate break-inside-avoid">
                   <span className="font-medium text-[var(--foreground)]">
                     {field.label}
                   </span>
@@ -158,7 +166,15 @@ export const AdminClientsPage = () => {
               r["Company Name"] ||
               r.Company_Name ||
               r.company_name ||
-              findValueByNormalizedKey(r, "businessname", "companyname", "name", "agencyname", "organisation", "company") ||
+              findValueByNormalizedKey(
+                r,
+                "businessname",
+                "companyname",
+                "name",
+                "agencyname",
+                "organisation",
+                "company",
+              ) ||
               "Unknown",
           )
         }

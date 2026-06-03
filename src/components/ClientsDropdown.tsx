@@ -25,15 +25,16 @@ export const ClientsDropdown = ({
   onBlur,
 }: ClientsDropdownProps) => {
   const { appUser } = useAuth();
+  const isAdmin = appUser?.role === "admin";
 
   const clientFacetFilters = useMemo(
-    () => [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
-    [appUser?.agencyId],
+    () => isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
+    [isAdmin, appUser?.agencyId],
   );
 
   const { items: clients, loading } = usePaginatedRecords({
     indexName: "clients_name_desc",
-    agencyId: appUser?.agencyId ?? "",
+    agencyId: isAdmin ? "all" : (appUser?.agencyId ?? ""),
     facetFilters: clientFacetFilters,
     hitsPerPage: 1000,
   });

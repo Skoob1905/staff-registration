@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import * as ToastPrimitive from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";

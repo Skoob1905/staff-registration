@@ -5,7 +5,7 @@ import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
 import { Section } from "./Section";
 import { Muted } from "../config/typography";
-import type { Agency, StaffFilters, StaffType } from "../types/domain";
+import type { Agency, StaffFilters } from "../types/domain";
 
 interface PaginatedFilterSectionProps<T> {
   title: string;
@@ -27,14 +27,12 @@ interface PaginatedFilterSectionProps<T> {
   onFiltersChange: (filters: StaffFilters) => void;
 
   enableNameFilter?: boolean;
-  enableTypeFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
-  hideClear?: boolean;
 
   tags?: Record<string, string>;
+  tagCounts?: Record<string, number>;
   agencies?: Agency[];
-  staffTypes?: StaffType[];
 
   emptyMessage?: string;
   noMatchMessage?: string;
@@ -60,34 +58,32 @@ export const PaginatedFilterSection = <T,>({
   onFiltersChange,
 
   enableNameFilter = true,
-  enableTypeFilter = false,
-  enableTagFilter = false,
+  enableTagFilter = true,
   enableAgencyFilter = false,
-  hideClear = false,
 
   tags,
+  tagCounts,
   agencies,
-  staffTypes,
 
   emptyMessage,
   noMatchMessage = "Oops there are no records with that filter",
 }: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
-  const hasAnyFilter = enableNameFilter || enableTypeFilter || enableTagFilter || enableAgencyFilter;
+  const hasAnyFilter =
+    enableNameFilter || enableTagFilter || enableAgencyFilter;
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (enableNameFilter && filters.name.length >= 3) count++;
-    if (enableTypeFilter && filters.typeIds.length > 0) count++;
     if (enableTagFilter && filters.tagIds.length > 0) count++;
     if (enableAgencyFilter && filters.agencyIds.length > 0) count++;
     return count;
-  }, [filters, enableNameFilter, enableTypeFilter, enableTagFilter, enableAgencyFilter]);
+  }, [filters, enableNameFilter, enableTagFilter, enableAgencyFilter]);
 
   const renderHeaderAction = () => (
     <div className="flex items-center gap-2">
-      {hasAnyFilter && (
+      {hasAnyFilter && (totalResults > 0 || activeFilterCount > 0) && (
         <button
           type="button"
           onClick={() => setShowFilterModal(true)}
@@ -111,7 +107,11 @@ export const PaginatedFilterSection = <T,>({
         {loading && items.length === 0 ? (
           <Muted>Loading...</Muted>
         ) : items.length === 0 ? (
-          <Muted>{activeFilterCount > 0 ? noMatchMessage : emptyMessage || `Add some ${title.toLowerCase()} now!`}</Muted>
+          <Muted>
+            {activeFilterCount > 0
+              ? noMatchMessage
+              : emptyMessage || `Add some ${title.toLowerCase()} now!`}
+          </Muted>
         ) : (
           <div className="space-y-4">
             <div className="overflow-hidden rounded-xl border border-[var(--border)]">
@@ -141,12 +141,10 @@ export const PaginatedFilterSection = <T,>({
         filters={filters}
         onApply={onFiltersChange}
         tags={tags}
-        staffTypes={staffTypes}
+        tagCounts={tagCounts}
         enableName={enableNameFilter}
-        enableType={enableTypeFilter}
         enableTag={enableTagFilter}
         enableAgency={enableAgencyFilter}
-        hideClear={hideClear}
       />
     </>
   );
