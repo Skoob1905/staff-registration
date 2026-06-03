@@ -13,11 +13,12 @@ interface State<T> {
   loading: boolean;
   totalPages: number;
   totalResults: number;
+  facetCounts?: Record<string, Record<string, number>>;
 }
 
 type Action<T> =
   | { type: "loading" }
-  | { type: "success"; items: T[]; totalPages: number; totalResults: number }
+  | { type: "success"; items: T[]; totalPages: number; totalResults: number; facetCounts?: Record<string, Record<string, number>> }
   | { type: "error" };
 
 function createInitialState<T>(): State<T> {
@@ -31,6 +32,7 @@ interface UsePaginatedRecordsParams {
   query?: string;
   page?: number;
   hitsPerPage?: number;
+  facets?: string[];
 }
 
 export function usePaginatedRecords<T = Record<string, unknown>>({
@@ -40,6 +42,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   query = "",
   page = 0,
   hitsPerPage = 50,
+  facets,
 }: UsePaginatedRecordsParams) {
   const [state, dispatch] = useReducer(
     (prev: State<T>, action: Action<T>): State<T> => {
@@ -52,6 +55,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
             loading: false,
             totalPages: action.totalPages,
             totalResults: action.totalResults,
+            facetCounts: action.facetCounts,
           };
         case "error":
           return { ...prev, loading: false };
@@ -78,6 +82,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
             page,
             hitsPerPage,
             facetFilters: facetFilters ?? [],
+            facets,
           },
         });
       })
@@ -101,6 +106,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
           items: formattedHits,
           totalPages: response.nbPages ?? 0,
           totalResults: response.nbHits ?? 0,
+          facetCounts: response.facets as Record<string, Record<string, number>> | undefined,
         });
       })
       .catch((err) => {
@@ -126,6 +132,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     loading: state.loading,
     totalPages: state.totalPages,
     totalResults: state.totalResults,
+    facetCounts: state.facetCounts,
     refresh,
   };
 }

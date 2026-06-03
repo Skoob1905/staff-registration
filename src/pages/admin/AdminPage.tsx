@@ -248,7 +248,6 @@ export const AdminPage = () => {
         }}
         filters={loginsFilters}
         onFiltersChange={setLoginsFilters}
-        enableNameFilter={false}
         enableAgencyFilter
         agencies={companies as any}
         emptyMessage="No users created yet."

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { getPayslipsForUser } from "../../services/payslipService";
 import type { Payslip } from "../../types/domain";
-import { AssignedStaffSection } from "../../components/AssignedStaffSection";
+import { StaffListSection } from "../../components/StaffListSection";
 
 export const UserHomePage = () => {
   useEffect(() => {
@@ -342,7 +342,7 @@ export const UserHomePage = () => {
         </DialogContent>
       </DialogRoot> */}
 
-      <AssignedStaffSection />
+      <StaffListSection view="client" />
 
       {/* <SignModal
         open={showSignModal}

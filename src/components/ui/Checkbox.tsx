@@ -25,7 +25,7 @@ export const Checkbox = ({
       disabled={disabled}
       className="rounded shrink-0"
     />
-    <span className="truncate">
+    <span className="min-w-0 line-clamp-2">
       {label}
       {count !== undefined ? <> ({count})</> : null}
     </span>

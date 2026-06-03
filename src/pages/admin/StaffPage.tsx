@@ -10,6 +10,7 @@ import { Loader2, Pen, Plus } from "lucide-react";
 import { AddModal } from "../../components/AddModal";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
 import { ImportHistory } from "../../components/ImportHistory";
+import { StaffListSection } from "../../components/StaffListSection";
 import {
   AccordionItem,
   ActionButton,
@@ -26,8 +27,6 @@ import { db, functions } from "../../services/firebase";
 import { getCompanyName } from "../../utils/company";
 import { getStaffName, getStaffNameFromRawRecord } from "../../utils/keyHeaderNormalisation";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { useFilterParams } from "../../hooks/useFilterParams";
-import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { Muted } from "../../config/typography";
 import type { Agency, BulkStaff } from "../../types/domain";
 
@@ -39,50 +38,18 @@ export const AdminStaffPage = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [filters, setFilters] = useFilterParams();
 
   const tags = useAppStore((s) => s.tags);
-  const loadTags = useAppStore((s) => s.loadTags);
   const addTag = useAppStore((s) => s.addTag);
-
-  const clientFacetFilters = useMemo(
-    () => undefined,
-    [],
-  );
 
   const { items: companies } = usePaginatedRecords({
     indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
-    facetFilters: clientFacetFilters,
+    facetFilters: undefined,
     hitsPerPage: 1000,
   });
 
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
-
-  const staffFacetFilters = useMemo(() => {
-    const ffs: string[][] = [];
-    if (filters.tagIds.length > 0) {
-      ffs.push(filters.tagIds.map((id) => `tags:${id}`));
-    }
-    if (filters.agencyIds.length > 0) {
-      ffs.push(filters.agencyIds.map((id) => `metadata.assignedToId:${id}`));
-    }
-    return ffs;
-  }, [filters.tagIds, filters.agencyIds]);
-
-  const { items, loading, refresh, totalPages, totalResults } = usePaginatedRecords<BulkStaff>({
-    indexName: "staff_name_desc",
-    agencyId: appUser?.agencyId ?? "",
-    facetFilters: staffFacetFilters,
-    query: filters.name,
-    page,
-    hitsPerPage: pageSize,
-  });
-
-  useEffect(() => {
-    loadTags().catch(() => {});
-  }, [loadTags]);
+  const [staffRefreshTrigger, setStaffRefreshTrigger] = useState(0);
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -147,7 +114,7 @@ export const AdminStaffPage = () => {
       if (ops.length === 0) return;
 
       await Promise.all(ops);
-      setTimeout(() => refresh(), 2000);
+      setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
       setTagInput("");
       setTagTarget(null);
       toast({
@@ -178,7 +145,7 @@ export const AdminStaffPage = () => {
     try {
       const callable = httpsCallable(functions, "unassignStaffFromAgency");
       await callable({ staffId: unassignTarget.id });
-      setTimeout(() => refresh(), 2000);
+      setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
       setUnassignTarget(null);
       toast({
         title: "Unassigned",
@@ -205,7 +172,7 @@ export const AdminStaffPage = () => {
         const assignedToName = agency ? getCompanyName(agency) : assignedToId;
         const callable = httpsCallable(functions, "assignStaffToAgency");
         await callable({ staffId, assignedToId, assignedToName });
-        setTimeout(() => refresh(), 2000);
+        setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
         toast({
           title: "Assigned",
           description: `Staff member has been assigned to ${assignedToName}`,
@@ -225,34 +192,17 @@ export const AdminStaffPage = () => {
   );
 
   const handleDeleteSuccess = async (_importId?: string) => {
-    setTimeout(() => refresh(), 2000);
+    setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
   };
 
   const handleAddSuccess = async () => {
-    setTimeout(() => refresh(), 2000);
+    setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
   };
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PaginatedFilterSection
-        title="Staff"
-        items={items}
-        loading={loading}
-        page={page}
-        totalPages={totalPages}
-        totalResults={totalResults}
-        pageSize={pageSize}
-        onPrevPage={() => setPage((p) => Math.max(0, p - 1))}
-        onNextPage={() => setPage((p) => p + 1)}
-        onGoToPage={setPage}
-        onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
-        filters={filters}
-        onFiltersChange={setFilters}
-        tags={tagsMap}
-        agencies={companies as unknown as Agency[]}
-        enableNameFilter
-        enableTagFilter
-        enableAgencyFilter
+      <StaffListSection
+        view="admin"
         action={
           <Button
             type="button"
@@ -263,6 +213,8 @@ export const AdminStaffPage = () => {
             Add
           </Button>
         }
+        refreshTrigger={staffRefreshTrigger}
+        agencies={companies as unknown as Agency[]}
         renderItem={(member, idx) => (
           <AccordionItem
             key={member.id}
