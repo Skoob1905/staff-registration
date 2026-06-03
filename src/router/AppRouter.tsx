@@ -8,6 +8,10 @@ import { AdminPage } from "../pages/admin/AdminPage";
 import { AdminClientsPage } from "../pages/admin/ClientsPage";
 import { AdminStaffPage } from "../pages/admin/StaffPage";
 import { UserHomePage } from "../pages/clients/HomePage";
+import { TimeSheetsPage } from "../pages/clients/TimeSheetsPage";
+import { PayslipsPage } from "../pages/clients/PayslipsPage";
+import { ContractsPage } from "../pages/clients/ContractsPage";
+import { InvoicesPage } from "../pages/clients/InvoicesPage";
 import { ProfilePage } from "../pages/clients/ProfilePage";
 import { RoleGuard } from "./RoleGuard";
 
@@ -55,6 +59,10 @@ export const AppRouter = () => (
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/clients" element={<AdminClientsPage />} />
+            <Route path="/timesheets" element={<TimeSheetsPage />} />
+            <Route path="/payslips" element={<PayslipsPage />} />
+            <Route path="/contracts" element={<ContractsPage />} />
+            <Route path="/invoices" element={<InvoicesPage />} />
           </Route>
         </Route>
 
