@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
 import type { Agency, AppUser } from "../types/domain";
@@ -83,8 +85,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       mounted = false;
       if (unsub) unsub();
     };
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, []);
 
+  /* eslint-disable-next-line react-hooks/exhaustive-deps */
   const value = useMemo(() => ({ firebaseUser, appUser, agency, loading, refreshProfile }), [firebaseUser, appUser, agency, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

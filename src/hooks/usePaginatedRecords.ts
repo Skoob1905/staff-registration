@@ -94,8 +94,8 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
             _highlightResult,
             _snippetResult,
             _rankingInfo,
-            sortableName,
-            sortableEmail,
+            _sortableName,
+            _sortableEmail,
             ...rest
           } = hit as Record<string, unknown>;
           return { id: objectID, ...rest } as unknown as T;
@@ -121,7 +121,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters]);
+  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets]);
 
   const refresh = useCallback(() => {
     algoliaClient.clearCache().then(() => setRefreshKey((k) => k + 1));

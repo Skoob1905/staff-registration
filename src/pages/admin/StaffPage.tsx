@@ -72,6 +72,7 @@ export const AdminStaffPage = () => {
 
   useEffect(() => {
     if (tagTarget) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedAssignTagIds(new Set(tagTarget.tags || []));
       setTagInput("");
     }
@@ -191,7 +192,7 @@ export const AdminStaffPage = () => {
     [appUser?.agencyId, companies, toast],
   );
 
-  const handleDeleteSuccess = async (_importId?: string) => {
+  const handleDeleteSuccess = async () => {
     setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
   };
 

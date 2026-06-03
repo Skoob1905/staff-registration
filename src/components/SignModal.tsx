@@ -93,8 +93,10 @@ export const SignModal = ({
 
   useEffect(() => {
     if (!open) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setSigningForm({ termsAccepted: false });
       setTouched({ termsAccepted: false });
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open]);
 

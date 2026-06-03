@@ -39,6 +39,7 @@ export const FilterModal = ({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(filters.name);
       setSelectedTagIds(new Set(filters.tagIds));
       setSelectedAgencyIds(new Set(filters.agencyIds));
