@@ -23,7 +23,7 @@ export const UserHomePage = () => {
   }, [appUser]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto space-y-4">
       {/* <Card>
         <div className="flex items-center gap-2">
           <h2 className="text-base sm:text-lg font-bold">To Do</h2>

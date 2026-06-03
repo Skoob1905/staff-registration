@@ -23,12 +23,12 @@ export const AccordionItem = ({
 }) => (
   <Accordion.Item
     value={value}
-    className={`border-b border-[var(--border)] last:border-b-0${className ? ` ${className}` : ""}`}
+    className={`border-b border-[var(--border)] data-[state=open]:min-[1500px]:col-span-2${className ? ` ${className}` : ""}`}
     style={style}
   >
     <Accordion.Header className="group/header flex items-center">
-      <Accordion.Trigger className="flex flex-1 items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
-        <span className="flex-1 min-w-0">{title}</span>
+      <Accordion.Trigger className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
+        <span className="min-w-0 flex-1">{title}</span>
         {actions && (
           <div
             className="flex shrink-0 items-center gap-2"

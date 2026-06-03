@@ -114,8 +114,8 @@ export const PaginatedFilterSection = <T,>({
           </Muted>
         ) : (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-              <AccordionRoot type="multiple">
+            <div className="flex flex-col min-[1500px]:grid min-[1500px]:grid-cols-2 gap-x-3">
+              <AccordionRoot type="multiple" className="contents">
                 {items.map((item, idx) => renderItem(item, idx))}
               </AccordionRoot>
             </div>

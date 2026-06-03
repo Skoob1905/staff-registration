@@ -67,8 +67,8 @@ export const PaginationBar = ({
   if (totalCount === 0 && !loading) return null;
 
   return (
-    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-1">
+    <div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:items-center">
+      <div className="flex items-center gap-1 sm:col-start-2 sm:justify-self-center">
         <button
           type="button"
           onClick={onPrev}
@@ -137,7 +137,7 @@ export const PaginationBar = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 sm:col-start-3 sm:row-start-1 sm:justify-self-end">
         <Caption as="span">
           {startItem}–{endItem} of {totalCount}
         </Caption>

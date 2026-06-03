@@ -201,7 +201,7 @@ export const AdminStaffPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto space-y-4">
       <StaffListSection
         view="admin"
         action={
@@ -350,7 +350,7 @@ export const AdminStaffPage = () => {
                 )
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([key, value]) => (
-                  <p key={key} className="truncate break-inside-avoid">
+                  <p key={key} className="break-inside-avoid">
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>

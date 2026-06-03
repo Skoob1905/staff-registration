@@ -153,7 +153,7 @@ export const StaffListSection = ({
                     ? formatInvitedAt(value)
                     : String(value ?? "");
                 return (
-                  <p key={key} className="truncate break-inside-avoid">
+                  <p key={key} className="break-inside-avoid">
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>
