@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
 import { logoutUser } from "../../services/authService";
 import { useAuth } from "../../context/AuthProvider";
+import { GlobalBanner } from "../../layouts/GlobalBanner";
 import { Button } from ".";
 import { config } from "../../config";
 
@@ -62,6 +63,7 @@ export const Navbar = () => {
       className="sticky top-0 z-20 border-b border-[var(--border)] backdrop-blur"
       style={{ backgroundColor: "var(--header-bg)" }}
     >
+      <GlobalBanner />
       <div className="mx-auto max-w-6xl px-4 py-3">
         <div className="flex flex-wrap items-center justify-between sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-x-6">
           <a

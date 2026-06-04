@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { AdminLayout } from "../layouts/AdminLayout";
-import { GlobalBanner } from "../layouts/GlobalBanner";
 import { LoadingPage } from "../components/LoadingPage";
 import { LoginPage } from "../pages/LoginPage";
 import { AdminPage } from "../pages/admin/AdminPage";
@@ -49,7 +48,6 @@ const ProfileSwitch = () => {
 
 export const AppRouter = () => (
   <>
-    <GlobalBanner />
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
 
