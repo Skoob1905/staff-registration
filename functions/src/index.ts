@@ -1913,3 +1913,23 @@ export const backfillAlgoliaIndices = onCall(
     };
   },
 );
+
+export const getMaintenanceWindow = onCall(async () => {
+  const db = getFirestore();
+  const snap = await db.collection("maintenance").doc("config").get();
+
+  if (!snap.exists) {
+    return { show: false };
+  }
+
+  const data = snap.data();
+  if (!data?.show) {
+    return { show: false };
+  }
+
+  return {
+    show: true,
+    start: data.start?.toMillis() ?? null,
+    end: data.end?.toMillis() ?? null,
+  };
+});

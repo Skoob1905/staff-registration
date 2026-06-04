@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { AdminLayout } from "../layouts/AdminLayout";
+import { GlobalBanner } from "../layouts/GlobalBanner";
 import { LoadingPage } from "../components/LoadingPage";
 import { LoginPage } from "../pages/LoginPage";
 import { AdminPage } from "../pages/admin/AdminPage";
@@ -47,28 +48,31 @@ const ProfileSwitch = () => {
 };
 
 export const AppRouter = () => (
-  <Routes>
-    <Route path="/login" element={<LoginRedirect />} />
+  <>
+    <GlobalBanner />
+    <Routes>
+      <Route path="/login" element={<LoginRedirect />} />
 
-    <Route element={<RoleGuard role="authenticated" />}>
-      <Route element={<AppLayout />}>
-        <Route path="/staff" element={<StaffPageSwitch />} />
-        <Route path="/profile" element={<ProfileSwitch />} />
+      <Route element={<RoleGuard role="authenticated" />}>
+        <Route element={<AppLayout />}>
+          <Route path="/staff" element={<StaffPageSwitch />} />
+          <Route path="/profile" element={<ProfileSwitch />} />
 
-        <Route element={<RoleGuard role="admin" />}>
-          <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/clients" element={<AdminClientsPage />} />
-            <Route path="/timesheets" element={<TimeSheetsPage />} />
-            <Route path="/payslips" element={<PayslipsPage />} />
-            <Route path="/contracts" element={<ContractsPage />} />
-            <Route path="/invoices" element={<InvoicesPage />} />
+          <Route element={<RoleGuard role="admin" />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/clients" element={<AdminClientsPage />} />
+              <Route path="/timesheets" element={<TimeSheetsPage />} />
+              <Route path="/payslips" element={<PayslipsPage />} />
+              <Route path="/contracts" element={<ContractsPage />} />
+              <Route path="/invoices" element={<InvoicesPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="/" element={<AppEntryRedirect />} />
-        <Route path="*" element={<AppEntryRedirect />} />
+          <Route path="/" element={<AppEntryRedirect />} />
+          <Route path="*" element={<AppEntryRedirect />} />
+        </Route>
       </Route>
-    </Route>
-  </Routes>
+    </Routes>
+  </>
 );

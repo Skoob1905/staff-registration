@@ -4,9 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 import fs from "node:fs";
 import pkg from "./package.json";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(
+      mode === "production" ? pkg.version : `${pkg.version}-preview`,
+    ),
   },
   plugins: [react(), tailwindcss()],
   test: {
