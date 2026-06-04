@@ -7,30 +7,30 @@
 | Event | Branch | Action |
 |---|---|---|
 | `pull_request` | any | CI only (lint, test, build) |
-| `push` | `dev` | CI + deploy to **dev** project |
-| `push` | `main` | CI + deploy to **prod** project |
+| `push` | any branch except `main` | CI + deploy changed **Cloud Functions** to **dev** |
+| `push` | `main` | CI + deploy changed **Cloud Functions** to **prod** |
 
-These pushes deploy to Firebase Hosting/Firestore/Functions, not Vercel.
+These pushes do not deploy Firebase Hosting. Vercel deploys are separate and manual.
 
 ### Jobs
 
-**`ci`** — runs on every PR and every push to `dev` or `main`:
+**`ci`** — runs on every PR and every push:
 - `npm ci`
 - `npm run lint`
 - `npm run test`
 - `npm run build`
 
-**`deploy`** — runs after `ci` only on push to `dev` or `main`:
+**`deploy`** — runs after `ci` on every push:
 - Authenticates to GCP via Workload Identity (service account JSON key stored in GitHub secrets)
-- Builds client with the appropriate Vite mode (`development` for dev, `production` for prod)
-- Runs `firebase deploy` with the corresponding project alias (`dev` or `prod`)
+- Detects whether anything changed under `functions/`
+- Runs `firebase deploy --only functions` with the corresponding project alias (`dev` or `prod`) only when functions changed
 
 ### Deploy targets
 
-| Target | Firebase project | Hosting URL | Branch trigger |
+| Target | Firebase project | What gets deployed | Branch trigger |
 |---|---|---|---|
-| Production | `handysign-ab77f` | `https://handysign-ab77f.web.app` | `main` |
-| Development | `handysign-dev` | `https://handysign-dev.web.app` | `dev` |
+| Production | `prod` | Cloud Functions only | `main` |
+| Development | `dev` | Cloud Functions only | any branch except `main` |
 
 ### GitHub secrets required
 
