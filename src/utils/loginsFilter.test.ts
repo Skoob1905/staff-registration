@@ -23,7 +23,8 @@ describe("buildFacetFilters", () => {
       tagIds: ["t1", "t2"],
     };
     expect(buildFacetFilters(filters, staffKeyMap)).toEqual([
-      ["tags:t1", "tags:t2"],
+      ["tags:t1"],
+      ["tags:t2"],
     ]);
   });
 
@@ -51,7 +52,7 @@ describe("buildFacetFilters", () => {
     ]);
   });
 
-  it("combines tag and agency filters into separate OR groups", () => {
+  it("combines tag (AND) and agency (OR) filters into separate groups", () => {
     const filters = {
       name: "",
       typeIds: [],

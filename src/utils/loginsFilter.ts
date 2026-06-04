@@ -5,8 +5,8 @@ export function buildFacetFilters(
   keyMap: FilterKeyMap,
 ): string[][] {
   const ffs: string[][] = [];
-  if (filters.tagIds.length > 0) {
-    ffs.push(filters.tagIds.map((id) => `${keyMap.tag}:${id}`));
+  for (const id of filters.tagIds) {
+    ffs.push([`${keyMap.tag}:${id}`]);
   }
   if (filters.agencyIds.length > 0) {
     ffs.push(filters.agencyIds.map((id) => `${keyMap.agency}:${id}`));
