@@ -118,11 +118,9 @@ export const PaginatedFilterSection = <T,>({
           </Muted>
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-col min-[1500px]:grid min-[1500px]:grid-cols-2 gap-x-3">
-              <AccordionRoot type="single" collapsible className="contents">
-                {items.map((item, idx) => renderItem(item, idx))}
-              </AccordionRoot>
-            </div>
+            <AccordionRoot type="single" collapsible className="flex flex-col min-[1500px]:flex-row min-[1500px]:flex-wrap min-[1500px]:items-start min-[1500px]:gap-x-3 min-[1500px]:[&>*]:w-[calc(50%-6px)]">
+              {items.map((item, idx) => renderItem(item, idx))}
+            </AccordionRoot>
             <PaginationBar
               currentPage={page + 1}
               totalPages={totalPages}
