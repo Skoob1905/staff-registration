@@ -107,9 +107,9 @@ body {
 }
 
 .animate-accordion-down {
-  animation: accordion-down 200ms ease-out;
+  animation: accordion-down 200ms ease-out forwards;
 }
 
 .animate-accordion-up {
-  animation: accordion-up 200ms ease-out;
+  animation: accordion-up 200ms ease-out forwards;
 }
