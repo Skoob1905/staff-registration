@@ -35,8 +35,8 @@ export const GlobalBanner = () => {
     const start = maintenance.start ? fmt(maintenance.start) : "—";
     const end = maintenance.end ? fmt(maintenance.end) : "—";
     return (
-      <div className="flex items-center justify-center gap-2 border-b border-[var(--primary)]/20 bg-[var(--primary)]/80 px-4 py-1 text-center text-xs font-semibold text-[var(--primary-foreground)]/80">
-        <Wrench className="size-3.5 shrink-0" />
+      <div className="flex items-center justify-center gap-2 border-b border-[var(--primary)]/20 bg-[var(--primary)]/80 px-4 py-2 text-center text-sm font-bold text-[var(--primary-foreground)]/80">
+        <Wrench className="size-4 shrink-0" />
         <span>Scheduled maintenance: {start} – {end}</span>
       </div>
     );
@@ -44,8 +44,8 @@ export const GlobalBanner = () => {
 
   if (isPreview) {
     return (
-      <div className="flex items-center justify-center gap-2 border-b border-[var(--primary)]/20 bg-[var(--primary)]/80 px-4 py-1 text-center text-xs font-semibold text-[var(--primary-foreground)]/80">
-        <Search className="size-3.5 shrink-0" />
+      <div className="flex items-center justify-center gap-2 border-b border-[var(--primary)]/20 bg-[var(--primary)]/80 px-4 py-2 text-center text-sm font-bold text-[var(--primary-foreground)]/80">
+        <Search className="size-4 shrink-0" />
         <span>You're viewing v{__APP_VERSION__}-preview</span>
       </div>
     );
