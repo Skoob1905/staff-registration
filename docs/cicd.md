@@ -6,7 +6,6 @@
 
 | Event | Branch | Action |
 |---|---|---|
-| `pull_request` | any | CI only (lint, test, build) |
 | `push` | any branch except `main` | CI + deploy changed **Cloud Functions** to **dev** |
 | `push` | `main` | CI + deploy changed **Cloud Functions** to **prod** |
 
@@ -14,7 +13,7 @@ These pushes do not deploy Firebase Hosting. Vercel deploys are separate and man
 
 ### Jobs
 
-**`ci`** — runs on every PR and every push:
+**`ci`** — runs on every push:
 - `npm ci`
 - `npm run lint`
 - `npm run test`
