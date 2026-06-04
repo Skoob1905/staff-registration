@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useCallback, useState } from "react";
 import { searchClient } from "@algolia/client-search";
+import { useToast } from "../context/ToastProvider";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 
@@ -44,6 +45,9 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   hitsPerPage = 50,
   facets,
 }: UsePaginatedRecordsParams) {
+
+  const { toast } = useToast()
+
   const [state, dispatch] = useReducer(
     (prev: State<T>, action: Action<T>): State<T> => {
       switch (action.type) {
@@ -66,7 +70,14 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!agencyId) return;
+    if (!agencyId) {
+      toast({
+        title: "Can't fetch records",
+        description: "User doesn't have a agencyId",
+        variant: "error",
+      })
+      return
+    }
 
     let cancelled = false;
     dispatch({ type: "loading" });

@@ -10,6 +10,8 @@
 | `push` | `dev` | CI + deploy to **dev** project |
 | `push` | `main` | CI + deploy to **prod** project |
 
+These pushes deploy to Firebase Hosting/Firestore/Functions, not Vercel.
+
 ### Jobs
 
 **`ci`** — runs on every PR and every push to `dev` or `main`:
@@ -36,6 +38,25 @@
 |---|---|
 | `GCP_SA_KEY_PROD` | JSON key for the service account with Firebase Admin role on the prod project |
 | `GCP_SA_KEY_DEV` | JSON key for the service account with Firebase Admin role on the dev project |
+
+## Vercel deployment control
+
+Automatic Vercel Git deployments are disabled in `vercel.json`, so pushes no longer consume Vercel deployment credits by default.
+
+Use the manual workflow in `.github/workflows/vercel-manual.yml` whenever you want a Vercel deploy:
+
+1. Open the **Actions** tab in GitHub
+2. Select **Vercel Manual Deploy**
+3. Choose `preview` or `production`
+4. Run the workflow from the branch you want to deploy
+
+### Vercel secrets required
+
+| Secret name | Description |
+|---|---|
+| `VERCEL_TOKEN` | Vercel personal/team token used by the CLI |
+| `VERCEL_ORG_ID` | Vercel team or personal account ID |
+| `VERCEL_PROJECT_ID` | Vercel project ID for this app |
 
 ### Env files
 
