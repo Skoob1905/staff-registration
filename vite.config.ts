@@ -4,11 +4,15 @@ import tailwindcss from "@tailwindcss/vite";
 import fs from "node:fs";
 import pkg from "./package.json";
 
-export default defineConfig(({ mode }) => ({
+const ALGOLIA_INDEX_PREFIX = process.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+const APP_VERSION =
+  ALGOLIA_INDEX_PREFIX === "dev_"
+    ? `${pkg.version}-preview`
+    : pkg.version;
+
+export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(
-      mode === "production" ? pkg.version : `${pkg.version}-preview`,
-    ),
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
   plugins: [react(), tailwindcss()],
   test: {

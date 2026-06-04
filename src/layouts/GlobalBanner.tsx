@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Search, Wrench } from "lucide-react";
 import { functions } from "../services/firebase";
-import type { ReactNode } from "react";
 
 declare const __APP_VERSION__: string;
 
@@ -14,12 +13,7 @@ interface MaintenanceWindow {
   end?: number | null;
 }
 
-interface GlobalBannerProps {
-  icon?: ReactNode;
-  children?: ReactNode;
-}
-
-export const GlobalBanner = ({ icon, children }: GlobalBannerProps) => {
+export const GlobalBanner = () => {
   const [maintenance, setMaintenance] = useState<MaintenanceWindow | null>(null);
 
   useEffect(() => {
@@ -31,15 +25,6 @@ export const GlobalBanner = ({ icon, children }: GlobalBannerProps) => {
 
   const isPreview = ALGOLIA_INDEX_PREFIX === "dev_";
   const showMaintenance = maintenance?.show;
-
-  if (children) {
-    return (
-      <div className="flex items-center justify-center gap-2 border-b border-[var(--primary)]/20 bg-[var(--primary)]/80 px-4 py-1 text-center text-xs font-semibold text-[var(--primary-foreground)]/80">
-        {icon && <span className="shrink-0">{icon}</span>}
-        <span>{children}</span>
-      </div>
-    );
-  }
 
   if (showMaintenance) {
     const fmt = (ms: number) =>
