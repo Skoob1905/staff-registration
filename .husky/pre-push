@@ -5,5 +5,5 @@ if git diff --name-only "$(git merge-base HEAD @{upstream})" HEAD -- functions/ 
   echo "→ Functions changed, running checks..."
   cd functions && npm run lint && npm run build && cd ..
   echo "→ Deploying functions..."
-  npx firebase deploy --only functions --project dev
+  npx firebase deploy --only functions --project dev || echo "⚠ Deploy failed, but push continues"
 fi
