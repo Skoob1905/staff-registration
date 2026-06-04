@@ -77,6 +77,8 @@ export const PaginatedFilterSection = <T,>({
   const hasAnyFilter =
     enableNameFilter || enableTagFilter || enableAgencyFilter;
 
+  const mid = useMemo(() => Math.ceil(items.length / 2), [items.length]);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (enableNameFilter && filters.name.length >= 3) count++;
@@ -118,9 +120,18 @@ export const PaginatedFilterSection = <T,>({
           </Muted>
         ) : (
           <div className="space-y-4">
-            <AccordionRoot type="single" collapsible className="flex flex-col min-[1500px]:flex-row min-[1500px]:flex-wrap min-[1500px]:items-start min-[1500px]:gap-x-3 min-[1500px]:[&>*]:w-[calc(50%-6px)]">
-              {items.map((item, idx) => renderItem(item, idx))}
-            </AccordionRoot>
+            <div className="flex flex-col min-[1500px]:flex-row min-[1500px]:gap-x-3">
+              <div className="flex-1">
+                <AccordionRoot type="single" collapsible>
+                  {items.slice(0, mid).map((item, idx) => renderItem(item, idx))}
+                </AccordionRoot>
+              </div>
+              <div className="flex-1">
+                <AccordionRoot type="single" collapsible>
+                  {items.slice(mid).map((item, idx) => renderItem(item, mid + idx))}
+                </AccordionRoot>
+              </div>
+            </div>
             <PaginationBar
               currentPage={page + 1}
               totalPages={totalPages}

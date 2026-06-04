@@ -23,7 +23,7 @@ export const AccordionItem = ({
 }) => (
   <Accordion.Item
     value={value}
-    className={`border-b border-[var(--border)] data-[state=open]:min-[1500px]:col-span-2${className ? ` ${className}` : ""}`}
+    className={`border-b border-[var(--border)]${className ? ` ${className}` : ""}`}
     style={style}
   >
     <Accordion.Header className="group/header flex items-center">
