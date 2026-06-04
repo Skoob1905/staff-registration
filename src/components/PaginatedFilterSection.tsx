@@ -5,7 +5,7 @@ import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
 import { Section } from "./Section";
 import { Muted } from "../config/typography";
-import type { Agency, StaffFilters } from "../types/domain";
+import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
 
 interface PaginatedFilterSectionProps<T> {
   title: string;
@@ -26,6 +26,7 @@ interface PaginatedFilterSectionProps<T> {
   filters: StaffFilters;
   onFiltersChange: (filters: StaffFilters) => void;
 
+  filterKeys?: FilterKeyMap;
   enableNameFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
@@ -33,6 +34,7 @@ interface PaginatedFilterSectionProps<T> {
   tags?: Record<string, string>;
   tagCounts?: Record<string, number>;
   agencies?: Agency[];
+  agencyCounts?: Record<string, number>;
 
   emptyMessage?: string;
   noMatchMessage?: string;
@@ -57,6 +59,7 @@ export const PaginatedFilterSection = <T,>({
   filters,
   onFiltersChange,
 
+  filterKeys,
   enableNameFilter = true,
   enableTagFilter = true,
   enableAgencyFilter = false,
@@ -64,6 +67,7 @@ export const PaginatedFilterSection = <T,>({
   tags,
   tagCounts,
   agencies,
+  agencyCounts,
 
   emptyMessage,
   noMatchMessage = "Oops there are no records with that filter",
@@ -137,7 +141,9 @@ export const PaginatedFilterSection = <T,>({
       <FilterModal
         open={showFilterModal}
         onOpenChange={setShowFilterModal}
+        filterKeys={filterKeys}
         agencies={agencies}
+        agencyCounts={agencyCounts}
         filters={filters}
         onApply={onFiltersChange}
         tags={tags}

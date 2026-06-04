@@ -103,7 +103,7 @@ export const AdminClientsPage = () => {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto space-y-4">
       <PaginatedFilterSection
         title="Clients"
         items={clients}
@@ -153,6 +153,7 @@ export const AdminClientsPage = () => {
         filters={clientFilters}
         onFiltersChange={setClientFilters}
         enableNameFilter
+        enableTagFilter={false}
       />
 
       <ImportHistory

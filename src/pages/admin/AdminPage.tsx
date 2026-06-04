@@ -20,7 +20,8 @@ import { getCompanyName } from "../../utils/company";
 import { Muted } from "../../config/typography";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { emptyFilters, type Agency, type StaffFilters } from "../../types/domain";
+import { buildFacetFilters, buildFacetRequestFields } from "../../utils/loginsFilter";
+import { emptyFilters, type Agency, type FilterKeyMap, type StaffFilters } from "../../types/domain";
 
 export const AdminPage = () => {
   useEffect(() => {
@@ -75,19 +76,27 @@ export const AdminPage = () => {
   const [loginsPage, setLoginsPage] = useState(0);
   const [loginsPageSize, setLoginsPageSize] = useState(50);
 
-  const loginsFacetFilters = useMemo(() => {
-    const ffs: string[][] = [];
-    if (loginsFilters.agencyIds.length > 0) {
-      ffs.push(loginsFilters.agencyIds.map((id) => `assignedTo:${id}`));
-    }
-    return ffs;
-  }, [loginsFilters.agencyIds]);
+  const loginsKeyMap = useMemo<FilterKeyMap>(
+    () => ({ tag: "tags", agency: "assignedTo" }),
+    [],
+  );
+
+  const loginsFacetFilters = useMemo(
+    () => buildFacetFilters(loginsFilters, loginsKeyMap),
+    [loginsFilters, loginsKeyMap],
+  );
+
+  const loginsFacets = useMemo(
+    () => buildFacetRequestFields(loginsKeyMap),
+    [loginsKeyMap],
+  );
 
   const {
     items: logins,
     loading: loginsLoading,
     totalPages: loginsTotalPages,
     totalResults: loginsTotalResults,
+    facetCounts: loginsFacetCounts,
     refresh: refreshLogins,
   } = usePaginatedRecords({
     indexName: "logins_email_desc",
@@ -96,7 +105,14 @@ export const AdminPage = () => {
     query: loginsFilters.name,
     page: loginsPage,
     hitsPerPage: loginsPageSize,
+    facets: loginsFacets,
   });
+
+  const loginsAgencyCounts = loginsFacetCounts?.assignedTo;
+  const filteredLoginsAgencies = useMemo(() => {
+    if (!loginsAgencyCounts) return companies;
+    return companies.filter((a) => (loginsAgencyCounts[a.id as string] ?? 0) > 0);
+  }, [loginsAgencyCounts, companies]);
 
   const fetchMissingCompanies = useCallback(async () => {
     if (!appUser?.agencyId) return;
@@ -246,10 +262,13 @@ export const AdminPage = () => {
           setLoginsPageSize(s);
           setLoginsPage(0);
         }}
+        filterKeys={loginsKeyMap}
         filters={loginsFilters}
         onFiltersChange={setLoginsFilters}
         enableAgencyFilter
-        agencies={companies as unknown as Agency[]}
+        enableTagFilter={false}
+        agencies={filteredLoginsAgencies as unknown as Agency[]}
+        agencyCounts={loginsAgencyCounts}
         emptyMessage="No users created yet."
         action={
           <Button

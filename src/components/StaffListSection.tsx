@@ -14,7 +14,8 @@ import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { getStaffName } from "../utils/keyHeaderNormalisation";
-import type { Agency, BulkStaff, StaffFilters } from "../types/domain";
+import { buildFacetFilters, buildFacetRequestFields } from "../utils/loginsFilter";
+import type { Agency, BulkStaff, FilterKeyMap, StaffFilters } from "../types/domain";
 
 interface StaffListSectionProps {
   view: "admin" | "client";
@@ -41,7 +42,10 @@ export const StaffListSection = ({
   const [pageSize, setPageSize] = useState(50);
   const isClient = view === "client";
   const assignedToId = targetAgencyId || appUser?.agencyId || "";
-  const facets = useMemo<string[]>(() => ["tags", "metadata.assignedToId"], []);
+  const staffKeyMap = useMemo<FilterKeyMap>(
+    () => ({ tag: "tags", agency: "metadata.assignedToId" }),
+    [],
+  );
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -52,15 +56,17 @@ export const StaffListSection = ({
   }, [tags]);
 
   const staffFacetFilters = useMemo(() => {
-    const ffs: string[][] = [];
+    const ffs = buildFacetFilters(filters, staffKeyMap);
     if (isClient && assignedToId) {
-      ffs.push([`metadata.assignedToId:${assignedToId}`]);
-    }
-    if (filters.tagIds.length > 0) {
-      ffs.push(filters.tagIds.map((id) => `tags:${id}`));
+      ffs.push([`${staffKeyMap.agency}:${assignedToId}`]);
     }
     return ffs;
-  }, [isClient, assignedToId, filters.tagIds]);
+  }, [isClient, assignedToId, filters, staffKeyMap]);
+
+  const facets = useMemo(
+    () => buildFacetRequestFields(staffKeyMap),
+    [staffKeyMap],
+  );
 
   const { items, loading, refresh, totalPages, totalResults, facetCounts } =
     usePaginatedRecords<BulkStaff>({
@@ -171,6 +177,7 @@ export const StaffListSection = ({
   return (
     <PaginatedFilterSection
       title={isClient ? "Assigned Staff" : "Staff"}
+      filterKeys={staffKeyMap}
       items={items}
       loading={loading}
       page={page}
