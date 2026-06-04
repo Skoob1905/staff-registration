@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider } from "./context/AuthProvider";
 import { ToastProvider } from "./context/ToastProvider";
 import { AppRouter } from "./router/AppRouter";
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <ToastProvider>
         <AuthProvider>
           <AppRouter />
+          <Analytics />
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
