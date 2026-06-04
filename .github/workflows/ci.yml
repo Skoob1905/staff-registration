@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -43,10 +45,23 @@ jobs:
             npm run build
           fi
 
-      - name: Deploy to Firebase
+      - name: Deploy hosting + firestore
         run: |
           PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-          npx firebase-tools deploy --project $PROJECT
+          npx firebase-tools deploy --only hosting,firestore --project $PROJECT
+
+      - name: Check for functions changes
+        id: check-functions
+        run: |
+          if git diff --name-only "${{ github.event.before }}" HEAD -- functions/ | grep -q . 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy functions (conditional)
+        if: steps.check-functions.outputs.changed == 'true'
+        run: |
+          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          npx firebase-tools deploy --only functions --project $PROJECT
 
       - name: Output deployment URL
         run: |
