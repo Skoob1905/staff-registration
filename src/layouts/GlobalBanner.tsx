@@ -23,7 +23,7 @@ export const GlobalBanner = () => {
       .catch(() => setMaintenance({ show: false }));
   }, []);
 
-  const isPreview = ALGOLIA_INDEX_PREFIX === "dev_";
+  const isPreview = ALGOLIA_INDEX_PREFIX === "dev_" 
   const showMaintenance = maintenance?.show;
 
   if (showMaintenance) {
@@ -46,7 +46,7 @@ export const GlobalBanner = () => {
     return (
       <div className="flex items-center justify-center gap-2 border-b border-[var(--primary)]/20 bg-[var(--primary)]/80 px-4 py-2 text-center text-sm font-bold text-[var(--primary-foreground)]/80">
         <Search className="size-4 shrink-0" />
-        <span>You're viewing v{__APP_VERSION__}-preview</span>
+        <span>You're viewing v{__APP_VERSION__}</span>
       </div>
     );
   }
