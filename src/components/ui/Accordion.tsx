@@ -31,7 +31,7 @@ export const AccordionItem = ({
         <span className="min-w-0 flex-1">{title}</span>
         {actions && (
           <div
-            className="flex shrink-0 items-center gap-2"
+            className="hidden sm:flex shrink-0 items-center gap-2"
             onClick={(e) => e.stopPropagation()}
           >
             {actions}
