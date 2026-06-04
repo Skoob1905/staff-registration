@@ -45,7 +45,7 @@ export const PaginatedSection = <T,>({
     ) : (
       <div className="space-y-4">
         <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-          <AccordionRoot type="multiple">
+          <AccordionRoot type="single" collapsible>
             {items.map((item, idx) => renderItem(item, idx))}
           </AccordionRoot>
         </div>
