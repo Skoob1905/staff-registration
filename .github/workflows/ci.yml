@@ -13,6 +13,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Write env file
+        env:
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+          ENV_DEVELOPMENT: ${{ secrets.ENV_DEVELOPMENT }}
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "$ENV_PRODUCTION" > .env.production
+          else
+            echo "$ENV_DEVELOPMENT" > .env.development
+          fi
       - run: npm run lint
       - run: npm run test
       - run: npm run build
@@ -39,6 +49,17 @@ jobs:
         run: |
           if git diff --name-only "${{ github.event.before }}" HEAD -- functions/ | grep -q . 2>/dev/null; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write functions env file
+        env:
+          FUNCTIONS_ENV_PROD: ${{ secrets.FUNCTIONS_ENV_PROD }}
+          FUNCTIONS_ENV_DEV: ${{ secrets.FUNCTIONS_ENV_DEV }}
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "$FUNCTIONS_ENV_PROD" > functions/.env.prod
+          else
+            echo "$FUNCTIONS_ENV_DEV" > functions/.env.dev
           fi
 
       - name: Deploy functions (conditional)
