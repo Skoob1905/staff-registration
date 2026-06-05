@@ -6,29 +6,30 @@
 
 | Event | Branch | Action |
 |---|---|---|
-| `pull_request` | any | CI only (lint, test, build) |
-| `push` | `dev` | CI + deploy to **dev** project |
-| `push` | `main` | CI + deploy to **prod** project |
+| `push` | any branch except `main` | CI + deploy changed **Cloud Functions** to **dev** |
+| `push` | `main` | CI + deploy changed **Cloud Functions** to **prod** |
+
+These pushes do not deploy Firebase Hosting. Vercel deploys are separate and manual.
 
 ### Jobs
 
-**`ci`** — runs on every PR and every push to `dev` or `main`:
+**`ci`** — runs on every push:
 - `npm ci`
 - `npm run lint`
 - `npm run test`
 - `npm run build`
 
-**`deploy`** — runs after `ci` only on push to `dev` or `main`:
+**`deploy`** — runs after `ci` on every push:
 - Authenticates to GCP via Workload Identity (service account JSON key stored in GitHub secrets)
-- Builds client with the appropriate Vite mode (`development` for dev, `production` for prod)
-- Runs `firebase deploy` with the corresponding project alias (`dev` or `prod`)
+- Detects whether anything changed under `functions/`
+- Runs `firebase deploy --only functions` with the corresponding project alias (`dev` or `prod`) only when functions changed
 
 ### Deploy targets
 
-| Target | Firebase project | Hosting URL | Branch trigger |
+| Target | Firebase project | What gets deployed | Branch trigger |
 |---|---|---|---|
-| Production | `handysign-ab77f` | `https://handysign-ab77f.web.app` | `main` |
-| Development | `handysign-dev` | `https://handysign-dev.web.app` | `dev` |
+| Production | `prod` | Cloud Functions only | `main` |
+| Development | `dev` | Cloud Functions only | any branch except `main` |
 
 ### GitHub secrets required
 
@@ -36,6 +37,25 @@
 |---|---|
 | `GCP_SA_KEY_PROD` | JSON key for the service account with Firebase Admin role on the prod project |
 | `GCP_SA_KEY_DEV` | JSON key for the service account with Firebase Admin role on the dev project |
+
+## Vercel deployment control
+
+Automatic Vercel Git deployments are disabled in `vercel.json`, so pushes no longer consume Vercel deployment credits by default.
+
+Use the manual workflow in `.github/workflows/vercel-manual.yml` whenever you want a Vercel deploy:
+
+1. Open the **Actions** tab in GitHub
+2. Select **Vercel Manual Deploy**
+3. Choose `preview` or `production`
+4. Run the workflow from the branch you want to deploy
+
+### Vercel secrets required
+
+| Secret name | Description |
+|---|---|
+| `VERCEL_TOKEN` | Vercel personal/team token used by the CLI |
+| `VERCEL_ORG_ID` | Vercel team or personal account ID |
+| `VERCEL_PROJECT_ID` | Vercel project ID for this app |
 
 ### Env files
 

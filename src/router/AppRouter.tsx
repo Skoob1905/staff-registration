@@ -8,6 +8,10 @@ import { AdminPage } from "../pages/admin/AdminPage";
 import { AdminClientsPage } from "../pages/admin/ClientsPage";
 import { AdminStaffPage } from "../pages/admin/StaffPage";
 import { UserHomePage } from "../pages/clients/HomePage";
+// import { TimeSheetsPage } from "../pages/clients/TimeSheetsPage";
+// import { PayslipsPage } from "../pages/clients/PayslipsPage";
+// import { ContractsPage } from "../pages/clients/ContractsPage";
+// import { InvoicesPage } from "../pages/clients/InvoicesPage";
 import { ProfilePage } from "../pages/clients/ProfilePage";
 import { RoleGuard } from "./RoleGuard";
 
@@ -43,24 +47,30 @@ const ProfileSwitch = () => {
 };
 
 export const AppRouter = () => (
-  <Routes>
-    <Route path="/login" element={<LoginRedirect />} />
+  <>
+    <Routes>
+      <Route path="/login" element={<LoginRedirect />} />
 
-    <Route element={<RoleGuard role="authenticated" />}>
-      <Route element={<AppLayout />}>
-        <Route path="/staff" element={<StaffPageSwitch />} />
-        <Route path="/profile" element={<ProfileSwitch />} />
+      <Route element={<RoleGuard role="authenticated" />}>
+        <Route element={<AppLayout />}>
+          <Route path="/staff" element={<StaffPageSwitch />} />
+          <Route path="/profile" element={<ProfileSwitch />} />
 
-        <Route element={<RoleGuard role="admin" />}>
-          <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/clients" element={<AdminClientsPage />} />
+          <Route element={<RoleGuard role="admin" />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/clients" element={<AdminClientsPage />} />
+              {/* <Route path="/timesheets" element={<TimeSheetsPage />} /> */}
+              {/* <Route path="/payslips" element={<PayslipsPage />} /> */}
+              {/* <Route path="/contracts" element={<ContractsPage />} /> */}
+              {/* <Route path="/invoices" element={<InvoicesPage />} /> */}
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="/" element={<AppEntryRedirect />} />
-        <Route path="*" element={<AppEntryRedirect />} />
+          <Route path="/" element={<AppEntryRedirect />} />
+          <Route path="*" element={<AppEntryRedirect />} />
+        </Route>
       </Route>
-    </Route>
-  </Routes>
+    </Routes>
+  </>
 );

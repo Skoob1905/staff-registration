@@ -4,9 +4,15 @@ import tailwindcss from "@tailwindcss/vite";
 import fs from "node:fs";
 import pkg from "./package.json";
 
+const ALGOLIA_INDEX_PREFIX = process.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+const APP_VERSION =
+  ALGOLIA_INDEX_PREFIX === "dev_"
+    ? `${pkg.version}-preview`
+    : pkg.version;
+
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
   plugins: [react(), tailwindcss()],
   test: {

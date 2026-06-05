@@ -79,6 +79,11 @@ export interface StaffTag {
   value: string;
 }
 
+export interface FilterKeyMap {
+  tag: string;
+  agency: string;
+}
+
 export interface StaffFilters {
   name: string;
   typeIds: string[];

@@ -1,9 +1,7 @@
 name: CI/CD
 
 on:
-  pull_request:
   push:
-    branches: [dev, main]
 
 jobs:
   ci:
@@ -20,11 +18,12 @@ jobs:
       - run: npm run build
 
   deploy:
-    if: github.ref_name == 'dev' || github.ref_name == 'main'
     needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,20 +34,23 @@ jobs:
         with:
           credentials_json: ${{ github.ref_name == 'main' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
 
-      - name: Build client
+      - name: Check for functions changes
+        id: check-functions
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ]; then
-            npx vite build --mode development
-          else
-            npm run build
+          if git diff --name-only "${{ github.event.before }}" HEAD -- functions/ | grep -q . 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Deploy to Firebase
+      - name: Deploy functions (conditional)
+        if: steps.check-functions.outputs.changed == 'true'
         run: |
           PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-          npx firebase-tools deploy --project $PROJECT
+          npx firebase-tools deploy --only functions --project $PROJECT
 
-      - name: Output deployment URL
+      - name: Output deploy summary
         run: |
-          URL=${{ github.ref_name == 'main' && 'https://handysign-ab77f.web.app' || 'https://handysign-dev.web.app' }}
-          echo "Deployed to: $URL"
+          if [ "${{ steps.check-functions.outputs.changed }}" = "true" ]; then
+            echo "Deployed Cloud Functions to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
+          else
+            echo "No Cloud Functions changes detected; skipping deploy."
+          fi

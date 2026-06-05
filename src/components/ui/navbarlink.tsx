@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
 import { logoutUser } from "../../services/authService";
 import { useAuth } from "../../context/AuthProvider";
+import { GlobalBanner } from "../../layouts/GlobalBanner";
 import { Button } from ".";
 import { config } from "../../config";
 
@@ -41,6 +42,10 @@ export const Navbar = () => {
         STAFF
       </NavbarLink>
       <NavbarLink to="/clients">CLIENTS</NavbarLink>
+      {/* <NavbarLink to="/timesheets">TIMESHEETS</NavbarLink> */}
+      {/* <NavbarLink to="/payslips">PAYSLIPS</NavbarLink> */}
+      {/* <NavbarLink to="/contracts">CONTRACTS</NavbarLink> */}
+      {/* <NavbarLink to="/invoices">INVOICES</NavbarLink> */}
       <NavbarLink to="/admin">USERS</NavbarLink>
       <NavbarLink to="/profile">PROFILE</NavbarLink>
     </>
@@ -58,13 +63,14 @@ export const Navbar = () => {
       className="sticky top-0 z-20 border-b border-[var(--border)] backdrop-blur"
       style={{ backgroundColor: "var(--header-bg)" }}
     >
+      <GlobalBanner />
       <div className="mx-auto max-w-6xl px-4 py-3">
-        <div className="flex flex-wrap items-center sm:grid sm:grid-cols-[1fr_auto_1fr]">
+        <div className="flex flex-wrap items-center justify-between sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-x-6">
           <a
             href={config.homepage}
             target="_blank"
             rel="noopener noreferrer"
-            className="justify-self-start"
+            className="sm:justify-self-start"
           >
             <img
               src={config.navbar}
@@ -72,10 +78,10 @@ export const Navbar = () => {
               className="max-h-5 w-auto shrink-0 object-contain sm:max-h-6 md:max-h-7"
             />
           </a>
-          <nav className="order-last flex basis-full justify-center gap-2 pt-2 sm:order-none sm:basis-auto sm:pt-0">
+          <nav className="order-last flex basis-full flex-wrap justify-center gap-1 pt-2 sm:order-none sm:basis-auto sm:max-w-full sm:pt-0 sm:gap-2">
             {navLinks}
           </nav>
-          <div className="ml-auto flex items-center gap-2 sm:justify-self-end sm:ml-0">
+          <div className="flex items-center gap-2 sm:justify-self-end">
             <Button
               type="button"
               className="rounded-lg"

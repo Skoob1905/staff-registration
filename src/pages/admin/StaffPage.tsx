@@ -201,7 +201,7 @@ export const AdminStaffPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto space-y-4">
       <StaffListSection
         view="admin"
         action={
@@ -231,14 +231,12 @@ export const AdminStaffPage = () => {
             }
             actions={
               <>
-                {member.metadata?.assignedToName && (
-                  <span className="shrink-0 text-xs text-[var(--muted-foreground)] truncate max-w-[200px]">
-                    {member.metadata.assignedToName}
-                  </span>
-                )}
                 {member.metadata?.assignedToName ? (
-                  <span className="hidden sm:inline-flex items-center">
-                    <span className="overflow-hidden w-0 transition-all duration-200 group-hover/header:w-4">
+                  <span className="group inline-flex shrink-0 items-center text-xs text-[var(--muted-foreground)]">
+                    <span className="truncate max-w-[200px] transition-all duration-200 group-hover:mr-1">
+                      {member.metadata.assignedToName}
+                    </span>
+                    <span className="hidden overflow-hidden w-0 transition-all duration-200 group-hover:w-4 sm:inline-flex">
                       <ActionButton
                         variant="delete"
                         size="sm"
@@ -247,7 +245,7 @@ export const AdminStaffPage = () => {
                           e.stopPropagation();
                           setUnassignTarget(member);
                         }}
-                        className="opacity-0 group-hover/header:opacity-100 transition-opacity duration-200"
+                        className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
                       />
                     </span>
                   </span>
@@ -350,7 +348,7 @@ export const AdminStaffPage = () => {
                 )
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([key, value]) => (
-                  <p key={key} className="truncate break-inside-avoid">
+                  <p key={key} className="break-inside-avoid">
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>

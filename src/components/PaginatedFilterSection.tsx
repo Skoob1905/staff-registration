@@ -5,7 +5,7 @@ import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
 import { Section } from "./Section";
 import { Muted } from "../config/typography";
-import type { Agency, StaffFilters } from "../types/domain";
+import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
 
 interface PaginatedFilterSectionProps<T> {
   title: string;
@@ -26,6 +26,7 @@ interface PaginatedFilterSectionProps<T> {
   filters: StaffFilters;
   onFiltersChange: (filters: StaffFilters) => void;
 
+  filterKeys?: FilterKeyMap;
   enableNameFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
@@ -33,6 +34,7 @@ interface PaginatedFilterSectionProps<T> {
   tags?: Record<string, string>;
   tagCounts?: Record<string, number>;
   agencies?: Agency[];
+  agencyCounts?: Record<string, number>;
 
   emptyMessage?: string;
   noMatchMessage?: string;
@@ -57,6 +59,7 @@ export const PaginatedFilterSection = <T,>({
   filters,
   onFiltersChange,
 
+  filterKeys,
   enableNameFilter = true,
   enableTagFilter = true,
   enableAgencyFilter = false,
@@ -64,6 +67,7 @@ export const PaginatedFilterSection = <T,>({
   tags,
   tagCounts,
   agencies,
+  agencyCounts,
 
   emptyMessage,
   noMatchMessage = "Oops there are no records with that filter",
@@ -72,6 +76,8 @@ export const PaginatedFilterSection = <T,>({
 
   const hasAnyFilter =
     enableNameFilter || enableTagFilter || enableAgencyFilter;
+
+  const mid = useMemo(() => Math.ceil(items.length / 2), [items.length]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -114,10 +120,17 @@ export const PaginatedFilterSection = <T,>({
           </Muted>
         ) : (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-              <AccordionRoot type="multiple">
-                {items.map((item, idx) => renderItem(item, idx))}
-              </AccordionRoot>
+            <div className="flex flex-col min-[1500px]:flex-row min-[1500px]:gap-x-3">
+              <div className="flex-1">
+                <AccordionRoot type="single" collapsible>
+                  {items.slice(0, mid).map((item, idx) => renderItem(item, idx))}
+                </AccordionRoot>
+              </div>
+              <div className="flex-1">
+                <AccordionRoot type="single" collapsible>
+                  {items.slice(mid).map((item, idx) => renderItem(item, mid + idx))}
+                </AccordionRoot>
+              </div>
             </div>
             <PaginationBar
               currentPage={page + 1}
@@ -137,7 +150,9 @@ export const PaginatedFilterSection = <T,>({
       <FilterModal
         open={showFilterModal}
         onOpenChange={setShowFilterModal}
+        filterKeys={filterKeys}
         agencies={agencies}
+        agencyCounts={agencyCounts}
         filters={filters}
         onApply={onFiltersChange}
         tags={tags}

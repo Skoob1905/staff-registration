@@ -19,3 +19,25 @@ The fields `objectID`, `_highlightResult`, `_snippetResult`, and `_rankingInfo` 
 
 ### csv_imports
 A Firestore collection tracking each import operation. Contains `agencyId`, `type` (staff/agency), `fileName`, `recordCount`, `totalRecords`, and timestamps.
+
+### FilterKeyMap
+A configuration object passed to `PaginatedFilterSection` that maps each filter dimension (tag, agency) to the corresponding Algolia field name for that index. Decouples the generic filter UI from index-specific schemas.
+
+```
+staff  index: { tag: "tags",              agency: "metadata.assignedToId" }
+logins index: { tag: "tags",              agency: "assignedTo" }
+```
+
+### Filter field names by index
+
+| Index | Tag field | Agency/client field |
+|---|---|---|
+| `staff_name_desc` | `tags` | `metadata.assignedToId` |
+| `logins_email_desc` | `tags` | `assignedTo` |
+| `clients_name_desc` | — | `metadata.uploadedBy` |
+
+### buildFacetFilters
+Pure utility (`src/utils/loginsFilter.ts`) that takes `StaffFilters` + `FilterKeyMap` and returns the `string[][]` facet filter array for Algolia. Each filter dimension becomes a separate OR-group (inner array), and dimensions are AND'd together (outer array).
+
+### buildFacetRequestFields
+Pure utility (`src/utils/loginsFilter.ts`) that takes a `FilterKeyMap` and returns the list of facet attribute names to request counts from Algolia via the `facets` search parameter.

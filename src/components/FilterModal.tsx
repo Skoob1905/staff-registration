@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Checkbox, DialogContent, DialogRoot, DialogTitle, Input } from "./ui";
-import type { Agency, StaffFilters } from "../types/domain";
+import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { H1, H2, Muted } from "../config/typography";
 
 interface FilterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  filterKeys?: FilterKeyMap;
   agencies?: Agency[];
+  agencyCounts?: Record<string, number>;
   filters: StaffFilters;
   onApply: (filters: StaffFilters) => void;
   tags?: Record<string, string>;
@@ -21,6 +23,7 @@ export const FilterModal = ({
   open,
   onOpenChange,
   agencies,
+  agencyCounts,
   filters,
   onApply,
   tags = {},
@@ -46,7 +49,10 @@ export const FilterModal = ({
     }
   }, [open, filters]);
 
-  const tagKeys = useMemo(() => Object.keys(tags), [tags]);
+  const tagKeys = useMemo(
+    () => Object.keys(tags).filter((id) => (tagCounts?.[id] ?? 0) > 0),
+    [tags, tagCounts],
+  );
 
   const agencyList = useMemo(() => {
     if (!agencies) return [];
@@ -150,18 +156,14 @@ export const FilterModal = ({
               ) : (
                 <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
                   {Object.entries(agencyList).map(([id, name]) => (
-                    <label
+                    <Checkbox
                       key={id}
-                      className="flex cursor-pointer items-center gap-2 text-xs sm:text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedAgencyIds.has(id)}
-                        onChange={() => toggleAgency(id)}
-                        className="rounded shrink-0"
-                      />
-                      <span className="truncate">{name}</span>
-                    </label>
+                      id={id}
+                      label={name}
+                      count={agencyCounts?.[id]}
+                      checked={selectedAgencyIds.has(id)}
+                      onChange={() => toggleAgency(id)}
+                    />
                   ))}
                 </div>
               )}

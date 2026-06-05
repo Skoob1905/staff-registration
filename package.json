@@ -1,7 +1,7 @@
 {
   "name": "app",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,6 +19,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@redux-devtools/extension": "^4.0.0",
     "@types/react-signature-canvas": "^1.0.7",
+    "@vercel/analytics": "^2.0.1",
     "algoliasearch": "^5.53.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
