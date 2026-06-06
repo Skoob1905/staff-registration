@@ -10,6 +10,7 @@ import { Loader2, Pen, Plus } from "lucide-react";
 import { AddModal } from "../../components/AddModal";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
 import { ImportHistory } from "../../components/ImportHistory";
+import { Metadata } from "../../components/Metadata";
 import { StaffListSection } from "../../components/StaffListSection";
 import {
   AccordionItem,
@@ -311,12 +312,12 @@ export const AdminStaffPage = () => {
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                    <span className="font-semibold">Tags:</span>{" "}
-                    {member.tags && member.tags.length > 0
+                  <Metadata
+                    title="Tags"
+                    value={member.tags && member.tags.length > 0
                       ? member.tags.map((id) => tagsMap[id] || id).join(", ")
                       : ""}
-                  </span>
+                  />
                   {appUser?.role === "admin" && (
                     <button
                       type="button"

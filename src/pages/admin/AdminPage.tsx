@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
+import { Metadata } from "../../components/Metadata";
 import { useAppStore } from "../../stores/appStore";
 import { functions } from "../../services/firebase";
 import { formatInvitedAt } from "../../utils/date";
@@ -317,12 +318,10 @@ export const AdminPage = () => {
               }
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs sm:text-sm text-zinc-600 truncate">
-                  <span className="font-medium text-[var(--foreground)]">
-                    Invited by:{" "}
-                  </span>
-                  {invitedByEmail} at {formatInvitedAt(userRecord.invitedAt)}
-                </p>
+                <Metadata
+                  title="Invited by"
+                  value={<>{invitedByEmail} at {formatInvitedAt(userRecord.invitedAt)}</>}
+                />
                 <button
                   type="button"
                   onClick={(e) => {
