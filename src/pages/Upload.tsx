@@ -130,8 +130,6 @@ export const UploadPage = () => {
     }
   };
 
-  const currentType = config.uploadTypes.find((t) => t.value === docType);
-
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
