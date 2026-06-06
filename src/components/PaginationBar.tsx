@@ -14,7 +14,7 @@ interface PaginationBarProps {
   onPageSizeChange: (size: number) => void;
 }
 
-const PAGE_SIZES = [10, 25, 50];
+const PAGE_SIZES = import.meta.env.DEV ? [10, 15, 20] : [10, 25, 50];
 
 export const PaginationBar = ({
   currentPage,

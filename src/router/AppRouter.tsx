@@ -13,6 +13,7 @@ import { UserHomePage } from "../pages/clients/HomePage";
 // import { ContractsPage } from "../pages/clients/ContractsPage";
 // import { InvoicesPage } from "../pages/clients/InvoicesPage";
 import { ProfilePage } from "../pages/clients/ProfilePage";
+import { UploadPage } from "../pages/Upload";
 import { RoleGuard } from "./RoleGuard";
 
 const AppEntryRedirect = () => {
@@ -55,6 +56,7 @@ export const AppRouter = () => (
         <Route element={<AppLayout />}>
           <Route path="/staff" element={<StaffPageSwitch />} />
           <Route path="/profile" element={<ProfileSwitch />} />
+          <Route path="/upload" element={<UploadPage />} />
 
           <Route element={<RoleGuard role="admin" />}>
             <Route element={<AdminLayout />}>

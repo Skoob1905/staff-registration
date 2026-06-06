@@ -14,8 +14,16 @@ import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { getStaffName } from "../utils/keyHeaderNormalisation";
-import { buildFacetFilters, buildFacetRequestFields } from "../utils/loginsFilter";
-import type { Agency, BulkStaff, FilterKeyMap, StaffFilters } from "../types/domain";
+import {
+  buildFacetFilters,
+  buildFacetRequestFields,
+} from "../utils/loginsFilter";
+import type {
+  Agency,
+  BulkStaff,
+  FilterKeyMap,
+  StaffFilters,
+} from "../types/domain";
 
 interface StaffListSectionProps {
   view: "admin" | "client";
@@ -39,7 +47,7 @@ export const StaffListSection = ({
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const isClient = view === "client";
   const assignedToId = targetAgencyId || appUser?.agencyId || "";
   const staffKeyMap = useMemo<FilterKeyMap>(

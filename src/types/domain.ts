@@ -48,6 +48,16 @@ export interface SignedContract {
   signedAt?: Date;
 }
 
+export interface ClientContract {
+  id: string;
+  clientId: string;
+  fileName: string;
+  fileUrl: string;
+  agencyId: string;
+  uploadedBy: string;
+  uploadedAt?: Date;
+}
+
 export interface Payslip {
   id: string;
   userId: string;

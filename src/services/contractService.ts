@@ -6,7 +6,8 @@ import {
   where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, storage, functions } from "./firebase";
 import type { SignedContract, UnsignedContract } from "../types/domain";
 
 const monitorUpload = (task: UploadTask, onProgress?: (pct: number) => void): Promise<void> =>
@@ -61,6 +62,27 @@ export const uploadSignedContract = async (
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
   return { fileName: file.name, fileUrl };
+};
+
+export const uploadClientContract = async (
+  file: File,
+  clientId: string,
+): Promise<void> => {
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const fn = httpsCallable<
+    { fileBase64: string; fileName: string; clientId: string; contentType: string },
+    { ok: boolean; url: string }
+  >(functions, "uploadSignedContract");
+  await fn({ fileBase64: base64, fileName: file.name, clientId, contentType: file.type });
 };
 
 export const getUnsignedContractInfo = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {

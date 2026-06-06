@@ -25,6 +25,9 @@ export const Footer = () => {
             <NavLink to="/staff" className={navLinkClass} end>
               STAFF
             </NavLink>
+            <NavLink to="/upload" className={navLinkClass}>
+              UPLOAD
+            </NavLink>
             {isAdmin && (
               <NavLink to="/clients" className={navLinkClass}>
                 CLIENTS

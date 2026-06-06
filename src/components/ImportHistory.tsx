@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { ActionButton, Button, Card, DialogContent, DialogRoot, DialogTitle } from "./ui";
+import { ActionButton, Button, Card, DialogContent, DialogRoot, DialogTitle, DownloadButton } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
@@ -222,8 +222,7 @@ export const ImportHistory = ({
                   onClick={() => onDeleteClick(entry)}
                 />
                 {entry.fileUrl ? (
-                  <ActionButton
-                    variant="download"
+                  <DownloadButton
                     size="md"
                     href={entry.fileUrl}
                     ariaLabel="Download CSV"

@@ -9,29 +9,6 @@ const algoliaClient = searchClient(
   import.meta.env.VITE_ALGOLIA_SEARCH_ONLY_API_KEY,
 );
 
-const originalClearCache = algoliaClient.clearCache.bind(algoliaClient);
-algoliaClient.clearCache = (() => {
-  console.log(
-    "%c[Algolia]%c Cache cleared",
-    "color: #5468FF; font-weight: bold;",
-    "color: inherit;",
-  );
-  return originalClearCache();
-}) as typeof algoliaClient.clearCache;
-
-const originalSearchSingleIndex =
-  algoliaClient.searchSingleIndex.bind(algoliaClient);
-algoliaClient.searchSingleIndex = ((params: any) => {
-  console.log(
-    `%c[Algolia]%c Querying %c${params.indexName}%c (page=${params.searchParams.page}, query="${params.searchParams.query}")`,
-    "color: #5468FF; font-weight: bold;",
-    "color: inherit;",
-    "color: #5468FF; font-weight: bold;",
-    "color: inherit;",
-  );
-  return originalSearchSingleIndex(params);
-}) as typeof algoliaClient.searchSingleIndex;
-
 interface State<T> {
   items: T[];
   loading: boolean;
@@ -42,13 +19,7 @@ interface State<T> {
 
 type Action<T> =
   | { type: "loading" }
-  | {
-      type: "success";
-      items: T[];
-      totalPages: number;
-      totalResults: number;
-      facetCounts?: Record<string, Record<string, number>>;
-    }
+  | { type: "success"; items: T[]; totalPages: number; totalResults: number; facetCounts?: Record<string, Record<string, number>> }
   | { type: "error" };
 
 function createInitialState<T>(): State<T> {
@@ -71,10 +42,11 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   facetFilters,
   query = "",
   page = 0,
-  hitsPerPage = 50,
+  hitsPerPage = 10,
   facets,
 }: UsePaginatedRecordsParams) {
-  const { toast } = useToast();
+
+  const { toast } = useToast()
 
   const [state, dispatch] = useReducer(
     (prev: State<T>, action: Action<T>): State<T> => {
@@ -103,27 +75,23 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
         title: "Can't fetch records",
         description: "User doesn't have a agencyId",
         variant: "error",
-      });
-      return;
+      })
+      return
     }
 
     let cancelled = false;
     dispatch({ type: "loading" });
 
     algoliaClient
-      .clearCache()
-      .then(() => {
-        if (cancelled) return;
-        return algoliaClient.searchSingleIndex<T>({
-          indexName: `${ALGOLIA_INDEX_PREFIX}${indexName}`,
-          searchParams: {
-            query,
-            page,
-            hitsPerPage,
-            facetFilters: facetFilters ?? [],
-            facets,
-          },
-        });
+      .searchSingleIndex<T>({
+        indexName: `${ALGOLIA_INDEX_PREFIX}${indexName}`,
+        searchParams: {
+          query,
+          page,
+          hitsPerPage,
+          facetFilters: facetFilters ?? [],
+          facets,
+        },
       })
       .then((response) => {
         if (cancelled || !response) return;
@@ -145,9 +113,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
           items: formattedHits,
           totalPages: response.nbPages ?? 0,
           totalResults: response.nbHits ?? 0,
-          facetCounts: response.facets as
-            | Record<string, Record<string, number>>
-            | undefined,
+          facetCounts: response.facets as Record<string, Record<string, number>> | undefined,
         });
       })
       .catch((err) => {
@@ -162,19 +128,10 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [
-    agencyId,
-    indexName,
-    page,
-    hitsPerPage,
-    refreshKey,
-    query,
-    facetFilters,
-    facets,
-  ]);
+  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets]);
 
   const refresh = useCallback(() => {
-    algoliaClient.clearCache().then(() => setRefreshKey((k) => k + 1));
+    setRefreshKey((k) => k + 1);
   }, []);
 
   return {

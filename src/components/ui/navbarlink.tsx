@@ -41,11 +41,8 @@ export const Navbar = () => {
       <NavbarLink to="/staff" end>
         STAFF
       </NavbarLink>
+      <NavbarLink to="/upload">UPLOAD</NavbarLink>
       <NavbarLink to="/clients">CLIENTS</NavbarLink>
-      {/* <NavbarLink to="/timesheets">TIMESHEETS</NavbarLink> */}
-      {/* <NavbarLink to="/payslips">PAYSLIPS</NavbarLink> */}
-      {/* <NavbarLink to="/contracts">CONTRACTS</NavbarLink> */}
-      {/* <NavbarLink to="/invoices">INVOICES</NavbarLink> */}
       <NavbarLink to="/admin">USERS</NavbarLink>
       <NavbarLink to="/profile">PROFILE</NavbarLink>
     </>
@@ -54,6 +51,7 @@ export const Navbar = () => {
       <NavbarLink to="/staff" end>
         STAFF
       </NavbarLink>
+      <NavbarLink to="/upload">UPLOAD</NavbarLink>
       <NavbarLink to="/profile">PROFILE</NavbarLink>
     </>
   );

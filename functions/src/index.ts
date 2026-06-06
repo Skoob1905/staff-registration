@@ -1710,6 +1710,101 @@ export const removeClientLogin = onCall(async (request) => {
   return { ok: true, uid };
 });
 
+export const uploadSignedContract = onCall(
+  { maxInstances: 10 },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Sign in required.");
+    }
+
+    const { fileBase64, fileName, clientId, contentType } = request.data;
+    if (!fileBase64 || !fileName || !clientId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Missing required fields: fileBase64, fileName, clientId",
+      );
+    }
+
+    const bucket = getStorage().bucket();
+    const filePath = `signed_contracts/${clientId}/${fileName}`;
+    const fileRef = bucket.file(filePath);
+
+    const token =
+      Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    const buffer = Buffer.from(fileBase64, "base64");
+
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: contentType ?? "application/pdf",
+        metadata: { firebaseStorageDownloadTokens: token },
+      },
+    });
+
+    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+    await getFirestore().collection("agencies").doc(clientId).update({
+      "metadata.signedContractName": fileName,
+      "metadata.signedContract": downloadUrl,
+    });
+
+    return { ok: true, url: downloadUrl };
+  },
+);
+
+export const deleteContract = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const clientId = String(request.data?.clientId || "").trim();
+  if (!clientId) {
+    throw new HttpsError("invalid-argument", "clientId is required.");
+  }
+
+  const clientRef = db.collection("agencies").doc(clientId);
+  const clientSnap = await clientRef.get();
+  if (!clientSnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
+  }
+
+  const clientData = clientSnap.data() as {
+    metadata?: {
+      signedContract?: string;
+      signedContractName?: string;
+    };
+  };
+
+  if (clientData.metadata?.signedContract) {
+    try {
+      const filePath = decodeURIComponent(
+        clientData.metadata.signedContract.split("/o/")[1]?.split("?")[0] ?? "",
+      );
+      if (filePath) {
+        await getStorage().bucket().file(filePath).delete();
+      }
+    } catch {
+      // file may not exist — proceed with clearing fields
+    }
+  }
+
+  await clientRef.update({
+    "metadata.signedContractName": FieldValue.delete(),
+    "metadata.signedContract": FieldValue.delete(),
+  });
+
+  return { ok: true, clientId };
+});
+
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { algoliasearch } from "algoliasearch";
 

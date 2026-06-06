@@ -50,6 +50,12 @@ service firebase.storage {
       allow write: if isAdmin() && userDoc().data.agencyId == agencyId;
     }
 
+    // Signed contracts uploaded by admin against a client.
+    match /signed_contracts/{clientId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // CSV imports uploaded by admin for staff data.
     match /staff_imports/{allPaths=**} {
       allow read, write: if isAdmin();
