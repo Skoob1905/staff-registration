@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
+import { collection, getCountFromServer } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
 import { Body, BodyMedium, Caption, Muted } from "../config/typography";
@@ -8,7 +9,7 @@ import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { functions, storage } from "../services/firebase";
+import { db, functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
 import {
@@ -17,6 +18,11 @@ import {
   hasNIColumn,
   hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
+
+const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+const DEV_FILE_SIZE_LIMIT = 102400;
+const MAX_STAFF_RECORDS = 500;
+const MAX_CLIENT_RECORDS = 100;
 
 type CsvRow = Record<string, string>;
 
@@ -106,7 +112,7 @@ export const AddModal = ({
   }, [open, loadTags]);
 
   const clientFacetFilters = useMemo(
-    () => isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],
+    () => (isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]]),
     [isAdmin, appUser?.agencyId],
   );
 
@@ -197,6 +203,14 @@ export const AddModal = ({
       });
       return;
     }
+    if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT) {
+      toast({
+        title: "File too large",
+        description: "In preview mode, files are limited to 100KB.",
+        variant: "error",
+      });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -275,6 +289,22 @@ export const AddModal = ({
     setUploadProgress(0);
     setProcessing(false);
     try {
+      if (ALGOLIA_INDEX_PREFIX === "dev_") {
+        const collectionName = csvType === "staff" ? "staff" : "agencies";
+        const maxRecords = csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
+        const label = csvType === "staff" ? "staff" : "clients";
+        const snap = await getCountFromServer(collection(db, collectionName));
+        const existingCount = snap.data().count;
+        if (existingCount + csvData.rows.length > maxRecords) {
+          toast({
+            title: "Too Many Records",
+            description: `You have ${existingCount} ${label} in the database. Uploading ${csvData.rows.length} more would exceed the ${maxRecords} limit. Please delete some ${label} first.`,
+            variant: "error",
+          });
+          return;
+        }
+      }
+
       const path = `${storagePath}/${appUser.agencyId}/${Date.now()}-${csvData.fileName}`;
       const storageRef = ref(storage, path);
       const task = uploadBytesResumable(storageRef, csvData.rawFile);

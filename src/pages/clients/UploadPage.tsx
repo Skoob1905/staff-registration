@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Input, Label, ProgressBar } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
+import { useToast } from "../../context/ToastProvider";
 import { uploadStaffDocument } from "../../services/staffUploadService";
 import { getStatus } from "../../services/userService";
+
+const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+const DEV_FILE_SIZE_LIMIT = 102400;
 
 export const UserUploadPage = () => {
   useEffect(() => {
     document.title = "Upload";
   }, []);
   const { appUser } = useAuth();
+  const { toast } = useToast();
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -41,6 +46,16 @@ export const UserUploadPage = () => {
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!appUser || !file) return;
+
+    if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT) {
+      toast({
+        title: "File too large",
+        description: "In preview mode, files are limited to 100KB.",
+        variant: "error",
+      });
+      return;
+    }
+
     setProgress(0);
     setStatus("");
 

@@ -7,6 +7,9 @@ import { uploadPayslip } from "../../services/payslipService";
 import { getStaffUsersByAgency } from "../../services/userService";
 import type { AppUser } from "../../types/domain";
 
+const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+const DEV_FILE_SIZE_LIMIT = 102400;
+
 export const AdminUploadPage = () => {
   useEffect(() => {
     document.title = "Upload";
@@ -42,6 +45,16 @@ export const AdminUploadPage = () => {
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!canSubmit || !file || !appUser?.agencyId) return;
+
+    if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT) {
+      toast({
+        title: "File too large",
+        description: "In preview mode, files are limited to 100KB.",
+        variant: "error",
+      });
+      return;
+    }
+
     setStatus("");
     setProgress(0);
 
