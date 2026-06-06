@@ -39,7 +39,7 @@ export const UploadPage = () => {
     : { title: "Upload", uploadTypes: CLIENT_UPLOAD_TYPES };
 
   const [selectedClientId, setSelectedClientId] = useState("");
-  const [docType, setDocType] = useState(config.uploadTypes[0].value);
+  const [docType, setDocType] = useState<string>(config.uploadTypes[0].value);
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
