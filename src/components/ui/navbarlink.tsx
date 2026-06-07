@@ -43,6 +43,7 @@ export const Navbar = () => {
       </NavbarLink>
       <NavbarLink to="/upload">UPLOAD</NavbarLink>
       <NavbarLink to="/clients">CLIENTS</NavbarLink>
+      <NavbarLink to="/timesheets">TIMESHEETS</NavbarLink>
       <NavbarLink to="/admin">USERS</NavbarLink>
       <NavbarLink to="/profile">PROFILE</NavbarLink>
     </>

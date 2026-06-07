@@ -181,8 +181,8 @@ const images: Record<string, Config> = {
     navbar: mumentumNavbar,
     login: mumentumLogin,
     loading: mumentumLoading,
-    name: "",
-    homepage: "Mumentum Group Holding Ltd",
+    name: "Mumentum Group Holding Ltd",
+    homepage: "",
     theme: {
       appBackground: "#F8FAFC", // Bright, clean slate-white for a crisp light background
       primaryTextColour: "#0F172A", // Near-black slate for excellent text readability

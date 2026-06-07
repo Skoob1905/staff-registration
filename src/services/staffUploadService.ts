@@ -1,9 +1,30 @@
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
+import {
+  getDownloadURL,
+  ref,
+  uploadBytesResumable,
+  type UploadTask,
+} from "firebase/storage";
 import { db, storage } from "./firebase";
-import type { Agency, BulkStaff, BulkUploadRecord, StaffUpload } from "../types/domain";
+import type {
+  Agency,
+  BulkStaff,
+  BulkUploadRecord,
+  StaffUpload,
+} from "../types/domain";
 
-const monitorUpload = (task: UploadTask, onProgress?: (pct: number) => void): Promise<void> =>
+const monitorUpload = (
+  task: UploadTask,
+  onProgress?: (pct: number) => void,
+): Promise<void> =>
   new Promise((resolve, reject) => {
     task.on(
       "state_changed",
@@ -23,10 +44,12 @@ export const uploadStaffDocument = async (
   agencyId: string,
   category = "general",
   onProgress?: (pct: number) => void,
-): Promise<string> => {
+): Promise<void> => {
   const path = `uploads/from_staff/${userId}/${file.name}`;
   const storageRef = ref(storage, path);
-  const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
+  const task = uploadBytesResumable(storageRef, file, {
+    customMetadata: { agencyId },
+  });
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
 
@@ -38,19 +61,29 @@ export const uploadStaffDocument = async (
     category,
     uploadedAt: serverTimestamp(),
   });
-
-  return fileUrl;
 };
 
-export const getStaffUploadsForAgency = async (agencyId: string): Promise<StaffUpload[]> => {
-  const q = query(collection(db, "staff_uploads"), where("agencyId", "==", agencyId), orderBy("uploadedAt", "desc"));
+export const getStaffUploadsForAgency = async (
+  agencyId: string,
+): Promise<StaffUpload[]> => {
+  const q = query(
+    collection(db, "staff_uploads"),
+    where("agencyId", "==", agencyId),
+    orderBy("uploadedAt", "desc"),
+  );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<StaffUpload, "id">) }));
+  return snaps.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<StaffUpload, "id">),
+  }));
 };
 
 export const getAllAgencies = async (): Promise<Agency[]> => {
   const snaps = await getDocs(collection(db, "agencies"));
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Agency, "id">) }));
+  return snaps.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<Agency, "id">),
+  }));
 };
 
 export interface CsvStaffRow {
@@ -67,7 +100,10 @@ export interface CsvStaffRow {
 const normalizeKey = (key: string): string =>
   key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
-const findNormalizedIndex = (normalizedHeaders: string[], ...targets: string[]): number => {
+const findNormalizedIndex = (
+  normalizedHeaders: string[],
+  ...targets: string[]
+): number => {
   for (const target of targets) {
     const nt = normalizeKey(target);
     const idx = normalizedHeaders.indexOf(nt);
@@ -76,13 +112,19 @@ const findNormalizedIndex = (normalizedHeaders: string[], ...targets: string[]):
   return -1;
 };
 
-export const parseCsvText = (text: string): { headers: string[]; rows: CsvStaffRow[]; errors: string[] } => {
+export const parseCsvText = (
+  text: string,
+): { headers: string[]; rows: CsvStaffRow[]; errors: string[] } => {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   const errors: string[] = [];
   const rows: CsvStaffRow[] = [];
 
   if (lines.length < 2) {
-    return { headers: [], rows, errors: ["CSV must have a header row and at least one data row."] };
+    return {
+      headers: [],
+      rows,
+      errors: ["CSV must have a header row and at least one data row."],
+    };
   }
 
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
@@ -91,8 +133,16 @@ export const parseCsvText = (text: string): { headers: string[]; rows: CsvStaffR
   const emailIdx = headers.indexOf("email");
   const titleIdx = findNormalizedIndex(normalizedHeaders, "title");
   const initialIdx = headers.indexOf("initial");
-  const forenameIdx = findNormalizedIndex(normalizedHeaders, "forename", "firstname");
-  const surnameIdx = findNormalizedIndex(normalizedHeaders, "surname", "lastname");
+  const forenameIdx = findNormalizedIndex(
+    normalizedHeaders,
+    "forename",
+    "firstname",
+  );
+  const surnameIdx = findNormalizedIndex(
+    normalizedHeaders,
+    "surname",
+    "lastname",
+  );
   const fullNameIdx = findNormalizedIndex(normalizedHeaders, "fullname");
   const address1Idx = headers.indexOf("address 1");
   const address2Idx = headers.indexOf("address 2");
@@ -146,20 +196,34 @@ export const uploadCsvToStorage = async (
 ): Promise<{ storagePath: string; downloadUrl: string }> => {
   const storagePath = `bulk-uploads/${agencyId}/${Date.now()}_${file.name}`;
   const storageRef = ref(storage, storagePath);
-  const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
+  const task = uploadBytesResumable(storageRef, file, {
+    customMetadata: { agencyId },
+  });
   await monitorUpload(task, onProgress);
   const downloadUrl = await getDownloadURL(storageRef);
   return { storagePath, downloadUrl };
 };
 
-export const getBulkStaffForAgency = async (agencyId: string): Promise<BulkStaff[]> => {
-  const q = query(collection(db, "staff"), where("agencyId", "==", agencyId), orderBy("assignedAt", "desc"));
+export const getBulkStaffForAgency = async (
+  agencyId: string,
+): Promise<BulkStaff[]> => {
+  const q = query(
+    collection(db, "staff"),
+    where("agencyId", "==", agencyId),
+    orderBy("assignedAt", "desc"),
+  );
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BulkStaff, "id">) }));
+  return snaps.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<BulkStaff, "id">),
+  }));
 };
 
 export const getUploadHistory = async (): Promise<BulkUploadRecord[]> => {
   const q = query(collection(db, "uploads"), orderBy("uploadedAt", "desc"));
   const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<BulkUploadRecord, "id">) }));
+  return snaps.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<BulkUploadRecord, "id">),
+  }));
 };

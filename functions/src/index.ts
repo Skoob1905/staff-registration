@@ -1837,6 +1837,24 @@ export const recordTimesheetUpload = onCall(async (request) => {
     );
   }
 
+  const agencySnap = await db.collection("agencies").doc(clientId).get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
+  }
+
+  const agencyData = agencySnap.data() as {
+    metadata?: { timesheets?: Array<{ fileName: string }> };
+  };
+  const existing = (agencyData?.metadata?.timesheets ?? []) as Array<{
+    fileName: string;
+  }>;
+  if (existing.some((t) => t.fileName === fileName)) {
+    throw new HttpsError(
+      "already-exists",
+      `A timesheet named "${fileName}" has already been uploaded.`,
+    );
+  }
+
   const bucket = getStorage().bucket();
   const filePath = `timesheets/${clientId}/${fileName}`;
   const fileRef = bucket.file(filePath);
@@ -1845,12 +1863,19 @@ export const recordTimesheetUpload = onCall(async (request) => {
     Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   const buffer = Buffer.from(fileBase64, "base64");
 
-  await fileRef.save(buffer, {
-    metadata: {
-      contentType: contentType ?? "application/pdf",
-      metadata: { firebaseStorageDownloadTokens: token },
-    },
-  });
+  try {
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: contentType ?? "application/pdf",
+        metadata: { firebaseStorageDownloadTokens: token },
+      },
+    });
+  } catch {
+    throw new HttpsError(
+      "internal",
+      "Failed to save file to storage. The timesheet has not been uploaded.",
+    );
+  }
 
   const fileUrl =
     `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
@@ -1867,6 +1892,56 @@ export const recordTimesheetUpload = onCall(async (request) => {
   });
 
   return { ok: true, url: fileUrl };
+});
+
+export const deleteTimesheet = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { clientId, fileName } = request.data;
+  if (!clientId || !fileName) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: clientId, fileName",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const storagePath = `timesheets/${clientId}/${fileName}`;
+  try {
+    await getStorage().bucket().file(storagePath).delete();
+  } catch {
+    // file may not exist — proceed with clearing the entry
+  }
+
+  const agencyRef = db.collection("agencies").doc(clientId);
+  const agencySnap = await agencyRef.get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
+  }
+
+  const data = agencySnap.data() as {
+    metadata?: { timesheets?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.timesheets ?? [];
+
+  await agencyRef.update({
+    "metadata.timesheets": current.filter((t) => t.fileName !== fileName),
+  });
+
+  return { ok: true };
 });
 
 import { onDocumentWritten } from "firebase-functions/v2/firestore";

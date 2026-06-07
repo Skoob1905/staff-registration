@@ -20,7 +20,6 @@ const ADMIN_UPLOAD_TYPES = [
 
 const CLIENT_UPLOAD_TYPES = [
   { label: "Timesheet", value: "timesheet" },
-  { label: "Document", value: "document" },
 ] as const;
 
 const CATEGORIES = [
@@ -199,8 +198,17 @@ export const UploadPage = () => {
       setProgress(0);
       const el = document.getElementById("uploadFile") as HTMLInputElement;
       if (el) el.value = "";
-    } catch {
-      toast(renderToast("error", docType, { fileName: file.name }));
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === "functions/already-exists") {
+        toast({
+          title: "Duplicate timesheet",
+          description: `A timesheet named "${file.name}" has already been uploaded.`,
+          variant: "error",
+        });
+      } else {
+        toast(renderToast("error", docType, { fileName: file.name }));
+      }
     } finally {
       setUploading(false);
     }
@@ -279,7 +287,8 @@ export const UploadPage = () => {
               />
               <div
                 className={`flex items-center rounded-xl border px-3 py-2 text-sm transition ${
-                  !isAdmin && (statusLoading || registrationStatus !== "registered")
+                  !isAdmin &&
+                  (statusLoading || registrationStatus !== "registered")
                     ? "cursor-not-allowed bg-zinc-100 text-zinc-400 border-[var(--border)]"
                     : "bg-[var(--input-bg)] text-[var(--foreground)] border-[var(--border)]"
                 }`}
