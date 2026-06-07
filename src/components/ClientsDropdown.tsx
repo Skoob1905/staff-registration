@@ -5,7 +5,7 @@ import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 
 interface ClientsDropdownProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, name: string) => void;
   disabled?: boolean;
   className?: string;
   placeholder?: string;
@@ -66,7 +66,10 @@ export const ClientsDropdown = ({
     <select
       id={id}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        const name = e.target.selectedOptions[0]?.text ?? "";
+        onChange(e.target.value, name);
+      }}
       disabled={disabled}
       autoFocus={autoFocus}
       onBlur={onBlur}

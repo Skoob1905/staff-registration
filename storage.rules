@@ -56,6 +56,12 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    // Timesheets uploaded by client users.
+    match /timesheets/{clientId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // CSV imports uploaded by admin for staff data.
     match /staff_imports/{allPaths=**} {
       allow read, write: if isAdmin();

@@ -161,12 +161,11 @@ export const AdminClientsPage = () => {
             className="animate-cascade"
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
-              <div className="flex min-w-0 w-full items-center gap-2">
+              <div className="flex min-w-0 w-full items-center gap-2 relative">
                 <span className="truncate pr-4">{getPrimaryLabel(client)}</span>
                 {scName && (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-green-700">
-                    <FileSignature className="h-2.5 w-2.5" />
-                    SIGNED
+                  <span className="absolute -top-2.5 right-2 z-10 inline-flex items-center justify-center rounded-full bg-green-100 h-5 w-5 text-green-700 shadow-sm">
+                    <FileSignature className="h-3 w-3" />
                   </span>
                 )}
               </div>

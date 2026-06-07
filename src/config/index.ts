@@ -26,7 +26,7 @@ const images: Record<string, Config> = {
     navbar: blackrockNavbar,
     login: blackrockLogin,
     loading: blackrockLoading,
-    name: "Blackrock Consultancy UK",
+    name: "Blackrock Consultancy UK Ltd",
     homepage: "https://blackrockconsultancyuk.com/",
     theme: {
       appBackground: "#f8faf9", // A crisp, clean off-white with a tiny hint of sage/cool undertone
@@ -78,7 +78,7 @@ const images: Record<string, Config> = {
     navbar: crsNavbar,
     login: crsLogin,
     loading: crsLoading,
-    name: "CRS Group Holding",
+    name: "CRS Group Holding Ltd",
     homepage: "https://crs-staffing.com/",
     theme: {
       appBackground: "#f4f7f5", // An incredibly soft, mint-tinted gray that makes the green pop
@@ -147,7 +147,7 @@ const images: Record<string, Config> = {
     navbar: tierOneNavbar,
     login: tierOneLogin,
     loading: tierOneLoading,
-    name: "",
+    name: "Tier One Recruiting Ltd",
     homepage: "",
     theme: {
       appBackground: "#F9FAFB", // Crisp, bright off-white for a clean canvas
@@ -182,7 +182,7 @@ const images: Record<string, Config> = {
     login: mumentumLogin,
     loading: mumentumLoading,
     name: "",
-    homepage: "",
+    homepage: "Mumentum Group Holding Ltd",
     theme: {
       appBackground: "#F8FAFC", // Bright, clean slate-white for a crisp light background
       primaryTextColour: "#0F172A", // Near-black slate for excellent text readability

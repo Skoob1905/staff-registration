@@ -23,7 +23,7 @@ export const uploadStaffDocument = async (
   agencyId: string,
   category = "general",
   onProgress?: (pct: number) => void,
-): Promise<void> => {
+): Promise<string> => {
   const path = `uploads/from_staff/${userId}/${file.name}`;
   const storageRef = ref(storage, path);
   const task = uploadBytesResumable(storageRef, file, { customMetadata: { agencyId } });
@@ -38,6 +38,8 @@ export const uploadStaffDocument = async (
     category,
     uploadedAt: serverTimestamp(),
   });
+
+  return fileUrl;
 };
 
 export const getStaffUploadsForAgency = async (agencyId: string): Promise<StaffUpload[]> => {

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Input, Label, ProgressBar } from "../components/ui";
+import { httpsCallable } from "firebase/functions";
+import { Loader2 } from "lucide-react";
+import { Button, Card, Label, ProgressBar } from "../components/ui";
 import { ClientsDropdown } from "../components/ClientsDropdown";
+import { config } from "../config";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
+import { functions } from "../services/firebase";
 import { uploadClientContract } from "../services/contractService";
 import { uploadStaffDocument } from "../services/staffUploadService";
 import { getStatus } from "../services/userService";
@@ -25,6 +29,39 @@ const CATEGORIES = [
   { label: "Payslip Query", value: "payslip_query" },
 ];
 
+function renderToast(
+  type: "success" | "error",
+  docType: string,
+  params: { fileName: string; clientName?: string },
+): { title: string; description?: string; variant: "success" | "error" } {
+  if (type === "error") {
+    return {
+      title: "Upload failed",
+      description: `"${params.fileName}" could not be uploaded. Please try again.`,
+      variant: "error",
+    };
+  }
+
+  switch (docType) {
+    case "client_contract":
+      return {
+        title: `"${params.fileName}" uploaded to ${params.clientName}`,
+        variant: "success",
+      };
+    case "timesheet":
+      return {
+        title: "Timesheet uploaded",
+        description: `${config.name} has received your timesheet`,
+        variant: "success",
+      };
+    default:
+      return {
+        title: `"${params.fileName}" uploaded successfully`,
+        variant: "success",
+      };
+  }
+}
+
 export const UploadPage = () => {
   useEffect(() => {
     document.title = "Upload";
@@ -39,6 +76,8 @@ export const UploadPage = () => {
     : { title: "Upload", uploadTypes: CLIENT_UPLOAD_TYPES };
 
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedClientName, setSelectedClientName] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [docType, setDocType] = useState<string>(config.uploadTypes[0].value);
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
@@ -86,7 +125,14 @@ export const UploadPage = () => {
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canSubmit || !file || !appUser?.agencyId || !targetClientId) return;
+    if (
+      !canSubmit ||
+      uploading ||
+      !file ||
+      !appUser?.agencyId ||
+      !targetClientId
+    )
+      return;
 
     if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT) {
       toast({
@@ -97,17 +143,46 @@ export const UploadPage = () => {
       return;
     }
 
+    setUploading(true);
     setProgress(0);
 
     try {
       if (docType === "client_contract") {
         setProgress(60);
         await uploadClientContract(file, targetClientId);
-        toast({ title: "Contract uploaded successfully", variant: "default" });
+        toast(
+          renderToast("success", docType, {
+            fileName: file.name,
+            clientName: selectedClientName,
+          }),
+        );
+      } else if (docType === "timesheet") {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const fn = httpsCallable<
+          {
+            fileBase64: string;
+            fileName: string;
+            clientId: string;
+            contentType: string;
+          },
+          { ok: boolean; url: string }
+        >(functions, "recordTimesheetUpload");
+        await fn({
+          fileBase64: base64,
+          fileName: file.name,
+          clientId: appUser.agencyId,
+          contentType: file.type,
+        });
+        toast(renderToast("success", docType, { fileName: file.name }));
       } else {
-        const label =
-          config.uploadTypes.find((t) => t.value === docType)?.label ??
-          "Document";
         await uploadStaffDocument(
           file,
           appUser.uid,
@@ -115,18 +190,19 @@ export const UploadPage = () => {
           category,
           setProgress,
         );
-        toast({ title: `${label} uploaded successfully`, variant: "default" });
+        toast(renderToast("success", docType, { fileName: file.name }));
       }
 
       setFile(null);
       setSelectedClientId("");
+      setSelectedClientName("");
       setProgress(0);
+      const el = document.getElementById("uploadFile") as HTMLInputElement;
+      if (el) el.value = "";
     } catch {
-      toast({
-        title: "Upload failed",
-        description: "Please try again.",
-        variant: "error",
-      });
+      toast(renderToast("error", docType, { fileName: file.name }));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -156,7 +232,10 @@ export const UploadPage = () => {
               <Label>Client</Label>
               <ClientsDropdown
                 value={selectedClientId}
-                onChange={setSelectedClientId}
+                onChange={(id, name) => {
+                  setSelectedClientId(id);
+                  setSelectedClientName(name);
+                }}
                 className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
                 disableWithContract
               />
@@ -186,21 +265,28 @@ export const UploadPage = () => {
           )}
 
           <div className="space-y-1">
-            <Label htmlFor="uploadFile">File</Label>
-            <Input
-              id="uploadFile"
-              type="file"
-              disabled={
-                !isAdmin &&
-                (statusLoading || registrationStatus !== "registered")
-              }
-              className={
-                !isAdmin && statusLoading && registrationStatus !== "registered"
-                  ? "cursor-not-allowed bg-zinc-100 text-zinc-400 file:cursor-not-allowed file:opacity-60"
-                  : ""
-              }
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
+            <Label>File</Label>
+            <div className="relative">
+              <input
+                id="uploadFile"
+                type="file"
+                disabled={
+                  !isAdmin &&
+                  (statusLoading || registrationStatus !== "registered")
+                }
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+              />
+              <div
+                className={`flex items-center rounded-xl border px-3 py-2 text-sm transition ${
+                  !isAdmin && (statusLoading || registrationStatus !== "registered")
+                    ? "cursor-not-allowed bg-zinc-100 text-zinc-400 border-[var(--border)]"
+                    : "bg-[var(--input-bg)] text-[var(--foreground)] border-[var(--border)]"
+                }`}
+              >
+                {file ? file.name : "Choose file"}
+              </div>
+            </div>
           </div>
 
           <ProgressBar value={progress} />
@@ -219,9 +305,16 @@ export const UploadPage = () => {
 
           <Button
             type="submit"
-            disabled={!canSubmit || (!isAdmin && statusLoading)}
+            disabled={!canSubmit || uploading || (!isAdmin && statusLoading)}
           >
-            Upload
+            {uploading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Uploading...
+              </span>
+            ) : (
+              "Upload"
+            )}
           </Button>
         </form>
       </Card>

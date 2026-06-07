@@ -1805,6 +1805,70 @@ export const deleteContract = onCall(async (request) => {
   return { ok: true, clientId };
 });
 
+export const recordTimesheetUpload = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { clientId, fileName, fileBase64, contentType } = request.data;
+  if (!clientId || !fileName || !fileBase64) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: clientId, fileName, fileBase64",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as {
+    email?: string; agencyId?: string; role?: string;
+  };
+  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+
+  if (callerData.role === "client" && callerData.agencyId !== clientId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Cannot upload timesheet for another client.",
+    );
+  }
+
+  const bucket = getStorage().bucket();
+  const filePath = `timesheets/${clientId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  const token =
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const buffer = Buffer.from(fileBase64, "base64");
+
+  await fileRef.save(buffer, {
+    metadata: {
+      contentType: contentType ?? "application/pdf",
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+
+  const fileUrl =
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+  const entry = {
+    uploadedBy,
+    uploadedAt: new Date().toISOString(),
+    fileName,
+    fileUrl,
+  };
+
+  await db.collection("agencies").doc(clientId).update({
+    "metadata.timesheets": FieldValue.arrayUnion(entry),
+  });
+
+  return { ok: true, url: fileUrl };
+});
+
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { algoliasearch } from "algoliasearch";
 
