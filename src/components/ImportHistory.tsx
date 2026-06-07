@@ -217,6 +217,7 @@ export const ImportHistory = ({
               >
                 <ActionButton
                   variant="delete"
+                  size="md"
                   ariaLabel={`Remove ${entry.fileName}`}
                   disabled={deleteTarget?.id === entry.id && deleteLoading}
                   onClick={() => onDeleteClick(entry)}

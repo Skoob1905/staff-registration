@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `text-xs transition hover:text-[var(--primary)] ${
+  `text-[11px] transition hover:text-[var(--primary)] ${
     isActive
       ? "text-[var(--primary)] font-semibold"
       : "text-[var(--muted-foreground)]"
@@ -20,7 +20,7 @@ export const Footer = () => {
       style={{ backgroundColor: "var(--header-bg)" }}
     >
       <div className="mx-auto max-w-6xl px-4">
-        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-6">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:relative">
           <nav className="flex items-center gap-4">
             <NavLink to="/staff" className={navLinkClass} end>
               STAFF
@@ -43,7 +43,7 @@ export const Footer = () => {
             </NavLink>
           </nav>
 
-          <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+          <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)] sm:absolute sm:right-0">
             <span>v{__APP_VERSION__}</span>
           </div>
         </div>

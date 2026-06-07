@@ -32,10 +32,10 @@ export const ToastItem = ({
   const isInfo = toast.variant === "info";
 
   const borderColor = isError
-    ? "border-red-300 bg-red-50/90"
+    ? "border-red-300 bg-red-50"
     : isInfo
-      ? "border-blue-300 bg-blue-50/90"
-      : "border-emerald-300 bg-emerald-50/90";
+      ? "border-blue-300 bg-blue-50"
+      : "border-emerald-300 bg-emerald-50";
 
   const textColor = isError
     ? "text-red-900"

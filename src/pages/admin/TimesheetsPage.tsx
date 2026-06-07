@@ -114,31 +114,32 @@ export const AdminTimesheetsPage = () => {
                     <div key={idx} className="py-2 text-xs sm:text-sm">
                       {/* Mobile layout */}
                       <div className="flex sm:hidden flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <Metadata
-                            title="Timesheet"
-                            value={entry.fileName}
-                            className="truncate min-w-0"
-                          />
-                          <DownloadButton
-                            size="sm"
-                            href={entry.fileUrl}
-                            ariaLabel={`Download ${entry.fileName}`}
-                          />
-                          <ActionButton
-                            variant="delete"
-                            size="sm"
-                            ariaLabel={`Delete ${entry.fileName}`}
-                            disabled={deleting}
-                            onClick={() =>
-                              setDeleteTarget({
-                                clientId: record.id as string,
-                                clientName: name,
-                                entry,
-                              })
-                            }
-                          />
-                        </div>
+                        <Metadata
+                          title="Timesheet"
+                          value={
+                            <span className="inline-flex items-center gap-2">
+                              <span className="truncate min-w-0">{entry.fileName}</span>
+                              <DownloadButton
+                                size="md"
+                                href={entry.fileUrl}
+                                ariaLabel={`Download ${entry.fileName}`}
+                              />
+                              <ActionButton
+                                variant="delete"
+                                size="md"
+                                ariaLabel={`Delete ${entry.fileName}`}
+                                disabled={deleting}
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    clientId: record.id as string,
+                                    clientName: name,
+                                    entry,
+                                  })
+                                }
+                              />
+                            </span>
+                          }
+                        />
                         <Metadata
                           title="Uploaded by"
                           value={`${entry.uploadedBy} at ${formatTimesheetDate(entry.uploadedAt)}`}
@@ -147,13 +148,13 @@ export const AdminTimesheetsPage = () => {
                       {/* Desktop layout */}
                       <div className="hidden sm:flex items-center gap-3">
                         <DownloadButton
-                          size="sm"
+                          size="md"
                           href={entry.fileUrl}
                           ariaLabel={`Download ${entry.fileName}`}
                         />
                         <ActionButton
                           variant="delete"
-                          size="sm"
+                          size="md"
                           ariaLabel={`Delete ${entry.fileName}`}
                           disabled={deleting}
                           onClick={() =>

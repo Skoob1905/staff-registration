@@ -1837,27 +1837,43 @@ export const recordTimesheetUpload = onCall(async (request) => {
     );
   }
 
-  const agencySnap = await db.collection("agencies").doc(clientId).get();
-  if (!agencySnap.exists) {
-    throw new HttpsError("not-found", "Client not found.");
+  const bucket = getStorage().bucket();
+  const filePath = `timesheets/${clientId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  console.log(`[recordTimesheetUpload] Checking: filePath=${filePath}`);
+
+  const [fileExists] = await fileRef.exists();
+  console.log(
+    `[recordTimesheetUpload] fileRef.exists() returned: ${fileExists}`,
+  );
+
+  if (!fileExists) {
+    const [files] = await bucket.getFiles({
+      prefix: `timesheets/${clientId}/`,
+    });
+    const existingNames = files.map((f) => f.name);
+    console.log(
+      `[recordTimesheetUpload] Files in timesheets/${clientId}/:`,
+      JSON.stringify(existingNames),
+    );
+    console.log(
+      `[recordTimesheetUpload] Looking for: timesheets/${clientId}/${fileName}`,
+    );
+    const match = existingNames.find(
+      (n) => n === `timesheets/${clientId}/${fileName}`,
+    );
+    console.log(
+      `[recordTimesheetUpload] Manual match result: ${match ?? "none"}`,
+    );
   }
 
-  const agencyData = agencySnap.data() as {
-    metadata?: { timesheets?: Array<{ fileName: string }> };
-  };
-  const existing = (agencyData?.metadata?.timesheets ?? []) as Array<{
-    fileName: string;
-  }>;
-  if (existing.some((t) => t.fileName === fileName)) {
+  if (fileExists) {
     throw new HttpsError(
       "already-exists",
       `A timesheet named "${fileName}" has already been uploaded.`,
     );
   }
-
-  const bucket = getStorage().bucket();
-  const filePath = `timesheets/${clientId}/${fileName}`;
-  const fileRef = bucket.file(filePath);
 
   const token =
     Math.random().toString(36).slice(2, 10) + Date.now().toString(36);

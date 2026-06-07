@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { Loader2, Pen, Plus } from "lucide-react";
@@ -26,7 +21,10 @@ import { useToast } from "../../context/ToastProvider";
 import { useAppStore } from "../../stores/appStore";
 import { db, functions } from "../../services/firebase";
 import { getCompanyName } from "../../utils/company";
-import { getStaffName, getStaffNameFromRawRecord } from "../../utils/keyHeaderNormalisation";
+import {
+  getStaffName,
+  getStaffNameFromRawRecord,
+} from "../../utils/keyHeaderNormalisation";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { Muted } from "../../config/typography";
 import type { Agency, BulkStaff } from "../../types/domain";
@@ -133,13 +131,7 @@ export const AdminStaffPage = () => {
     } finally {
       setTagLoading(false);
     }
-  }, [
-    tagTarget,
-    selectedAssignTagIds,
-    tagInput,
-    addTag,
-    toast,
-  ]);
+  }, [tagTarget, selectedAssignTagIds, tagInput, addTag, toast]);
 
   const handleUnassign = useCallback(async () => {
     if (!unassignTarget || !appUser?.agencyId) return;
@@ -233,7 +225,7 @@ export const AdminStaffPage = () => {
             actions={
               <>
                 {member.metadata?.assignedToName ? (
-                  <span className="group inline-flex shrink-0 items-center text-xs text-[var(--muted-foreground)]">
+                  <span className="group inline-flex shrink-0 items-center text-xs sm:text-sm text-[var(--muted-foreground)]">
                     <span className="truncate max-w-[200px] transition-all duration-200 group-hover:mr-1">
                       {member.metadata.assignedToName}
                     </span>
@@ -251,7 +243,10 @@ export const AdminStaffPage = () => {
                     </span>
                   </span>
                 ) : (
-                  <span className="hidden sm:inline" onClick={(e) => e.stopPropagation()}>
+                  <span
+                    className="hidden sm:inline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {activeAssignMenu === member.id ? (
                       <ClientsDropdown
                         disabled={assigningStaffId === member.id}
@@ -283,40 +278,46 @@ export const AdminStaffPage = () => {
           >
             {(appUser?.role === "admin" || (member.tags?.length ?? 0) > 0) && (
               <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="sm:hidden text-xs sm:text-sm text-[var(--muted-foreground)]">
-                  <span className="font-semibold">Assigned To:</span>{" "}
-                  {member.metadata?.assignedToName ? (
-                    <>
-                      {member.metadata.assignedToName}
-                      <ActionButton
-                        variant="delete"
-                        size="xs"
-                        ariaLabel="Unassign staff"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUnassignTarget(member);
-                        }}
-                        className="ml-1.5 align-middle"
-                      />
-                    </>
-                  ) : appUser?.role === "admin" ? (
-                    <ClientsDropdown
-                      disabled={assigningStaffId === member.id}
-                      value=""
-                      onChange={(value) => {
-                        if (value) handleAssign(member.id, value);
-                      }}
-                      className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                      placeholder="Select client..."
-                    />
-                  ) : null}
+                <div className="sm:hidden">
+                  <Metadata
+                    title="Assigned to"
+                    value={
+                      member.metadata?.assignedToName ? (
+                        <>
+                          {member.metadata.assignedToName}
+                          <ActionButton
+                            variant="delete"
+                            size="xs"
+                            ariaLabel="Unassign staff"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnassignTarget(member);
+                            }}
+                            className="ml-1.5 align-middle"
+                          />
+                        </>
+                      ) : appUser?.role === "admin" ? (
+                        <ClientsDropdown
+                          disabled={assigningStaffId === member.id}
+                          value=""
+                          onChange={(value) => {
+                            if (value) handleAssign(member.id, value);
+                          }}
+                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                          placeholder="Select client..."
+                        />
+                      ) : null
+                    }
+                  />
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Metadata
                     title="Tags"
-                    value={member.tags && member.tags.length > 0
-                      ? member.tags.map((id) => tagsMap[id] || id).join(", ")
-                      : ""}
+                    value={
+                      member.tags && member.tags.length > 0
+                        ? member.tags.map((id) => tagsMap[id] || id).join(", ")
+                        : ""
+                    }
                   />
                   {appUser?.role === "admin" && (
                     <button
@@ -353,9 +354,7 @@ export const AdminStaffPage = () => {
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>
-                    <span className="font-medium">
-                      : {String(value ?? "")}
-                    </span>
+                    <span className="font-medium">: {String(value ?? "")}</span>
                   </p>
                 ))}
             </div>
@@ -369,7 +368,12 @@ export const AdminStaffPage = () => {
           if (!open && !unassignLoading) setUnassignTarget(null);
         }}
       >
-        <DialogContent closeDisabled={unassignLoading} onClose={() => { if (!unassignLoading) setUnassignTarget(null); }}>
+        <DialogContent
+          closeDisabled={unassignLoading}
+          onClose={() => {
+            if (!unassignLoading) setUnassignTarget(null);
+          }}
+        >
           <DialogTitle className="text-base sm:text-lg font-bold">
             Unassign Staff
           </DialogTitle>
@@ -396,7 +400,9 @@ export const AdminStaffPage = () => {
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                   Removing...
                 </span>
-              ) : "Remove"}
+              ) : (
+                "Remove"
+              )}
             </Button>
           </div>
         </DialogContent>

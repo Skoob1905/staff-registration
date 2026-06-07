@@ -94,7 +94,7 @@ export const PaginationBar = ({
                 type="button"
                 onClick={() => onGoToPage(page)}
                 disabled={loading}
-                className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
                   page === currentPage
                     ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
                     : "text-[var(--muted-foreground)] hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)]"
@@ -124,13 +124,13 @@ export const PaginationBar = ({
               if (e.key === "Enter") handlePageInputSubmit();
             }}
             placeholder="Page #"
-            className="w-16 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+            className="w-16 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
           />
           <button
             type="button"
             onClick={handlePageInputSubmit}
             disabled={loading || !pageInput}
-            className="inline-flex h-7 items-center rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 text-xs font-medium text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-7 items-center rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 text-[11px] font-medium text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Go
           </button>
@@ -145,7 +145,7 @@ export const PaginationBar = ({
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
         >
           {PAGE_SIZES.map((size) => (
             <option key={size} value={size}>

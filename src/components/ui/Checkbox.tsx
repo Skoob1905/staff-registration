@@ -15,7 +15,7 @@ export const Checkbox = ({
 }) => (
   <label
     htmlFor={id}
-    className="flex cursor-pointer items-center gap-2 text-xs sm:text-sm"
+    className="flex cursor-pointer items-center gap-2 text-[11px] sm:text-sm"
   >
     <input
       type="checkbox"

@@ -200,7 +200,10 @@ export const UploadPage = () => {
       if (el) el.value = "";
     } catch (err) {
       const code = (err as { code?: string })?.code;
-      if (code === "functions/already-exists") {
+      if (
+        code === "already-exists" ||
+        code === "functions/already-exists"
+      ) {
         toast({
           title: "Duplicate timesheet",
           description: `A timesheet named "${file.name}" has already been uploaded.`,

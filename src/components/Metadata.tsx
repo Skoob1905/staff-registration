@@ -7,7 +7,9 @@ interface MetadataProps {
 }
 
 export const Metadata = ({ title, value, className }: MetadataProps) => (
-  <span className={`text-xs sm:text-sm text-[var(--muted-foreground)] ${className ?? ""}`}>
+  <span
+    className={`text-xs sm:text-sm text-[var(--muted-foreground)] ${className ?? ""}`}
+  >
     <span className="font-semibold">{title}:</span> {value}
   </span>
 );
