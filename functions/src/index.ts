@@ -2287,7 +2287,12 @@ export const markInvoicePaid = onCall(async (request) => {
 
   const updated = current.map((inv) => {
     if (inv.id === invoiceId || inv.fileName === invoiceId) {
-      return { ...inv, status: "paid", paidAt: new Date().toISOString(), paidBy: callerUid };
+      return {
+        ...inv,
+        status: "paid",
+        paidAt: new Date().toISOString(),
+        paidBy: callerUid,
+      };
     }
     return inv;
   });
