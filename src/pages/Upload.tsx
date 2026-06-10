@@ -142,6 +142,15 @@ export const UploadPage = () => {
       return;
     }
 
+    if (docType === "timesheet" && !file.name.toLowerCase().endsWith(".csv")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a CSV file.",
+        variant: "error",
+      });
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
 
@@ -285,6 +294,7 @@ export const UploadPage = () => {
                   !isAdmin &&
                   (statusLoading || registrationStatus !== "registered")
                 }
+                accept={docType === "timesheet" ? ".csv" : undefined}
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
               />
@@ -298,6 +308,11 @@ export const UploadPage = () => {
               >
                 {file ? file.name : "Choose file"}
               </div>
+              {docType === "timesheet" && (
+                <p className="mt-1 text-xs text-zinc-500">
+                  CSV format only
+                </p>
+              )}
             </div>
           </div>
 
