@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, DialogContent, DialogRoot, DialogTitle, Input } from "./ui";
+import {
+  Button,
+  Checkbox,
+  DialogContent,
+  DialogRoot,
+  DialogTitle,
+  Input,
+} from "./ui";
 import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { H1, H2, Muted } from "../config/typography";
@@ -50,7 +57,10 @@ export const FilterModal = ({
   }, [open, filters]);
 
   const tagKeys = useMemo(
-    () => Object.keys(tags).filter((id) => (tagCounts?.[id] ?? 0) > 0),
+    () =>
+      tagCounts
+        ? Object.keys(tags).filter((id) => (tagCounts[id] ?? 0) > 0)
+        : Object.keys(tags),
     [tags, tagCounts],
   );
 
