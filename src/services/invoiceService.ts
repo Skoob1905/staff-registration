@@ -13,7 +13,7 @@ export interface InvoiceEntry {
   amountPayable: string;
   agencyName: string;
   agencyId: string;
-  status: "unpaid" | "paid";
+  status: "unpaid" | "paid" | "review";
   paidAt?: string;
   paidBy?: string;
 }

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { AccordionRoot, AccordionItem, Button, Card } from "../../components/ui";
+import { Pill } from "../../components/Pill";
 import { H2 } from "../../config/typography";
+import type { PillStatus } from "../../config/pill";
 import { useToast } from "../../context/ToastProvider";
 import {
   getAllInvoices,
@@ -14,6 +16,9 @@ interface AgencyInvoices {
   agencyName: string;
   invoices: InvoiceEntry[];
 }
+
+const hasOutstanding = (invoices: InvoiceEntry[]) =>
+  invoices.some((inv) => inv.status === "unpaid" || inv.status === "review");
 
 export const AdminInvoicesPage = () => {
   const { toast } = useToast();
@@ -54,21 +59,6 @@ export const AdminInvoicesPage = () => {
     }
   };
 
-  const statusPill = (status: string) => {
-    if (status === "unpaid") {
-      return (
-        <span className="ml-2 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
-          Unpaid
-        </span>
-      );
-    }
-    return (
-      <span className="ml-2 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-        Paid
-      </span>
-    );
-  };
-
   return (
     <div className="space-y-4">
       <Card>
@@ -90,10 +80,8 @@ export const AdminInvoicesPage = () => {
                   title={
                     <span className="flex items-center gap-2">
                       {agency.agencyName}
-                      {agency.invoices.some((inv) => inv.status === "unpaid") && (
-                        <span className="inline-block rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
-                          Unpaid
-                        </span>
+                      {hasOutstanding(agency.invoices) && (
+                        <Pill status="unpaid" />
                       )}
                     </span>
                   }
@@ -140,9 +128,11 @@ export const AdminInvoicesPage = () => {
                             <td className="py-2.5 pr-4 font-medium">
                               £{parseFloat(inv.amountPayable).toFixed(2)}
                             </td>
-                            <td className="py-2.5">{statusPill(inv.status)}</td>
                             <td className="py-2.5">
-                              {inv.status === "unpaid" && (
+                              <Pill status={inv.status as PillStatus} />
+                            </td>
+                            <td className="py-2.5">
+                              {(inv.status === "unpaid" || inv.status === "review") && (
                                 <Button
                                   type="button"
                                   disabled={payingInvoice === inv.id}

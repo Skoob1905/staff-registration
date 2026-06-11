@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card } from "../../components/ui";
+import { Pill } from "../../components/Pill";
 import { H2 } from "../../config/typography";
 import { useAuth } from "../../context/AuthProvider";
 import { getInvoicesForAgency, type InvoiceEntry } from "../../services/invoiceService";
-
-const statusStyles: Record<string, string> = {
-  paid: "bg-green-100 text-green-700",
-  unpaid: "bg-amber-100 text-amber-700",
-};
 
 export const InvoicesPage = () => {
   const { appUser } = useAuth();
@@ -26,7 +22,7 @@ export const InvoicesPage = () => {
   }, [appUser?.agencyId]);
 
   const outstandingTotal = invoices
-    .filter((inv) => inv.status === "unpaid")
+    .filter((inv) => inv.status === "unpaid" || inv.status === "review")
     .reduce((sum, inv) => sum + (parseFloat(inv.amountPayable) || 0), 0);
 
   return (
@@ -80,13 +76,7 @@ export const InvoicesPage = () => {
                       £{parseFloat(inv.amountPayable).toFixed(2)}
                     </td>
                     <td className="py-2.5">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          statusStyles[inv.status] || "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {inv.status === "paid" ? "Paid" : "Unpaid"}
-                      </span>
+                      <Pill status={inv.status} />
                     </td>
                   </tr>
                 ))}
