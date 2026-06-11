@@ -11,6 +11,7 @@ export interface AppToast {
   title: string;
   description?: string;
   variant?: ToastVariant;
+  icon?: ReactNode;
 }
 
 export const ToastProviderRoot = ToastPrimitive.Provider;
@@ -63,15 +64,18 @@ export const ToastItem = ({
       className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${borderColor}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <ToastPrimitive.Title className={`text-sm font-semibold ${textColor}`}>
-            {toast.title}
-          </ToastPrimitive.Title>
-          {toast.description ? (
-            <ToastPrimitive.Description className={`mt-1 text-sm ${descColor}`}>
-              {toast.description}
-            </ToastPrimitive.Description>
-          ) : null}
+        <div className="flex items-start gap-2">
+          {toast.icon ? <span className="mt-0.5 shrink-0">{toast.icon}</span> : null}
+          <div>
+            <ToastPrimitive.Title className={`text-sm font-semibold ${textColor}`}>
+              {toast.title}
+            </ToastPrimitive.Title>
+            {toast.description ? (
+              <ToastPrimitive.Description className={`mt-1 text-sm ${descColor}`}>
+                {toast.description}
+              </ToastPrimitive.Description>
+            ) : null}
+          </div>
         </div>
         <ToastPrimitive.Close className={`transition ${closeColor}`}>
           <X className="h-4 w-4" />
