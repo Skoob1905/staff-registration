@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { Loader2, Pen, Plus } from "lucide-react";
+import { Loader2, Pen, Plus, Download, Trash2 } from "lucide-react";
 import { AddModal } from "../../components/AddModal";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
 import { ImportHistory } from "../../components/ImportHistory";
@@ -68,6 +68,7 @@ export const AdminStaffPage = () => {
   const [selectedAssignTagIds, setSelectedAssignTagIds] = useState<Set<string>>(
     new Set(),
   );
+  const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (tagTarget) {
@@ -76,6 +77,22 @@ export const AdminStaffPage = () => {
       setTagInput("");
     }
   }, [tagTarget]);
+
+  const handleDeleteCv = useCallback(async (staffId: string, fileName: string) => {
+    const key = `${staffId}::${fileName}`;
+    if (deletingCvKey) return;
+    setDeletingCvKey(key);
+    try {
+      const callable = httpsCallable(functions, "deleteStaffCv");
+      await callable({ staffId, fileName });
+      setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
+      toast({ title: "CV deleted" });
+    } catch {
+      toast({ title: "Failed to delete CV", variant: "error" as const });
+    } finally {
+      setDeletingCvKey(null);
+    }
+  }, [deletingCvKey, toast]);
 
   const handleAssignTags = useCallback(async () => {
     if (!tagTarget) return;
@@ -331,6 +348,54 @@ export const AdminStaffPage = () => {
                       <Pen className="h-3.5 w-3.5" />
                     </button>
                   )}
+                </div>
+              </div>
+            )}
+            {member.metadata?.cv && member.metadata.cv.length > 0 && (
+              <div className="mb-2">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  CVs
+                </span>
+                <div className="mt-1 space-y-1">
+                  {member.metadata.cv.map((entry) => {
+                    const cvKey = `${member.id}::${entry.fileName}`;
+                    const isDeleting = deletingCvKey === cvKey;
+                    return (
+                      <div
+                        key={cvKey}
+                        className="flex items-center gap-2 text-xs sm:text-sm"
+                      >
+                        <a
+                          href={entry.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-600 underline hover:text-blue-800"
+                        >
+                          <Download className="h-3 w-3" />
+                          {entry.fileName}
+                        </a>
+                        <span className="text-zinc-400">
+                          ({new Date(entry.uploadedAt).toLocaleDateString()})
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isDeleting}
+                          aria-label={`Delete ${entry.fileName}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCv(member.id, entry.fileName);
+                          }}
+                          className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition hover:text-red-600 disabled:opacity-50"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

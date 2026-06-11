@@ -71,6 +71,17 @@ service firebase.storage {
       allow read, write: if request.auth != null;
     }
 
+    // CVs uploaded by admin for staff members.
+    match /cvs/{staffId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Bulk CSV uploads from the Upload page drag-and-drop zone.
+    match /bulk-uploads/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

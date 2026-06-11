@@ -18,6 +18,7 @@ import {
   buildFacetFilters,
   buildFacetRequestFields,
 } from "../utils/loginsFilter";
+import { Download, FileText } from "lucide-react";
 import type {
   Agency,
   BulkStaff,
@@ -131,21 +132,53 @@ export const StaffListSection = ({
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
           title={
             <div className="flex flex-col min-w-0">
-              <span className="truncate font-medium">{displayName}</span>
+              <span className="truncate font-medium flex items-center gap-2">
+                {displayName}
+                {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                  <span
+                    className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 pl-1.5 pr-2 py-0.5 text-blue-700 shadow-sm shrink-0 text-xs font-medium"
+                    title={`${member.metadata.cv.length} CV(s)`}
+                  >
+                    <FileText className="h-3 w-3" />
+                    {member.metadata.cv.length}
+                  </span>
+                )}
+              </span>
             </div>
           }
-        >
-          {member.tags && member.tags.length > 0 && (
-            <>
-              <span className="font-medium text-[var(--foreground)]">
-                Tags:
-              </span>
-              <span className="font-medium pl-1">
-                {member.tags.map((id) => tagsMap[id] || id).join(", ")}
-              </span>
-            </>
-          )}
-          <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600 mt-2">
+          >
+            {member.tags && member.tags.length > 0 && (
+              <>
+                <span className="font-medium text-[var(--foreground)]">
+                  Tags:
+                </span>
+                <span className="font-medium pl-1">
+                  {member.tags.map((id) => tagsMap[id] || id).join(", ")}
+                </span>
+              </>
+            )}
+            {member.metadata?.cv && member.metadata.cv.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                  CVs
+                </span>
+                <div className="mt-1 space-y-1">
+                  {member.metadata.cv.map((entry) => (
+                    <a
+                      key={`${member.id}::${entry.fileName}`}
+                      href={entry.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs sm:text-sm text-blue-600 underline hover:text-blue-800"
+                    >
+                      <Download className="h-3 w-3" />
+                      {entry.fileName}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600 mt-2">
             {Object.entries(member)
               .filter(
                 ([key, value]) =>

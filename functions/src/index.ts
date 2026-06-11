@@ -1964,6 +1964,132 @@ export const deleteTimesheet = onCall(async (request) => {
   return { ok: true };
 });
 
+export const uploadStaffCvs = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { cvs } = request.data as {
+    cvs: Array<{ staffId: string; fileName: string; fileBase64: string }>;
+  };
+  if (!cvs || !Array.isArray(cvs) || cvs.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required field: cvs (non-empty array)",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { email?: string; role?: string };
+  if (callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+  const bucket = getStorage().bucket();
+  const results: Array<{ staffId: string; fileName: string; success: boolean; error?: string }> = [];
+
+  for (const { staffId, fileName, fileBase64 } of cvs) {
+    try {
+      const staffSnap = await db.collection("staff").doc(staffId).get();
+      if (!staffSnap.exists) {
+        results.push({ staffId, fileName, success: false, error: "Staff not found" });
+        continue;
+      }
+
+      const filePath = `cvs/${staffId}/${fileName}`;
+      const fileRef = bucket.file(filePath);
+
+      const [exists] = await fileRef.exists();
+      if (exists) {
+        results.push({ staffId, fileName, success: false, error: "CV already exists" });
+        continue;
+      }
+
+      const token = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      const buffer = Buffer.from(fileBase64, "base64");
+
+      await fileRef.save(buffer, {
+        metadata: {
+          contentType: "application/pdf",
+          metadata: { firebaseStorageDownloadTokens: token },
+        },
+      });
+
+      const fileUrl =
+        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+      const entry = { fileName, fileUrl, uploadedBy, uploadedAt: new Date().toISOString() };
+
+      await db.collection("staff").doc(staffId).update({
+        "metadata.cv": FieldValue.arrayUnion(entry),
+      });
+
+      results.push({ staffId, fileName, success: true });
+    } catch (err) {
+      results.push({ staffId, fileName, success: false, error: String(err) });
+    }
+  }
+
+  return { ok: true, results };
+});
+
+export const deleteStaffCv = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { staffId, fileName } = request.data as { staffId: string; fileName: string };
+  if (!staffId || !fileName) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: staffId, fileName",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const storagePath = `cvs/${staffId}/${fileName}`;
+  try {
+    await getStorage().bucket().file(storagePath).delete();
+  } catch {
+    // file may not exist — proceed with clearing the entry
+  }
+
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff not found.");
+  }
+
+  const data = staffSnap.data() as {
+    metadata?: { cv?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.cv ?? [];
+
+  await staffRef.update({
+    "metadata.cv": current.filter((e) => e.fileName !== fileName),
+  });
+
+  return { ok: true };
+});
+
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { algoliasearch } from "algoliasearch";
 
