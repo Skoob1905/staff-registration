@@ -257,7 +257,7 @@ export const AdminInvoicesPage = () => {
           <div className="mt-4 flex justify-end gap-2">
             <Button
               type="button"
-              variant="outline"
+              className="border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]"
               disabled={payingInvoice !== null}
               onClick={() => setConfirmPaid(null)}
             >

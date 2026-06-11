@@ -114,18 +114,15 @@ export const getAllInvoices = async (): Promise<
   }> = [];
 
   for (const snap of snaps.docs) {
-    const data = snap.data() as {
-      metadata?: { invoices?: InvoiceEntry[] };
-      name?: string;
-    };
-    const invoices = data.metadata?.invoices ?? [];
+    const data = snap.data() as Record<string, unknown>;
+    const invoices = ((data.metadata as Record<string, unknown>)?.invoices ?? []) as InvoiceEntry[];
     if (invoices.length > 0) {
       const name: string =
-        data.name ||
-        data.business_name ||
-        data.Company_Name ||
-        data.company_name ||
-        data.agencyName ||
+        (data.name as string) ||
+        (data.business_name as string) ||
+        (data.Company_Name as string) ||
+        (data.company_name as string) ||
+        (data.agencyName as string) ||
         "Unknown Agency";
       results.push({
         agencyId: snap.id,
