@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { Loader2, Pen, Plus } from "lucide-react";
+import { FileText, Loader2, Pen, Plus } from "lucide-react";
 import { AddModal } from "../../components/AddModal";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { ImportHistory } from "../../components/ImportHistory";
 import { Metadata } from "../../components/Metadata";
+import { Pill } from "../../components/Pill";
 import { StaffListSection } from "../../components/StaffListSection";
 import {
   AccordionItem,
@@ -68,6 +70,7 @@ export const AdminStaffPage = () => {
   const [selectedAssignTagIds, setSelectedAssignTagIds] = useState<Set<string>>(
     new Set(),
   );
+  const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (tagTarget) {
@@ -76,6 +79,22 @@ export const AdminStaffPage = () => {
       setTagInput("");
     }
   }, [tagTarget]);
+
+  const handleDeleteCv = useCallback(async (staffId: string, fileName: string) => {
+    const key = `${staffId}::${fileName}`;
+    if (deletingCvKey) return;
+    setDeletingCvKey(key);
+    try {
+      const callable = httpsCallable(functions, "deleteStaffCv");
+      await callable({ staffId, fileName });
+      setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
+      toast({ title: "CV deleted" });
+    } catch {
+      toast({ title: "Failed to delete CV", variant: "error" as const });
+    } finally {
+      setDeletingCvKey(null);
+    }
+  }, [deletingCvKey, toast]);
 
   const handleAssignTags = useCallback(async () => {
     if (!tagTarget) return;
@@ -217,8 +236,16 @@ export const AdminStaffPage = () => {
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
               <div className="flex flex-col min-w-0">
-                <span className="truncate font-medium">
+                <span className="truncate font-medium flex items-center gap-2">
                   {getStaffName(member)}
+                  {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                    <Pill
+                      status="info"
+                      label="CV"
+                      icon={<FileText className="h-3 w-3" />}
+                      className="shrink-0"
+                    />
+                  )}
                 </span>
               </div>
             }
@@ -332,6 +359,47 @@ export const AdminStaffPage = () => {
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+            {member.metadata?.cv && member.metadata.cv.length > 0 && (
+              <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+                {member.metadata.cv.map((entry) => {
+                  const cvKey = `${member.id}::${entry.fileName}`;
+                  const isDeleting = deletingCvKey === cvKey;
+                  return (
+                    <Metadata
+                      key={cvKey}
+                      title="CV"
+                      className="flex items-center"
+                      value={
+                        <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                          <span className="text-[var(--muted-foreground)]">
+                            {entry.fileName}
+                          </span>
+                          <FileInteractionButtons
+                            fileUrl={entry.fileUrl}
+                            fileName={entry.fileName}
+                            interactionKey="cv"
+                            size="sm"
+                            onDelete={
+                              isDeleting
+                                ? undefined
+                                : () => handleDeleteCv(member.id, entry.fileName)
+                            }
+                          />
+                          {entry.uploadedAt && (
+                            <span className="text-zinc-400">
+                              ({new Date(entry.uploadedAt).toLocaleDateString()})
+                            </span>
+                          )}
+                          {isDeleting && (
+                            <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
+                          )}
+                        </span>
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
             <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">

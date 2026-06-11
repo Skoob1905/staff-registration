@@ -23,6 +23,20 @@
       ]
     },
     {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "Forename",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "Surname",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "users",
       "queryScope": "COLLECTION",
       "fields": [

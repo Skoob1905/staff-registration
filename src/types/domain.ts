@@ -108,6 +108,13 @@ export const emptyFilters: StaffFilters = {
   tagIds: [],
 };
 
+export interface StaffCvEntry {
+  fileName: string;
+  fileUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
 export interface BulkStaff {
   id: string;
   email: string;
@@ -133,6 +140,7 @@ export interface BulkStaff {
     uploadedInFile?: string;
     uploadedBy?: string;
     importedAt?: Date;
+    cv?: StaffCvEntry[];
   };
 }
 

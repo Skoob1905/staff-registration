@@ -5,7 +5,7 @@ export interface PillConfig {
   label: string;
 }
 
-export type PillStatus = "paid" | "unpaid" | "review";
+export type PillStatus = "paid" | "unpaid" | "review" | "info";
 
 export const pillConfig: Record<PillStatus, PillConfig> = {
   paid: {
@@ -25,5 +25,11 @@ export const pillConfig: Record<PillStatus, PillConfig> = {
     border: "border-orange-300",
     text: "text-orange-700",
     label: "Review",
+  },
+  info: {
+    bg: "bg-blue-100",
+    border: "border-blue-300",
+    text: "text-blue-700",
+    label: "Info",
   },
 };

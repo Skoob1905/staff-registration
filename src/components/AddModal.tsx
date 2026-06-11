@@ -88,6 +88,7 @@ interface AddModalProps {
   onSuccess?: (importId?: string) => Promise<void>;
   clients?: { id: string; name: string }[];
   confirmText?: (additions: number) => string;
+  initialFile?: File | null;
 }
 
 export const AddModal = ({
@@ -100,6 +101,7 @@ export const AddModal = ({
   csvType,
   onSuccess,
   confirmText,
+  initialFile,
 }: AddModalProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
@@ -110,6 +112,18 @@ export const AddModal = ({
   useEffect(() => {
     if (open) loadTags(true).catch(() => {});
   }, [open, loadTags]);
+
+  const fileProcessedRef = useRef(false);
+  const handleFileRef = useRef<(file: File) => void>(() => {});
+  useEffect(() => {
+    if (open && initialFile && !fileProcessedRef.current) {
+      fileProcessedRef.current = true;
+      handleFileRef.current(initialFile);
+    }
+    if (!open) {
+      fileProcessedRef.current = false;
+    }
+  }, [open, initialFile]);
 
   const clientFacetFilters = useMemo(
     () => (isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]]),
@@ -282,6 +296,9 @@ export const AddModal = ({
     };
     reader.readAsText(file);
   };
+  useEffect(() => {
+    handleFileRef.current = handleFile;
+  });
 
   const onUpload = async () => {
     if (!csvData || !appUser) return;

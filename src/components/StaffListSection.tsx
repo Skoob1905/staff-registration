@@ -14,10 +14,14 @@ import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { getStaffName } from "../utils/keyHeaderNormalisation";
+import { FileInteractionButtons } from "./FileInteractionButtons";
+import { Metadata } from "./Metadata";
+import { Pill } from "./Pill";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
 } from "../utils/loginsFilter";
+import { FileText } from "lucide-react";
 import type {
   Agency,
   BulkStaff,
@@ -131,7 +135,16 @@ export const StaffListSection = ({
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
           title={
             <div className="flex flex-col min-w-0">
-              <span className="truncate font-medium">{displayName}</span>
+              <span className="truncate font-medium flex items-center gap-2">
+                {displayName}
+                {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                  <Pill
+                    status="info"
+                    icon={<FileText className="h-3 w-3" />}
+                    className="shrink-0"
+                  />
+                )}
+              </span>
             </div>
           }
         >
@@ -144,6 +157,30 @@ export const StaffListSection = ({
                 {member.tags.map((id) => tagsMap[id] || id).join(", ")}
               </span>
             </>
+          )}
+          {member.metadata?.cv && member.metadata.cv.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1 text-xs sm:text-sm">
+              {member.metadata.cv.map((entry) => (
+                <Metadata
+                  key={`${member.id}::${entry.fileName}`}
+                  title="CV"
+                  className="flex items-center"
+                  value={
+                    <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                      <span className="text-[var(--muted-foreground)]">
+                        {entry.fileName}
+                      </span>
+                      <FileInteractionButtons
+                        fileUrl={entry.fileUrl}
+                        fileName={entry.fileName}
+                        interactionKey="cv"
+                        size="sm"
+                      />
+                    </span>
+                  }
+                />
+              ))}
+            </div>
           )}
           <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600 mt-2">
             {Object.entries(member)

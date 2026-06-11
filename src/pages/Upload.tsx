@@ -1,24 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { Loader2 } from "lucide-react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  Loader2,
+  X,
+} from "lucide-react";
 import { Button, Card, Label, ProgressBar } from "../components/ui";
 import { ClientsDropdown } from "../components/ClientsDropdown";
+import { CVUploadModal, type CvFile } from "../components/CVUploadModal";
 import { PreviewModal } from "../components/PreviewModal";
 import { config } from "../config";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { functions } from "../services/firebase";
 import { uploadClientContract } from "../services/contractService";
+import { db, functions } from "../services/firebase";
 import { uploadStaffDocument } from "../services/staffUploadService";
 import { getStatus } from "../services/userService";
+import type { BulkStaff } from "../types/domain";
+import { parseCVFileName } from "../utils/cvFileName";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const DEV_FILE_SIZE_LIMIT = 104857600;
 const INVOICE_FILE_SIZE_LIMIT = 2097152;
+const CV_FILE_SIZE_LIMIT = 2 * 1024 * 1024;
 
 const ADMIN_UPLOAD_TYPES = [
   { label: "Signed Contract", value: "client_contract" },
   { label: "INVOICES", value: "invoice" },
+  { label: "CV", value: "cv" },
 ] as const;
 
 const CLIENT_UPLOAD_TYPES = [
@@ -32,39 +44,6 @@ const CATEGORIES = [
   { label: "Payslip Query", value: "payslip_query" },
 ];
 
-function renderToast(
-  type: "success" | "error",
-  docType: string,
-  params: { fileName: string; clientName?: string },
-): { title: string; description?: string; variant: "success" | "error" } {
-  if (type === "error") {
-    return {
-      title: "Upload failed",
-      description: `"${params.fileName}" could not be uploaded. Please try again.`,
-      variant: "error",
-    };
-  }
-
-  switch (docType) {
-    case "client_contract":
-      return {
-        title: `"${params.fileName}" uploaded to ${params.clientName}`,
-        variant: "success",
-      };
-    case "timesheet":
-      return {
-        title: "Timesheet uploaded",
-        description: `${config.name} has received your timesheet`,
-        variant: "success",
-      };
-    default:
-      return {
-        title: `"${params.fileName}" uploaded successfully`,
-        variant: "success",
-      };
-  }
-}
-
 export const UploadPage = () => {
   useEffect(() => {
     document.title = "Upload";
@@ -74,25 +53,38 @@ export const UploadPage = () => {
   const { toast } = useToast();
   const isAdmin = appUser?.role === "admin";
 
-  const config = isAdmin
+  const pageConfig = isAdmin
     ? { title: "Upload", uploadTypes: ADMIN_UPLOAD_TYPES }
     : { title: "Upload", uploadTypes: CLIENT_UPLOAD_TYPES };
 
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedClientName, setSelectedClientName] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [docType, setDocType] = useState<string>(config.uploadTypes[0].value);
+  const [docType, setDocType] = useState<string>(pageConfig.uploadTypes[0].value);
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
-
   const [registrationStatus, setRegistrationStatus] = useState<
     "awaiting" | "registered" | undefined
   >(undefined);
+  const [cvMode, setCvMode] = useState(false);
+  const [cvFiles, setCvFiles] = useState<CvFile[]>([]);
+  const [cvUploading, setCvUploading] = useState(false);
+  const [cvReviewOpen, setCvReviewOpen] = useState(false);
 
+  const matched = useMemo(
+    () => cvFiles.filter((cvFile) => cvFile.match && !cvFile.error),
+    [cvFiles],
+  );
   const statusLoading = registrationStatus === undefined;
+  const registrationBlocked =
+    !isAdmin && (statusLoading || registrationStatus !== "registered");
+  const totalCount = cvFiles.length;
+  const matchedCount = matched.length;
+  const fileInputAccept =
+    docType === "timesheet" ? ".csv" : docType === "invoice" ? ".pdf" : undefined;
 
   useEffect(() => {
     if (!isAdmin && appUser) {
@@ -100,35 +92,186 @@ export const UploadPage = () => {
         .then(setRegistrationStatus)
         .catch(() => setRegistrationStatus("awaiting"));
     }
-  }, [isAdmin, appUser]);
+  }, [appUser, isAdmin]);
+
+  const readCvFile = useCallback(async (fileToRead: File): Promise<CvFile> => {
+    const parsed = parseCVFileName(fileToRead.name);
+
+    if (!fileToRead.name.toLowerCase().endsWith(".pdf")) {
+      return {
+        file: fileToRead,
+        base64: "",
+        parsedForename: "",
+        parsedSurname: "",
+        match: null,
+        error: "format",
+      };
+    }
+
+    if (fileToRead.size > CV_FILE_SIZE_LIMIT) {
+      return {
+        file: fileToRead,
+        base64: "",
+        parsedForename: parsed?.firstname ?? "",
+        parsedSurname: parsed?.surname ?? "",
+        match: null,
+        error: "size",
+      };
+    }
+
+    if (!parsed) {
+      return {
+        file: fileToRead,
+        base64: "",
+        parsedForename: "",
+        parsedSurname: "",
+        match: null,
+      };
+    }
+
+    let match: BulkStaff | null = null;
+
+    const fullQuery = query(
+      collection(db, "staff"),
+      where("Forename", "==", parsed.firstname),
+      where("Surname", "==", parsed.surname),
+    );
+    const fullSnapshot = await getDocs(fullQuery);
+
+    if (fullSnapshot.docs.length > 0) {
+      const doc = fullSnapshot.docs[0];
+      match = { id: doc.id, ...(doc.data() as Omit<BulkStaff, "id">) };
+    } else {
+      const nameQuery = query(
+        collection(db, "staff"),
+        where("Forename", "==", parsed.firstname),
+      );
+      const nameSnapshot = await getDocs(nameQuery);
+      const surnameLower = parsed.surname.toLowerCase();
+      const found = nameSnapshot.docs.find(
+        (doc) => doc.data().Surname?.toLowerCase() === surnameLower,
+      );
+      if (found) {
+        match = { id: found.id, ...(found.data() as Omit<BulkStaff, "id">) };
+      }
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve({
+          file: fileToRead,
+          base64: result.split(",")[1],
+          parsedForename: parsed.firstname,
+          parsedSurname: parsed.surname,
+          match,
+        });
+      };
+      reader.onerror = () => {
+        resolve({
+          file: fileToRead,
+          base64: "",
+          parsedForename: parsed.firstname,
+          parsedSurname: parsed.surname,
+          match: null,
+        });
+      };
+      reader.readAsDataURL(fileToRead);
+    });
+  }, []);
+
+  const handleCvFiles = useCallback(
+    async (files: FileList | File[]) => {
+      toast({
+        title: "Processing",
+        description: "Reading and matching CV files...",
+        variant: "info",
+        icon: <Loader2 className="h-4 w-4 animate-spin" />,
+        replaceToast: true,
+      });
+      const fileArray = Array.from(files);
+      const results = await Promise.all(fileArray.map(readCvFile));
+      setCvFiles((previous) => [...previous, ...results]);
+      toast({
+        title: "Ready",
+        description: `${results.length} CV file(s) processed`,
+        variant: "success",
+        replaceToast: true,
+      });
+      setCvReviewOpen(true);
+    },
+    [readCvFile, toast],
+  );
+
+  const removeCvFile = useCallback((index: number) => {
+    setCvFiles((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
+  }, []);
+
+  const handleCvUpload = useCallback(async () => {
+    const valid = matched.filter((cvFile) => cvFile.base64);
+    if (valid.length === 0) return;
+
+    setCvUploading(true);
+
+    try {
+      const uploadStaffCvs = httpsCallable(functions, "uploadStaffCvs");
+      await uploadStaffCvs({
+        cvs: valid.map((cvFile) => ({
+          staffId: cvFile.match!.id,
+          fileName: cvFile.file.name,
+          fileBase64: cvFile.base64,
+        })),
+      });
+      toast({
+        title: "CVs uploaded",
+        description: `${valid.length} CV(s) uploaded successfully`,
+        variant: "success",
+      });
+      setCvFiles([]);
+      setCvReviewOpen(false);
+      setCvMode(false);
+    } catch {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload CVs. Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setCvUploading(false);
+    }
+  }, [matched, toast]);
+
+  const handleDocTypeChange = (value: string) => {
+    setDocType(value);
+    setCvMode(value === "cv");
+    setFile(null);
+    if (value !== "invoice") {
+      setInvoiceFile(null);
+      setPreviewModalOpen(false);
+    }
+  };
+
+  const handleCvInputClick = () => {
+    document.getElementById("cvFileInput")?.click();
+  };
 
   const targetClientId = isAdmin ? selectedClientId : (appUser?.agencyId ?? "");
 
   const canSubmit = useMemo(() => {
     if (docType === "invoice") return false;
-
     if (!file || !appUser?.agencyId) return false;
-
     if (
       docType !== "client_contract" &&
       docType !== "timesheet" &&
       docType !== "document"
-    )
+    ) {
       return false;
-
+    }
     if (docType === "client_contract" && !selectedClientId) return false;
-
     if (!isAdmin && registrationStatus !== "registered") return false;
-
     return true;
-  }, [
-    file,
-    appUser?.agencyId,
-    docType,
-    selectedClientId,
-    isAdmin,
-    registrationStatus,
-  ]);
+  }, [appUser?.agencyId, docType, file, isAdmin, registrationStatus, selectedClientId]);
 
   const handleInvoiceFile = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -157,7 +300,6 @@ export const UploadPage = () => {
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (docType === "invoice") return;
 
     if (
       !canSubmit ||
@@ -165,8 +307,9 @@ export const UploadPage = () => {
       !file ||
       !appUser?.agencyId ||
       !targetClientId
-    )
+    ) {
       return;
+    }
 
     if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT) {
       toast({
@@ -193,12 +336,10 @@ export const UploadPage = () => {
       if (docType === "client_contract") {
         setProgress(60);
         await uploadClientContract(file, targetClientId);
-        toast(
-          renderToast("success", docType, {
-            fileName: file.name,
-            clientName: selectedClientName,
-          }),
-        );
+        toast({
+          title: `"${file.name}" uploaded to ${selectedClientName}`,
+          variant: "success",
+        });
       } else if (docType === "timesheet") {
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -209,7 +350,7 @@ export const UploadPage = () => {
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const fn = httpsCallable<
+        const recordTimesheetUpload = httpsCallable<
           {
             fileBase64: string;
             fileName: string;
@@ -218,13 +359,17 @@ export const UploadPage = () => {
           },
           { ok: boolean; url: string }
         >(functions, "recordTimesheetUpload");
-        await fn({
+        await recordTimesheetUpload({
           fileBase64: base64,
           fileName: file.name,
           clientId: appUser.agencyId,
           contentType: file.type,
         });
-        toast(renderToast("success", docType, { fileName: file.name }));
+        toast({
+          title: "Timesheet uploaded",
+          description: `${config.name} has received your timesheet`,
+          variant: "success",
+        });
       } else {
         await uploadStaffDocument(
           file,
@@ -233,161 +378,285 @@ export const UploadPage = () => {
           category,
           setProgress,
         );
-        toast(renderToast("success", docType, { fileName: file.name }));
+        toast({
+          title: `"${file.name}" uploaded successfully`,
+          variant: "success",
+        });
       }
 
       setFile(null);
       setSelectedClientId("");
       setSelectedClientName("");
       setProgress(0);
-      const el = document.getElementById("uploadFile") as HTMLInputElement;
-      if (el) el.value = "";
-    } catch (err) {
-      const code = (err as { code?: string })?.code;
-      if (
-        code === "already-exists" ||
-        code === "functions/already-exists"
-      ) {
+      const uploadInput = document.getElementById("uploadFile") as HTMLInputElement;
+      if (uploadInput) uploadInput.value = "";
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === "already-exists" || code === "functions/already-exists") {
         toast({
           title: "Duplicate timesheet",
           description: `A timesheet named "${file.name}" has already been uploaded.`,
           variant: "error",
         });
       } else {
-        toast(renderToast("error", docType, { fileName: file.name }));
+        toast({
+          title: "Upload failed",
+          description: `"${file.name}" could not be uploaded. Please try again.`,
+          variant: "error",
+        });
       }
     } finally {
       setUploading(false);
     }
   };
 
+  const cvUploadModal = (
+    <CVUploadModal
+      cvFiles={cvFiles}
+      cvUploading={cvUploading}
+      open={cvReviewOpen}
+      onOpenChange={setCvReviewOpen}
+      onUpload={handleCvUpload}
+    />
+  );
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
-        <h2 className="text-lg font-bold">{config.title}</h2>
+        <h2 className="text-lg font-bold">{pageConfig.title}</h2>
 
-        <form className="mt-4 space-y-3" onSubmit={onSubmit}>
-          <div className="space-y-1">
-            <Label>Document Type</Label>
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-            >
-              {config.uploadTypes.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {isAdmin && (
+        {!cvMode ? (
+          <form className="mt-4 space-y-3" onSubmit={onSubmit}>
             <div className="space-y-1">
-              <Label>Client</Label>
-              <ClientsDropdown
-                value={selectedClientId}
-                onChange={(id, name) => {
-                  setSelectedClientId(id);
-                  setSelectedClientName(name);
-                }}
-                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-                disableWithContract
-              />
-            </div>
-          )}
-
-          {!isAdmin && docType === "document" && (
-            <div className="space-y-1">
-              <Label>Category</Label>
+              <Label>Document Type</Label>
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                disabled={statusLoading || registrationStatus !== "registered"}
-                className={`w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm transition-colors ${
-                  !statusLoading && registrationStatus === "registered"
-                    ? "bg-white text-zinc-900"
-                    : "cursor-not-allowed bg-zinc-100 text-zinc-400"
-                }`}
+                value={docType}
+                onChange={(event) => handleDocTypeChange(event.target.value)}
+                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
               >
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
+                {pageConfig.uploadTypes.map((uploadType) => (
+                  <option key={uploadType.value} value={uploadType.value}>
+                    {uploadType.label}
                   </option>
                 ))}
               </select>
             </div>
-          )}
 
-          <div className="space-y-1">
-            <Label>File</Label>
-            <div className="relative">
-              <input
-                id="uploadFile"
-                type="file"
-                disabled={
-                  !isAdmin &&
-                  (statusLoading || registrationStatus !== "registered")
-                }
-                accept={docType === "timesheet" ? ".csv" : docType === "invoice" ? ".pdf" : undefined}
-                onChange={(e) => {
-                  const f = e.target.files?.[0] ?? null;
-                  if (docType === "invoice") {
-                    handleInvoiceFile(f);
-                    e.target.value = "";
-                  } else {
-                    setFile(f);
-                  }
-                }}
-                className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
-              />
-              <div
-                className={`flex items-center rounded-xl border px-3 py-2 text-sm transition ${
-                  !isAdmin &&
-                  (statusLoading || registrationStatus !== "registered")
-                    ? "cursor-not-allowed bg-zinc-100 text-zinc-400 border-[var(--border)]"
-                    : "bg-[var(--input-bg)] text-[var(--foreground)] border-[var(--border)]"
-                }`}
-              >
-                {file ? file.name : "Choose file"}
+            {isAdmin && (
+              <div className="space-y-1">
+                <Label>Client</Label>
+                <ClientsDropdown
+                  value={selectedClientId}
+                  onChange={(id, name) => {
+                    setSelectedClientId(id);
+                    setSelectedClientName(name);
+                  }}
+                  className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                  disableWithContract
+                />
               </div>
-              {docType === "timesheet" && (
-                <p className="mt-1 text-xs text-zinc-500">
-                  CSV format only
-                </p>
-              )}
-            </div>
-          </div>
-
-          <ProgressBar value={progress} />
-
-          {!isAdmin && statusLoading ? (
-            <p className="text-sm text-zinc-500">
-              Checking registration status...
-            </p>
-          ) : null}
-
-          {!isAdmin && !statusLoading && registrationStatus !== "registered" ? (
-            <p className="text-sm text-orange-700">
-              You must complete registration before uploading documents.
-            </p>
-          ) : null}
-
-          <Button
-            type="submit"
-            disabled={!canSubmit || uploading || (!isAdmin && statusLoading)}
-          >
-            {uploading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading...
-              </span>
-            ) : (
-              "Upload"
             )}
-          </Button>
-        </form>
+
+            {!isAdmin && docType === "document" && (
+              <div className="space-y-1">
+                <Label>Category</Label>
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  disabled={registrationBlocked}
+                  className={`w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm transition-colors ${
+                    registrationBlocked
+                      ? "cursor-not-allowed bg-zinc-100 text-zinc-400"
+                      : "bg-white text-zinc-900"
+                  }`}
+                >
+                  {CATEGORIES.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <Label>File</Label>
+              <div className="relative">
+                <input
+                  id="uploadFile"
+                  type="file"
+                  disabled={registrationBlocked}
+                  accept={fileInputAccept}
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0] ?? null;
+                    if (docType === "invoice") {
+                      handleInvoiceFile(selectedFile);
+                      event.target.value = "";
+                    } else {
+                      setFile(selectedFile);
+                    }
+                  }}
+                  className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                />
+                <div
+                  className={`flex items-center rounded-xl border px-3 py-2 text-sm transition ${
+                    registrationBlocked
+                      ? "cursor-not-allowed border-[var(--border)] bg-zinc-100 text-zinc-400"
+                      : "border-[var(--border)] bg-[var(--input-bg)] text-[var(--foreground)]"
+                  }`}
+                >
+                  {docType === "invoice"
+                    ? invoiceFile?.name ?? "Choose file"
+                    : file?.name ?? "Choose file"}
+                </div>
+                {docType === "timesheet" && (
+                  <p className="mt-1 text-xs text-zinc-500">CSV format only</p>
+                )}
+                {docType === "invoice" && (
+                  <p className="mt-1 text-xs text-zinc-500">PDF format only, max 2MB</p>
+                )}
+              </div>
+            </div>
+
+            <ProgressBar value={progress} />
+
+            {!isAdmin && statusLoading ? (
+              <p className="text-sm text-zinc-500">Checking registration status...</p>
+            ) : null}
+
+            {!isAdmin && !statusLoading && registrationStatus !== "registered" ? (
+              <p className="text-sm text-orange-700">
+                You must complete registration before uploading documents.
+              </p>
+            ) : null}
+
+            <Button
+              type="submit"
+              disabled={
+                docType === "invoice" ||
+                !canSubmit ||
+                uploading ||
+                (!isAdmin && statusLoading)
+              }
+            >
+              {uploading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploading...
+                </span>
+              ) : (
+                "Upload"
+              )}
+            </Button>
+          </form>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <input
+              id="cvFileInput"
+              type="file"
+              accept=".pdf"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                if (event.target.files) void handleCvFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+
+            {cvFiles.length === 0 ? (
+              <div
+                onClick={handleCvInputClick}
+                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#0EA5E9] bg-[#0EA5E9]/5 p-8 transition hover:scale-[1.02]"
+              >
+                <FileText className="h-8 w-8 text-[#0EA5E9]" />
+                <span className="text-sm font-bold text-[#0EA5E9]">CV</span>
+                <span className="text-center text-xs leading-tight text-zinc-500">
+                  Upload CVs for your staff members
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">
+                    {totalCount} CV{totalCount !== 1 ? "s" : ""}
+                    {" | "}
+                    <span className="text-[var(--primary)]">{matchedCount} Matched</span>
+                    {" | "}
+                    <span className="text-red-600">
+                      {totalCount - matchedCount} Unmatched
+                    </span>
+                  </span>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleCvInputClick}>
+                      Add More
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setCvReviewOpen(true)}
+                      disabled={matchedCount === 0}
+                    >
+                      Upload {matchedCount} CV{matchedCount !== 1 ? "s" : ""}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-[var(--border)] p-2">
+                  {cvFiles.map((cvFile, index) => (
+                    <div
+                      key={`${cvFile.file.name}-${index}`}
+                      className={`flex items-center justify-between rounded-lg px-2 py-1 text-xs sm:text-sm ${
+                        cvFile.error || !cvFile.match
+                          ? "bg-red-50 text-red-700"
+                          : "bg-[color:rgba(0,95,87,0.06)] text-[var(--foreground)]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        {cvFile.error || !cvFile.match ? (
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                        ) : (
+                          <CheckCircle className="h-3.5 w-3.5 shrink-0 text-[var(--primary)]" />
+                        )}
+                        <FileText className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{cvFile.file.name}</span>
+                        {cvFile.match && (
+                          <span className="text-[var(--muted-foreground)]">
+                            → {cvFile.match.Forename} {cvFile.match.Surname}
+                          </span>
+                        )}
+                        {cvFile.error === "size" && (
+                          <span className="text-red-600">(too large)</span>
+                        )}
+                        {cvFile.error === "format" && (
+                          <span className="text-red-600">(not PDF)</span>
+                        )}
+                        {!cvFile.error && !cvFile.match && (
+                          <span className="text-red-600">(no match)</span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeCvFile(index);
+                        }}
+                        className="ml-2 shrink-0 text-[var(--muted-foreground)] hover:text-red-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button type="button" onClick={() => setCvMode(false)}>
+              Back
+            </Button>
+          </div>
+        )}
       </Card>
+
+      {cvUploadModal}
 
       <PreviewModal
         open={previewModalOpen}
