@@ -1,9 +1,26 @@
+#!/bin/sh
+
+# --- Client-side checks ---
 npm run lint
+npm run build
 npx tsc --noEmit
 
+# --- Cloud Functions deploy (only when functions/ changed) ---
 if git diff --name-only "$(git merge-base HEAD @{upstream})" HEAD -- functions/ | grep -q .; then
   echo "→ Functions changed, running checks..."
   cd functions && npm run lint && npm run build && cd ..
   echo "→ Deploying functions..."
   npx firebase deploy --only functions --project dev --force
+fi
+
+# --- Storage rules deploy (only when storage.rules changed) ---
+if git diff --name-only "$(git merge-base HEAD @{upstream})" HEAD -- storage.rules | grep -q .; then
+  echo "→ storage.rules changed, deploying..."
+  npx firebase deploy --only storage --project dev --force
+fi
+
+# --- Firestore rules deploy (only when firestore.rules changed) ---
+if git diff --name-only "$(git merge-base HEAD @{upstream})" HEAD -- firestore.rules | grep -q .; then
+  echo "→ firestore.rules changed, deploying..."
+  npx firebase deploy --only firestore:rules --project dev --force
 fi

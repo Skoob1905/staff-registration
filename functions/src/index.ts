@@ -946,7 +946,7 @@ export const importStaffCsv = onCall(async (request) => {
   const assignedToName =
     assignedToNameInput ||
     (callerAgencySnap?.exists
-      ? (callerAgencySnap.data() as { name?: string }).name ?? ""
+      ? ((callerAgencySnap.data() as { name?: string }).name ?? "")
       : "");
 
   const tagIds = request.data?.tagIds as string[] | undefined;
@@ -1826,7 +1826,9 @@ export const recordTimesheetUpload = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as {
-    email?: string; agencyId?: string; role?: string;
+    email?: string;
+    agencyId?: string;
+    role?: string;
   };
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
 
@@ -1893,8 +1895,7 @@ export const recordTimesheetUpload = onCall(async (request) => {
     );
   }
 
-  const fileUrl =
-    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 
   const entry = {
     uploadedBy,
@@ -1903,9 +1904,12 @@ export const recordTimesheetUpload = onCall(async (request) => {
     fileUrl,
   };
 
-  await db.collection("agencies").doc(clientId).update({
-    "metadata.timesheets": FieldValue.arrayUnion(entry),
-  });
+  await db
+    .collection("agencies")
+    .doc(clientId)
+    .update({
+      "metadata.timesheets": FieldValue.arrayUnion(entry),
+    });
 
   return { ok: true, url: fileUrl };
 });
@@ -1985,9 +1989,7 @@ export const syncAgencyToAlgolia = onDocumentWritten(
         indexName: algoliaIndex("clients"),
         objectID: event.params.docId,
       });
-      console.log(
-        `Deleted agency ${event.params.docId} from clients index`,
-      );
+      console.log(`Deleted agency ${event.params.docId} from clients index`);
       return;
     }
 
@@ -2016,9 +2018,7 @@ export const syncStaffToAlgolia = onDocumentWritten(
         indexName: algoliaIndex("staff"),
         objectID: event.params.docId,
       });
-      console.log(
-        `Deleted staff ${event.params.docId} from staff index`,
-      );
+      console.log(`Deleted staff ${event.params.docId} from staff index`);
       return;
     }
 
@@ -2048,8 +2048,7 @@ export const syncClientUserToAlgolia = onDocumentWritten(
 
     const wasClient =
       snap.before.exists && snap.before.data()?.role === "client";
-    const isClient =
-      snap.after.exists && snap.after.data()?.role === "client";
+    const isClient = snap.after.exists && snap.after.data()?.role === "client";
 
     if (!isClient && !wasClient) return;
 
@@ -2121,7 +2120,9 @@ export const backfillAlgoliaIndices = onCall(
     const agencyObjects: Array<Record<string, unknown>> = [];
     for (const doc of agencySnap.docs) {
       const data = doc.data();
-      const sortableName = getBusinessName(data ?? {}).toLowerCase().trim();
+      const sortableName = getBusinessName(data ?? {})
+        .toLowerCase()
+        .trim();
       agencyObjects.push({ objectID: doc.id, ...data, sortableName });
     }
     if (agencyObjects.length > 0) {
@@ -2134,7 +2135,9 @@ export const backfillAlgoliaIndices = onCall(
 
     // ── Users / logins (role=client) ──
     const loginSnap = await db
-      .collection("users").where("role", "==", "client").get();
+      .collection("users")
+      .where("role", "==", "client")
+      .get();
     const loginObjects: Array<Record<string, unknown>> = [];
     for (const doc of loginSnap.docs) {
       const data = doc.data();
@@ -2163,6 +2166,213 @@ export const backfillAlgoliaIndices = onCall(
     };
   },
 );
+
+export const uploadInvoice = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const {
+    fileBase64,
+    fileName,
+    agencyId,
+    contentType,
+    dueDate,
+    amountPayable,
+    agencyName,
+  } = request.data;
+  if (!fileBase64 || !fileName || !agencyId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: fileBase64, fileName, agencyId",
+    );
+  }
+  if (!dueDate || !amountPayable) {
+    throw new HttpsError(
+      "invalid-argument",
+      "dueDate and amountPayable are required.",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as {
+    email?: string;
+    role?: string;
+  };
+  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+
+  const bucket = getStorage().bucket();
+  const filePath = `invoices/${agencyId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  const token =
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const buffer = Buffer.from(fileBase64, "base64");
+
+  try {
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: contentType ?? "application/pdf",
+        metadata: { firebaseStorageDownloadTokens: token },
+      },
+    });
+  } catch {
+    throw new HttpsError("internal", "Failed to save file to storage.");
+  }
+
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+  const entry = {
+    id: filePath,
+    fileName,
+    fileUrl,
+    uploadedBy,
+    uploadedByUid: callerUid,
+    uploadedAt: new Date().toISOString(),
+    dueDate,
+    amountPayable,
+    agencyName: agencyName ?? "",
+    status: "unpaid",
+  };
+
+  await db
+    .collection("agencies")
+    .doc(agencyId)
+    .update({
+      "metadata.invoices": FieldValue.arrayUnion(entry),
+    });
+
+  return { ok: true, url: fileUrl };
+});
+
+export const markInvoicePaid = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const agencyId = String(request.data?.agencyId || "").trim();
+  const invoiceId = String(request.data?.invoiceId || "").trim();
+  if (!agencyId || !invoiceId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "agencyId and invoiceId are required.",
+    );
+  }
+
+  const agencyRef = db.collection("agencies").doc(agencyId);
+  const agencySnap = await agencyRef.get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const data = agencySnap.data() as {
+    metadata?: { invoices?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.invoices ?? [];
+
+  const updated = current.map((inv) => {
+    if (inv.id === invoiceId || inv.fileName === invoiceId) {
+      return {
+        ...inv,
+        status: "paid",
+        paidAt: new Date().toISOString(),
+        paidBy: callerUid,
+      };
+    }
+    return inv;
+  });
+
+  await agencyRef.update({
+    "metadata.invoices": updated,
+  });
+
+  return { ok: true };
+});
+
+export const deleteInvoice = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const agencyId = String(request.data?.agencyId || "").trim();
+  const invoiceId = String(request.data?.invoiceId || "").trim();
+  if (!agencyId || !invoiceId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "agencyId and invoiceId are required.",
+    );
+  }
+
+  const agencyRef = db.collection("agencies").doc(agencyId);
+  const agencySnap = await agencyRef.get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const data = agencySnap.data() as {
+    metadata?: { invoices?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.invoices ?? [];
+
+  const target = current.find(
+    (inv) =>
+      (inv.id as string) === invoiceId ||
+      (inv.fileName as string) === invoiceId,
+  );
+
+  if (target) {
+    const filePath = String(target.id || "");
+    if (filePath) {
+      try {
+        await getStorage().bucket().file(filePath).delete();
+      } catch {
+        // file may not exist — proceed with record removal
+      }
+    }
+  }
+
+  const updated = current.filter(
+    (inv) =>
+      (inv.id as string) !== invoiceId &&
+      (inv.fileName as string) !== invoiceId,
+  );
+
+  await agencyRef.update({
+    "metadata.invoices": updated,
+  });
+
+  return { ok: true };
+});
 
 export const getMaintenanceWindow = onCall(async () => {
   const db = getFirestore();

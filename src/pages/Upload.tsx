@@ -3,6 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { Loader2 } from "lucide-react";
 import { Button, Card, Label, ProgressBar } from "../components/ui";
 import { ClientsDropdown } from "../components/ClientsDropdown";
+import { PreviewModal } from "../components/PreviewModal";
 import { config } from "../config";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
@@ -13,13 +14,16 @@ import { getStatus } from "../services/userService";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const DEV_FILE_SIZE_LIMIT = 104857600;
+const INVOICE_FILE_SIZE_LIMIT = 2097152;
 
 const ADMIN_UPLOAD_TYPES = [
   { label: "Signed Contract", value: "client_contract" },
+  { label: "INVOICES", value: "invoice" },
 ] as const;
 
 const CLIENT_UPLOAD_TYPES = [
   { label: "Timesheet", value: "timesheet" },
+  { label: "INVOICES", value: "invoice" },
 ] as const;
 
 const CATEGORIES = [
@@ -81,6 +85,8 @@ export const UploadPage = () => {
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
 
   const [registrationStatus, setRegistrationStatus] = useState<
     "awaiting" | "registered" | undefined
@@ -99,6 +105,8 @@ export const UploadPage = () => {
   const targetClientId = isAdmin ? selectedClientId : (appUser?.agencyId ?? "");
 
   const canSubmit = useMemo(() => {
+    if (docType === "invoice") return false;
+
     if (!file || !appUser?.agencyId) return false;
 
     if (
@@ -122,8 +130,35 @@ export const UploadPage = () => {
     registrationStatus,
   ]);
 
+  const handleInvoiceFile = (selectedFile: File | null) => {
+    if (!selectedFile) return;
+
+    if (selectedFile.size > INVOICE_FILE_SIZE_LIMIT) {
+      toast({
+        title: "File too large",
+        description: "Invoice files must be under 2MB.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!selectedFile.name.toLowerCase().endsWith(".pdf")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a PDF file.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setInvoiceFile(selectedFile);
+    setPreviewModalOpen(true);
+  };
+
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (docType === "invoice") return;
+
     if (
       !canSubmit ||
       uploading ||
@@ -294,8 +329,16 @@ export const UploadPage = () => {
                   !isAdmin &&
                   (statusLoading || registrationStatus !== "registered")
                 }
-                accept={docType === "timesheet" ? ".csv" : undefined}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                accept={docType === "timesheet" ? ".csv" : docType === "invoice" ? ".pdf" : undefined}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  if (docType === "invoice") {
+                    handleInvoiceFile(f);
+                    e.target.value = "";
+                  } else {
+                    setFile(f);
+                  }
+                }}
                 className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
               />
               <div
@@ -345,6 +388,15 @@ export const UploadPage = () => {
           </Button>
         </form>
       </Card>
+
+      <PreviewModal
+        open={previewModalOpen}
+        file={invoiceFile}
+        onClose={() => {
+          setPreviewModalOpen(false);
+          setInvoiceFile(null);
+        }}
+      />
     </div>
   );
 };
