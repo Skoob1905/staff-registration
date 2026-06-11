@@ -44,6 +44,7 @@ jobs:
         with:
           credentials_json: ${{ github.ref_name == 'main' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
 
+      # --- Functions deploy (only when functions/ changed) ---
       - name: Check for functions changes
         id: check-functions
         run: |
@@ -68,10 +69,48 @@ jobs:
           PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
           npx firebase-tools deploy --only functions --project $PROJECT
 
+      # --- Storage rules deploy (only when storage.rules changed) ---
+      - name: Check for storage.rules changes
+        id: check-storage-rules
+        run: |
+          if git diff --name-only "${{ github.event.before }}" HEAD -- storage.rules | grep -q . 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy storage rules (conditional)
+        if: steps.check-storage-rules.outputs.changed == 'true'
+        run: |
+          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          npx firebase-tools deploy --only storage --project $PROJECT
+
+      # --- Firestore rules deploy (only when firestore.rules changed) ---
+      - name: Check for firestore.rules changes
+        id: check-firestore-rules
+        run: |
+          if git diff --name-only "${{ github.event.before }}" HEAD -- firestore.rules | grep -q . 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy firestore rules (conditional)
+        if: steps.check-firestore-rules.outputs.changed == 'true'
+        run: |
+          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          npx firebase-tools deploy --only firestore:rules --project $PROJECT
+
       - name: Output deploy summary
         run: |
+          SUMMARY=""
           if [ "${{ steps.check-functions.outputs.changed }}" = "true" ]; then
-            echo "Deployed Cloud Functions to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
+            SUMMARY="$SUMMARY Deployed Cloud Functions"
+          fi
+          if [ "${{ steps.check-storage-rules.outputs.changed }}" = "true" ]; then
+            SUMMARY="$SUMMARY Deployed storage rules"
+          fi
+          if [ "${{ steps.check-firestore-rules.outputs.changed }}" = "true" ]; then
+            SUMMARY="$SUMMARY Deployed firestore rules"
+          fi
+          if [ -z "$SUMMARY" ]; then
+            echo "No changes detected; skipping all deploys."
           else
-            echo "No Cloud Functions changes detected; skipping deploy."
+            echo "${SUMMARY} to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
           fi
