@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import {
-  AlertCircle,
-  CheckCircle,
-  FileText,
-  Loader2,
-  X,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, FileText, Loader2, X } from "lucide-react";
 import {
   Button,
   Card,
@@ -60,7 +54,9 @@ interface CvFile {
   error?: "size" | "format";
 }
 
-function parseFileName(name: string): { forename: string; surname: string } | null {
+function parseFileName(
+  name: string,
+): { forename: string; surname: string } | null {
   const withoutExt = name.replace(/\.pdf$/i, "").trim();
   const parts = withoutExt.split(/\s+/);
   if (parts.length < 2) return null;
@@ -97,7 +93,9 @@ export const UploadPage = () => {
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedClientName, setSelectedClientName] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [docType, setDocType] = useState<string>(pageConfig.uploadTypes[0].value);
+  const [docType, setDocType] = useState<string>(
+    pageConfig.uploadTypes[0].value,
+  );
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -211,7 +209,9 @@ export const UploadPage = () => {
   );
 
   const removeCvFile = useCallback((index: number) => {
-    setCvFiles((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
+    setCvFiles((previous) =>
+      previous.filter((_, itemIndex) => itemIndex !== index),
+    );
   }, []);
 
   const handleCvUpload = useCallback(async () => {
@@ -273,7 +273,14 @@ export const UploadPage = () => {
     if (docType === "client_contract" && !selectedClientId) return false;
     if (!isAdmin && registrationStatus !== "registered") return false;
     return true;
-  }, [appUser?.agencyId, docType, file, isAdmin, registrationStatus, selectedClientId]);
+  }, [
+    appUser?.agencyId,
+    docType,
+    file,
+    isAdmin,
+    registrationStatus,
+    selectedClientId,
+  ]);
 
   const handleInvoiceFile = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -390,7 +397,9 @@ export const UploadPage = () => {
       setSelectedClientId("");
       setSelectedClientName("");
       setProgress(0);
-      const uploadInput = document.getElementById("uploadFile") as HTMLInputElement;
+      const uploadInput = document.getElementById(
+        "uploadFile",
+      ) as HTMLInputElement;
       if (uploadInput) uploadInput.value = "";
     } catch (error) {
       const code = (error as { code?: string })?.code;
@@ -504,14 +513,16 @@ export const UploadPage = () => {
                   }`}
                 >
                   {docType === "invoice"
-                    ? invoiceFile?.name ?? "Choose file"
-                    : file?.name ?? "Choose file"}
+                    ? (invoiceFile?.name ?? "Choose file")
+                    : (file?.name ?? "Choose file")}
                 </div>
                 {docType === "timesheet" && (
                   <p className="mt-1 text-xs text-zinc-500">CSV format only</p>
                 )}
                 {docType === "invoice" && (
-                  <p className="mt-1 text-xs text-zinc-500">PDF format only, max 2MB</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    PDF format only, max 2MB
+                  </p>
                 )}
               </div>
             </div>
@@ -519,10 +530,14 @@ export const UploadPage = () => {
             <ProgressBar value={progress} />
 
             {!isAdmin && statusLoading ? (
-              <p className="text-sm text-zinc-500">Checking registration status...</p>
+              <p className="text-sm text-zinc-500">
+                Checking registration status...
+              </p>
             ) : null}
 
-            {!isAdmin && !statusLoading && registrationStatus !== "registered" ? (
+            {!isAdmin &&
+            !statusLoading &&
+            registrationStatus !== "registered" ? (
               <p className="text-sm text-orange-700">
                 You must complete registration before uploading documents.
               </p>
@@ -578,7 +593,9 @@ export const UploadPage = () => {
                   <span className="text-sm font-semibold">
                     {totalCount} CV{totalCount !== 1 ? "s" : ""}
                     {" | "}
-                    <span className="text-[var(--primary)]">{matchedCount} Matched</span>
+                    <span className="text-[var(--primary)]">
+                      {matchedCount} Matched
+                    </span>
                     {" | "}
                     <span className="text-red-600">
                       {totalCount - matchedCount} Unmatched
@@ -587,7 +604,9 @@ export const UploadPage = () => {
                   <div className="flex gap-2">
                     <Button
                       type="button"
-                      onClick={() => document.getElementById("cvFileInput")?.click()}
+                      onClick={() =>
+                        document.getElementById("cvFileInput")?.click()
+                      }
                     >
                       Add More
                     </Button>
@@ -672,9 +691,13 @@ export const UploadPage = () => {
             <span className="text-sm font-semibold">
               {totalCount} CV{totalCount !== 1 ? "s" : ""}
               {" | "}
-              <span className="text-[var(--primary)]">{matchedCount} Matched</span>
+              <span className="text-[var(--primary)]">
+                {matchedCount} Matched
+              </span>
               {" | "}
-              <span className="text-red-600">{totalCount - matchedCount} Unmatched</span>
+              <span className="text-red-600">
+                {totalCount - matchedCount} Unmatched
+              </span>
             </span>
           </div>
 
@@ -682,12 +705,24 @@ export const UploadPage = () => {
             <table className="min-w-full text-left text-xs sm:text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[color:rgba(0,95,87,0.06)]">
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">CV File</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Status</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Title</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Forename</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Surname</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">NI Number</th>
+                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">
+                    CV File
+                  </th>
+                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">
+                    Status
+                  </th>
+                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">
+                    Title
+                  </th>
+                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">
+                    Forename
+                  </th>
+                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">
+                    Surname
+                  </th>
+                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">
+                    NI Number
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -697,7 +732,11 @@ export const UploadPage = () => {
                     className={`border-b border-[var(--border)] last:border-0 ${cvFile.error || !cvFile.match ? "bg-red-50" : ""}`}
                   >
                     <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                      <span className={cvFile.error || !cvFile.match ? "text-red-600" : ""}>
+                      <span
+                        className={
+                          cvFile.error || !cvFile.match ? "text-red-600" : ""
+                        }
+                      >
                         {cvFile.file.name}
                       </span>
                     </td>
