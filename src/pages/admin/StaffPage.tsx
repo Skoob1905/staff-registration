@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { Loader2, Pen, Plus, Download, Trash2 } from "lucide-react";
+import { FileText, Loader2, Pen, Plus } from "lucide-react";
 import { AddModal } from "../../components/AddModal";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { ImportHistory } from "../../components/ImportHistory";
 import { Metadata } from "../../components/Metadata";
+import { Pill } from "../../components/Pill";
 import { StaffListSection } from "../../components/StaffListSection";
 import {
   AccordionItem,
@@ -234,8 +236,16 @@ export const AdminStaffPage = () => {
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
               <div className="flex flex-col min-w-0">
-                <span className="truncate font-medium">
+                <span className="truncate font-medium flex items-center gap-2">
                   {getStaffName(member)}
+                  {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                    <Pill
+                      status="info"
+                      label="CV"
+                      icon={<FileText className="h-3 w-3" />}
+                      className="shrink-0"
+                    />
+                  )}
                 </span>
               </div>
             }
@@ -352,51 +362,44 @@ export const AdminStaffPage = () => {
               </div>
             )}
             {member.metadata?.cv && member.metadata.cv.length > 0 && (
-              <div className="mb-2">
-                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                  CVs
-                </span>
-                <div className="mt-1 space-y-1">
-                  {member.metadata.cv.map((entry) => {
-                    const cvKey = `${member.id}::${entry.fileName}`;
-                    const isDeleting = deletingCvKey === cvKey;
-                    return (
-                      <div
-                        key={cvKey}
-                        className="flex items-center gap-2 text-xs sm:text-sm"
-                      >
-                        <a
-                          href={entry.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 underline hover:text-blue-800"
-                        >
-                          <Download className="h-3 w-3" />
-                          {entry.fileName}
-                        </a>
-                        <span className="text-zinc-400">
-                          ({new Date(entry.uploadedAt).toLocaleDateString()})
-                        </span>
-                        <button
-                          type="button"
-                          disabled={isDeleting}
-                          aria-label={`Delete ${entry.fileName}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCv(member.id, entry.fileName);
-                          }}
-                          className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition hover:text-red-600 disabled:opacity-50"
-                        >
-                          {isDeleting ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
+              <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+                {member.metadata.cv.map((entry) => {
+                  const cvKey = `${member.id}::${entry.fileName}`;
+                  const isDeleting = deletingCvKey === cvKey;
+                  return (
+                    <Metadata
+                      key={cvKey}
+                      title="CV"
+                      className="flex items-center"
+                      value={
+                        <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                          <span className="text-[var(--muted-foreground)]">
+                            {entry.fileName}
+                          </span>
+                          <FileInteractionButtons
+                            fileUrl={entry.fileUrl}
+                            fileName={entry.fileName}
+                            interactionKey="cv"
+                            size="sm"
+                            onDelete={
+                              isDeleting
+                                ? undefined
+                                : () => handleDeleteCv(member.id, entry.fileName)
+                            }
+                          />
+                          {entry.uploadedAt && (
+                            <span className="text-zinc-400">
+                              ({new Date(entry.uploadedAt).toLocaleDateString()})
+                            </span>
                           )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                          {isDeleting && (
+                            <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
+                          )}
+                        </span>
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
             <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">

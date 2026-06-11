@@ -2384,6 +2384,7 @@ export const uploadInvoice = onCall(async (request) => {
     id: filePath,
     fileName,
     fileUrl,
+    agencyId,
     uploadedBy,
     uploadedByUid: callerUid,
     uploadedAt: new Date().toISOString(),

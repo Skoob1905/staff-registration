@@ -187,10 +187,10 @@ export const AdminInvoicesPage = () => {
                             <td className="py-2.5 px-3 text-center">
                               {inv.status === "paid" ? (
                                 <span
-                                  className="inline-flex items-center justify-center rounded-full bg-green-500/80 text-white h-8 w-8"
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-500/80 text-white shadow-[0_2px_8px_rgba(34,197,94,0.25)]"
                                   aria-label="Paid"
                                 >
-                                  <Check className="h-5 w-5" />
+                                  <Check className="h-3.5 w-3.5" />
                                 </span>
                               ) : (
                                 <Button

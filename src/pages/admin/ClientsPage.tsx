@@ -19,8 +19,7 @@ import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
 import { functions } from "../../services/firebase";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import type { StaffFilters } from "../../types/domain";
-import { emptyFilters } from "../../types/domain";
+import { useFilterParams } from "../../hooks/useFilterParams";
 
 export const AdminClientsPage = () => {
   useEffect(() => {
@@ -37,8 +36,7 @@ export const AdminClientsPage = () => {
   const [deletingContract, setDeletingContract] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [clientFilters, setClientFilters] =
-    useState<StaffFilters>(emptyFilters);
+  const [clientFilters, setClientFilters] = useFilterParams();
 
   const {
     items: clients,
@@ -121,6 +119,14 @@ export const AdminClientsPage = () => {
     setPageSize(size);
     setPage(0);
   }, []);
+
+  const handleClientFiltersChange = useCallback(
+    (filters: typeof clientFilters) => {
+      setPage(0);
+      setClientFilters(filters);
+    },
+    [setClientFilters],
+  );
 
   const onDeleteContract = async () => {
     if (!confirmDeleteClient) return;
@@ -232,7 +238,7 @@ export const AdminClientsPage = () => {
         onGoToPage={onGoToPage}
         onPageSizeChange={onPageSizeChange}
         filters={clientFilters}
-        onFiltersChange={setClientFilters}
+        onFiltersChange={handleClientFiltersChange}
         enableNameFilter
         enableTagFilter={false}
       />

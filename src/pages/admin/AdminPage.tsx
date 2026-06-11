@@ -21,15 +21,14 @@ import { getCompanyName } from "../../utils/company";
 import { Muted } from "../../config/typography";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
+import { useFilterParams } from "../../hooks/useFilterParams";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
 } from "../../utils/loginsFilter";
 import {
-  emptyFilters,
   type Agency,
   type FilterKeyMap,
-  type StaffFilters,
 } from "../../types/domain";
 
 export const AdminPage = () => {
@@ -80,8 +79,7 @@ export const AdminPage = () => {
     hitsPerPage: 1000,
   });
 
-  const [loginsFilters, setLoginsFilters] =
-    useState<StaffFilters>(emptyFilters);
+  const [loginsFilters, setLoginsFilters] = useFilterParams();
   const [loginsPage, setLoginsPage] = useState(0);
   const [loginsPageSize, setLoginsPageSize] = useState(50);
 
@@ -256,6 +254,14 @@ export const AdminPage = () => {
     }
   };
 
+  const handleLoginsFiltersChange = useCallback(
+    (filters: typeof loginsFilters) => {
+      setLoginsPage(0);
+      setLoginsFilters(filters);
+    },
+    [setLoginsFilters],
+  );
+
   return (
     <div className="mx-auto space-y-4">
       <PaginatedFilterSection
@@ -275,7 +281,7 @@ export const AdminPage = () => {
         }}
         filterKeys={loginsKeyMap}
         filters={loginsFilters}
-        onFiltersChange={setLoginsFilters}
+        onFiltersChange={handleLoginsFiltersChange}
         enableAgencyFilter
         enableTagFilter={false}
         agencies={filteredLoginsAgencies as unknown as Agency[]}
