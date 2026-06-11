@@ -11,19 +11,16 @@ import {
   DialogRoot,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { Pill } from "../../components/Pill";
+import { InvoicePills } from "../../components/InvoicePills";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { H2 } from "../../config/typography";
-import type { PillStatus } from "../../config/pill";
 import { useToast } from "../../context/ToastProvider";
 import {
   deleteInvoice,
   getAllInvoices,
-  getLatestFileUpload,
   markInvoicePaid,
   type InvoiceEntry,
 } from "../../services/invoiceService";
-import { FileInteractionButtons } from "../../components/FileInteractionButtons";
-import { InvoicePills } from "../../components/InvoicePills";
 
 interface AgencyInvoices {
   agencyId: string;
@@ -36,14 +33,6 @@ export const AdminInvoicesPage = () => {
   const [agencies, setAgencies] = useState<AgencyInvoices[]>([]);
   const [loading, setLoading] = useState(true);
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
-  const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
-  const [latestUpload, setLatestUpload] = useState<{
-    fileName: string;
-    clientName: string;
-    uploadedAt: string;
-    status: string;
-    unpaidCount: number;
-  } | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{
     agencyId: string;
     invoiceId: string;
@@ -53,15 +42,9 @@ export const AdminInvoicesPage = () => {
 
   const fetchInvoices = useCallback(() => {
     setLoading(true);
-    Promise.all([getAllInvoices(), getLatestFileUpload()])
-      .then(([agencies, latest]) => {
-        setAgencies(agencies);
-        setLatestUpload(latest);
-      })
-      .catch(() => {
-        setAgencies([]);
-        setLatestUpload(null);
-      })
+    getAllInvoices()
+      .then(setAgencies)
+      .catch(() => setAgencies([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -91,15 +74,12 @@ export const AdminInvoicesPage = () => {
   };
 
   const handleDelete = async (agencyId: string, invoiceId: string) => {
-    setDeletingInvoice(invoiceId);
     try {
       await deleteInvoice(agencyId, invoiceId);
       toast({ title: "Invoice deleted", variant: "success" });
       fetchInvoices();
     } catch {
       toast({ title: "Failed to delete invoice", variant: "error" });
-    } finally {
-      setDeletingInvoice(null);
     }
   };
 

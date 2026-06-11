@@ -128,7 +128,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets]);
+  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets, toast]);
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
