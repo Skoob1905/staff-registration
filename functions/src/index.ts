@@ -946,7 +946,7 @@ export const importStaffCsv = onCall(async (request) => {
   const assignedToName =
     assignedToNameInput ||
     (callerAgencySnap?.exists
-      ? (callerAgencySnap.data() as { name?: string }).name ?? ""
+      ? ((callerAgencySnap.data() as { name?: string }).name ?? "")
       : "");
 
   const tagIds = request.data?.tagIds as string[] | undefined;
@@ -1826,7 +1826,9 @@ export const recordTimesheetUpload = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as {
-    email?: string; agencyId?: string; role?: string;
+    email?: string;
+    agencyId?: string;
+    role?: string;
   };
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
 
@@ -1893,8 +1895,7 @@ export const recordTimesheetUpload = onCall(async (request) => {
     );
   }
 
-  const fileUrl =
-    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 
   const entry = {
     uploadedBy,
@@ -1903,9 +1904,12 @@ export const recordTimesheetUpload = onCall(async (request) => {
     fileUrl,
   };
 
-  await db.collection("agencies").doc(clientId).update({
-    "metadata.timesheets": FieldValue.arrayUnion(entry),
-  });
+  await db
+    .collection("agencies")
+    .doc(clientId)
+    .update({
+      "metadata.timesheets": FieldValue.arrayUnion(entry),
+    });
 
   return { ok: true, url: fileUrl };
 });
@@ -1985,9 +1989,7 @@ export const syncAgencyToAlgolia = onDocumentWritten(
         indexName: algoliaIndex("clients"),
         objectID: event.params.docId,
       });
-      console.log(
-        `Deleted agency ${event.params.docId} from clients index`,
-      );
+      console.log(`Deleted agency ${event.params.docId} from clients index`);
       return;
     }
 
@@ -2016,9 +2018,7 @@ export const syncStaffToAlgolia = onDocumentWritten(
         indexName: algoliaIndex("staff"),
         objectID: event.params.docId,
       });
-      console.log(
-        `Deleted staff ${event.params.docId} from staff index`,
-      );
+      console.log(`Deleted staff ${event.params.docId} from staff index`);
       return;
     }
 
@@ -2048,8 +2048,7 @@ export const syncClientUserToAlgolia = onDocumentWritten(
 
     const wasClient =
       snap.before.exists && snap.before.data()?.role === "client";
-    const isClient =
-      snap.after.exists && snap.after.data()?.role === "client";
+    const isClient = snap.after.exists && snap.after.data()?.role === "client";
 
     if (!isClient && !wasClient) return;
 
@@ -2121,7 +2120,9 @@ export const backfillAlgoliaIndices = onCall(
     const agencyObjects: Array<Record<string, unknown>> = [];
     for (const doc of agencySnap.docs) {
       const data = doc.data();
-      const sortableName = getBusinessName(data ?? {}).toLowerCase().trim();
+      const sortableName = getBusinessName(data ?? {})
+        .toLowerCase()
+        .trim();
       agencyObjects.push({ objectID: doc.id, ...data, sortableName });
     }
     if (agencyObjects.length > 0) {
@@ -2134,7 +2135,9 @@ export const backfillAlgoliaIndices = onCall(
 
     // ── Users / logins (role=client) ──
     const loginSnap = await db
-      .collection("users").where("role", "==", "client").get();
+      .collection("users")
+      .where("role", "==", "client")
+      .get();
     const loginObjects: Array<Record<string, unknown>> = [];
     for (const doc of loginSnap.docs) {
       const data = doc.data();
@@ -2199,7 +2202,8 @@ export const uploadInvoice = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as {
-    email?: string; role?: string;
+    email?: string;
+    role?: string;
   };
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
 
@@ -2219,14 +2223,10 @@ export const uploadInvoice = onCall(async (request) => {
       },
     });
   } catch {
-    throw new HttpsError(
-      "internal",
-      "Failed to save file to storage.",
-    );
+    throw new HttpsError("internal", "Failed to save file to storage.");
   }
 
-  const fileUrl =
-    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 
   const entry = {
     id: filePath,
@@ -2241,9 +2241,12 @@ export const uploadInvoice = onCall(async (request) => {
     status: "unpaid",
   };
 
-  await db.collection("agencies").doc(agencyId).update({
-    "metadata.invoices": FieldValue.arrayUnion(entry),
-  });
+  await db
+    .collection("agencies")
+    .doc(agencyId)
+    .update({
+      "metadata.invoices": FieldValue.arrayUnion(entry),
+    });
 
   return { ok: true, url: fileUrl };
 });
