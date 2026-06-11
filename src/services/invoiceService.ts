@@ -77,6 +77,17 @@ export const markInvoicePaid = async (
   await fn({ agencyId, invoiceId });
 };
 
+export const deleteInvoice = async (
+  agencyId: string,
+  invoiceId: string,
+): Promise<void> => {
+  const fn = httpsCallable<
+    { agencyId: string; invoiceId: string },
+    { ok: boolean }
+  >(functions, "deleteInvoice");
+  await fn({ agencyId, invoiceId });
+};
+
 export const getInvoicesForAgency = async (
   agencyId: string,
 ): Promise<InvoiceEntry[]> => {
@@ -128,4 +139,38 @@ export const getAllInvoices = async (): Promise<
   }
 
   return results.sort((a, b) => a.agencyName.localeCompare(b.agencyName));
+};
+
+export const getLatestFileUpload = async (): Promise<{
+  fileName: string;
+  clientName: string;
+  uploadedAt: string;
+  status: string;
+  unpaidCount: number;
+} | null> => {
+  const all = await getAllInvoices();
+  let latest: {
+    fileName: string;
+    clientName: string;
+    uploadedAt: string;
+    status: string;
+  } | null = null;
+  let unpaidCount = 0;
+  for (const agency of all) {
+    for (const inv of agency.invoices) {
+      if (inv.status === "unpaid" || inv.status === "review") {
+        unpaidCount++;
+      }
+      if (!latest || new Date(inv.uploadedAt).getTime() > new Date(latest.uploadedAt).getTime()) {
+        latest = {
+          fileName: inv.fileName,
+          clientName: agency.agencyName,
+          uploadedAt: inv.uploadedAt,
+          status: inv.status,
+        };
+      }
+    }
+  }
+  if (!latest) return null;
+  return { ...latest, unpaidCount };
 };

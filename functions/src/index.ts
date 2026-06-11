@@ -2307,6 +2307,73 @@ export const markInvoicePaid = onCall(async (request) => {
   return { ok: true };
 });
 
+export const deleteInvoice = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Admin only.");
+  }
+
+  const agencyId = String(request.data?.agencyId || "").trim();
+  const invoiceId = String(request.data?.invoiceId || "").trim();
+  if (!agencyId || !invoiceId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "agencyId and invoiceId are required.",
+    );
+  }
+
+  const agencyRef = db.collection("agencies").doc(agencyId);
+  const agencySnap = await agencyRef.get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const data = agencySnap.data() as {
+    metadata?: { invoices?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.invoices ?? [];
+
+  const target = current.find(
+    (inv) =>
+      (inv.id as string) === invoiceId ||
+      (inv.fileName as string) === invoiceId,
+  );
+
+  if (target) {
+    const filePath = String(target.id || "");
+    if (filePath) {
+      try {
+        await getStorage().bucket().file(filePath).delete();
+      } catch {
+        // file may not exist — proceed with record removal
+      }
+    }
+  }
+
+  const updated = current.filter(
+    (inv) =>
+      (inv.id as string) !== invoiceId &&
+      (inv.fileName as string) !== invoiceId,
+  );
+
+  await agencyRef.update({
+    "metadata.invoices": updated,
+  });
+
+  return { ok: true };
+});
+
 export const getMaintenanceWindow = onCall(async () => {
   const db = getFirestore();
   const snap = await db.collection("maintenance").doc("config").get();

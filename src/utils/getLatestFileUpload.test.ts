@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { getLatestTimesheetUpload, formatTimesheetDate, type TimesheetEntry } from "./timesheets";
+import {
+  getLatestTimesheetUpload,
+  formatTimesheetDate,
+  type TimesheetEntry,
+} from "./timesheets";
 
 describe("getLatestTimesheetUpload", () => {
   it("returns null for empty array", () => {

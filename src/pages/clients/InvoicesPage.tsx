@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Card } from "../../components/ui";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { Pill } from "../../components/Pill";
 import { H2 } from "../../config/typography";
 import { useAuth } from "../../context/AuthProvider";
-import { getInvoicesForAgency, type InvoiceEntry } from "../../services/invoiceService";
+import {
+  getInvoicesForAgency,
+  type InvoiceEntry,
+} from "../../services/invoiceService";
 
 export const InvoicesPage = () => {
   const { appUser } = useAuth();
@@ -21,18 +25,11 @@ export const InvoicesPage = () => {
       .finally(() => setLoading(false));
   }, [appUser?.agencyId]);
 
-  const outstandingTotal = invoices
-    .filter((inv) => inv.status === "unpaid" || inv.status === "review")
-    .reduce((sum, inv) => sum + (parseFloat(inv.amountPayable) || 0), 0);
-
   return (
     <div className="space-y-4">
       <Card>
         <div className="flex items-center justify-between">
           <H2>Invoices</H2>
-          <span className="text-xs text-[var(--muted-foreground)]">
-            Outstanding: £{outstandingTotal.toFixed(2)}
-          </span>
         </div>
 
         {loading ? (
@@ -45,7 +42,6 @@ export const InvoicesPage = () => {
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                   <th className="py-2 pr-4 font-medium">Invoice</th>
-                  <th className="py-2 pr-4 font-medium">Agency</th>
                   <th className="py-2 pr-4 font-medium">Due Date</th>
                   <th className="py-2 pr-4 font-medium">Amount</th>
                   <th className="py-2 font-medium">Status</th>
@@ -53,24 +49,37 @@ export const InvoicesPage = () => {
               </thead>
               <tbody>
                 {invoices.map((inv) => (
-                  <tr key={inv.id} className="border-b border-[var(--border)] last:border-0">
-                    <td className="py-2.5 pr-4 font-medium">
-                      <a
-                        href={inv.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm underline text-[var(--primary)]"
-                      >
+                  <tr
+                    key={inv.id}
+                    className="border-b border-[var(--border)] last:border-0"
+                  >
+                    <td className="py-2.5 pr-4 font-medium pl-2">
+                      <span className="inline-flex items-center gap-2">
+                        <FileInteractionButtons
+                          fileUrl={inv.fileUrl}
+                          fileName={inv.fileName}
+                          size="md"
+                          interactionKey="invoice"
+                        />
                         {inv.fileName}
-                      </a>
+                      </span>
                     </td>
-                    <td className="py-2.5 pr-4">{inv.agencyName || inv.agencyId}</td>
                     <td className="py-2.5 pr-4">
-                      {new Date(inv.dueDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {(() => {
+                        const d = new Date(inv.dueDate);
+                        const day = d.getDate();
+                        const suffix =
+                          day >= 11 && day <= 13
+                            ? "th"
+                            : day % 10 === 1
+                              ? "st"
+                              : day % 10 === 2
+                                ? "nd"
+                                : day % 10 === 3
+                                  ? "rd"
+                                  : "th";
+                        return `${day}${suffix} ${d.toLocaleDateString("en-GB", { month: "long" })} ${d.getFullYear()}`;
+                      })()}
                     </td>
                     <td className="py-2.5 pr-4 font-medium">
                       £{parseFloat(inv.amountPayable).toFixed(2)}

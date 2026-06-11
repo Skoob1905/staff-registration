@@ -1,15 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
-import { AccordionRoot, AccordionItem, Button, Card } from "../../components/ui";
+import { Check, Loader2 } from "lucide-react";
+import {
+  AccordionRoot,
+  AccordionItem,
+  Button,
+  Card,
+} from "../../components/ui";
+import {
+  DialogContent,
+  DialogRoot,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { Pill } from "../../components/Pill";
 import { H2 } from "../../config/typography";
 import type { PillStatus } from "../../config/pill";
 import { useToast } from "../../context/ToastProvider";
 import {
+  deleteInvoice,
   getAllInvoices,
+  getLatestFileUpload,
   markInvoicePaid,
   type InvoiceEntry,
 } from "../../services/invoiceService";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
+import { InvoicePills } from "../../components/InvoicePills";
 
 interface AgencyInvoices {
   agencyId: string;
@@ -17,20 +31,37 @@ interface AgencyInvoices {
   invoices: InvoiceEntry[];
 }
 
-const hasOutstanding = (invoices: InvoiceEntry[]) =>
-  invoices.some((inv) => inv.status === "unpaid" || inv.status === "review");
-
 export const AdminInvoicesPage = () => {
   const { toast } = useToast();
   const [agencies, setAgencies] = useState<AgencyInvoices[]>([]);
   const [loading, setLoading] = useState(true);
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
+  const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
+  const [latestUpload, setLatestUpload] = useState<{
+    fileName: string;
+    clientName: string;
+    uploadedAt: string;
+    status: string;
+    unpaidCount: number;
+  } | null>(null);
+  const [confirmPaid, setConfirmPaid] = useState<{
+    agencyId: string;
+    invoiceId: string;
+    fileName: string;
+    clientName: string;
+  } | null>(null);
 
   const fetchInvoices = useCallback(() => {
     setLoading(true);
-    getAllInvoices()
-      .then(setAgencies)
-      .catch(() => setAgencies([]))
+    Promise.all([getAllInvoices(), getLatestFileUpload()])
+      .then(([agencies, latest]) => {
+        setAgencies(agencies);
+        setLatestUpload(latest);
+      })
+      .catch(() => {
+        setAgencies([]);
+        setLatestUpload(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -59,10 +90,25 @@ export const AdminInvoicesPage = () => {
     }
   };
 
+  const handleDelete = async (agencyId: string, invoiceId: string) => {
+    setDeletingInvoice(invoiceId);
+    try {
+      await deleteInvoice(agencyId, invoiceId);
+      toast({ title: "Invoice deleted", variant: "success" });
+      fetchInvoices();
+    } catch {
+      toast({ title: "Failed to delete invoice", variant: "error" });
+    } finally {
+      setDeletingInvoice(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
-        <H2>Invoices</H2>
+        <div className="flex items-center justify-between">
+          <H2>Invoices</H2>
+        </div>
 
         {loading ? (
           <div className="mt-4 flex items-center justify-center py-8">
@@ -80,9 +126,27 @@ export const AdminInvoicesPage = () => {
                   title={
                     <span className="flex items-center gap-2">
                       {agency.agencyName}
-                      {hasOutstanding(agency.invoices) && (
-                        <Pill status="unpaid" />
-                      )}
+                      <InvoicePills invoices={agency.invoices} />
+                    </span>
+                  }
+                  actions={
+                    <span className="text-xs text-zinc-400">
+                      Latest upload:{" "}
+                      {(() => {
+                        const latest = agency.invoices.reduce((a, b) =>
+                          new Date(a.uploadedAt) > new Date(b.uploadedAt)
+                            ? a
+                            : b,
+                        );
+                        return new Date(latest.uploadedAt).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        );
+                      })()}
                     </span>
                   }
                 >
@@ -94,49 +158,73 @@ export const AdminInvoicesPage = () => {
                           <th className="py-2 pr-4 font-medium">Uploaded</th>
                           <th className="py-2 pr-4 font-medium">Due Date</th>
                           <th className="py-2 pr-4 font-medium">Amount</th>
-                          <th className="py-2 pr-4 font-medium">Status</th>
-                          <th className="py-2 font-medium" />
+                          <th className="py-2 font-medium text-center">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {agency.invoices.map((inv) => (
-                          <tr key={inv.id} className="border-b border-[var(--border)] last:border-0">
+                          <tr
+                            key={inv.id}
+                            className="border-b border-[var(--border)] last:border-0"
+                          >
                             <td className="py-2.5 pr-4 font-medium">
-                              <a
-                                href={inv.fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-sm underline text-[var(--primary)]"
-                              >
+                              <span className="inline-flex items-center gap-1.5">
                                 {inv.fileName}
-                              </a>
+                                <FileInteractionButtons
+                                  fileUrl={inv.fileUrl}
+                                  fileName={inv.fileName}
+                                  size="md"
+                                  interactionKey="invoice"
+                                  onDelete={() =>
+                                    handleDelete(agency.agencyId, inv.id)
+                                  }
+                                />
+                              </span>
                             </td>
                             <td className="py-2.5 pr-4">
-                              {new Date(inv.uploadedAt).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              {new Date(inv.uploadedAt).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </td>
                             <td className="py-2.5 pr-4">
-                              {new Date(inv.dueDate).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              {new Date(inv.dueDate).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </td>
                             <td className="py-2.5 pr-4 font-medium">
                               £{parseFloat(inv.amountPayable).toFixed(2)}
                             </td>
-                            <td className="py-2.5">
-                              <Pill status={inv.status as PillStatus} />
-                            </td>
-                            <td className="py-2.5">
-                              {(inv.status === "unpaid" || inv.status === "review") && (
+                            <td className="py-2.5 px-3 text-center">
+                              {inv.status === "paid" ? (
+                                <span
+                                  className="inline-flex items-center justify-center rounded-full bg-green-500/80 text-white h-8 w-8"
+                                  aria-label="Paid"
+                                >
+                                  <Check className="h-5 w-5" />
+                                </span>
+                              ) : (
                                 <Button
                                   type="button"
                                   disabled={payingInvoice === inv.id}
-                                  onClick={() => handleMarkPaid(agency.agencyId, inv.id)}
+                                  onClick={() =>
+                                    setConfirmPaid({
+                                      agencyId: agency.agencyId,
+                                      invoiceId: inv.id,
+                                      fileName: inv.fileName,
+                                      clientName: agency.agencyName,
+                                    })
+                                  }
+                                  className="h-10 px-4 text-xs"
                                 >
                                   {payingInvoice === inv.id ? (
                                     <span className="inline-flex items-center gap-1">
@@ -144,7 +232,7 @@ export const AdminInvoicesPage = () => {
                                       Paying...
                                     </span>
                                   ) : (
-                                    "Mark Paid"
+                                    "Mark as Paid"
                                   )}
                                 </Button>
                               )}
@@ -160,6 +248,56 @@ export const AdminInvoicesPage = () => {
           </div>
         )}
       </Card>
+
+      <DialogRoot
+        open={confirmPaid !== null}
+        onOpenChange={(open) => !open && setConfirmPaid(null)}
+      >
+        <DialogContent
+          onClose={() => setConfirmPaid(null)}
+          closeDisabled={payingInvoice !== null}
+        >
+          <DialogTitle className="font-bold">
+            Confirmation of Payment
+          </DialogTitle>
+          <p className="mt-3 text-sm text-zinc-600">
+            This action cannot be undone without deleting and re-issuing the
+            invoice.
+          </p>
+          <div className="mt-4 space-y-1 text-sm">
+            <p>
+              <span className="font-semibold">Invoice Name:</span>{" "}
+              {confirmPaid?.fileName}
+            </p>
+            <p>
+              <span className="font-semibold">Client:</span>{" "}
+              {confirmPaid?.clientName}
+            </p>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={payingInvoice !== null}
+              onClick={() => setConfirmPaid(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={payingInvoice !== null}
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (!confirmPaid) return;
+                handleMarkPaid(confirmPaid.agencyId, confirmPaid.invoiceId);
+                setConfirmPaid(null);
+              }}
+            >
+              {payingInvoice !== null ? "Marking..." : "Mark as Paid"}
+            </Button>
+          </div>
+        </DialogContent>
+      </DialogRoot>
     </div>
   );
 };

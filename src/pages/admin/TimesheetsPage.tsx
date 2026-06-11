@@ -3,20 +3,25 @@ import { httpsCallable } from "firebase/functions";
 import {
   AccordionItem,
   AccordionRoot,
-  ActionButton,
   Button,
   Card,
+} from "../../components/ui";
+import { FileInteractionButtons } from "../../components/FileInteractionButtons";
+import {
   DialogContent,
   DialogRoot,
   DialogTitle,
-  DownloadButton,
-} from "../../components/ui";
+} from "../../components/ui/dialog";
 import { Metadata } from "../../components/Metadata";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { functions } from "../../services/firebase";
-import { getLatestTimesheetUpload, formatTimesheetDate, type TimesheetEntry } from "../../utils/timesheets";
+import {
+  getLatestTimesheetUpload,
+  formatTimesheetDate,
+  type TimesheetEntry,
+} from "../../utils/timesheets";
 import { getCompanyName } from "../../utils/company";
 
 interface DeleteTarget {
@@ -118,24 +123,21 @@ export const AdminTimesheetsPage = () => {
                           title="Timesheet"
                           value={
                             <span className="inline-flex items-center gap-2">
-                              <span className="truncate min-w-0">{entry.fileName}</span>
-                              <DownloadButton
+                              <span className="truncate min-w-0">
+                                {entry.fileName}
+                              </span>
+                              <FileInteractionButtons
+                                fileUrl={entry.fileUrl}
+                                fileName={entry.fileName}
                                 size="md"
-                                href={entry.fileUrl}
-                                ariaLabel={`Download ${entry.fileName}`}
-                              />
-                              <ActionButton
-                                variant="delete"
-                                size="md"
-                                ariaLabel={`Delete ${entry.fileName}`}
-                                disabled={deleting}
-                                onClick={() =>
+                                interactionKey="timesheet"
+                                onDelete={() => {
                                   setDeleteTarget({
                                     clientId: record.id as string,
                                     clientName: name,
                                     entry,
-                                  })
-                                }
+                                  });
+                                }}
                               />
                             </span>
                           }
@@ -147,23 +149,18 @@ export const AdminTimesheetsPage = () => {
                       </div>
                       {/* Desktop layout */}
                       <div className="hidden sm:flex items-center gap-3">
-                        <DownloadButton
+                        <FileInteractionButtons
+                          fileUrl={entry.fileUrl}
+                          fileName={entry.fileName}
                           size="md"
-                          href={entry.fileUrl}
-                          ariaLabel={`Download ${entry.fileName}`}
-                        />
-                        <ActionButton
-                          variant="delete"
-                          size="md"
-                          ariaLabel={`Delete ${entry.fileName}`}
-                          disabled={deleting}
-                          onClick={() =>
+                          interactionKey="timesheet"
+                          onDelete={() => {
                             setDeleteTarget({
                               clientId: record.id as string,
                               clientName: name,
                               entry,
-                            })
-                          }
+                            });
+                          }}
                         />
                         <span className="truncate flex-1">
                           {entry.fileName}

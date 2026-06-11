@@ -71,6 +71,15 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
   const handleUpload = async () => {
     if (!canSubmit || uploading || !file || !targetClientId) return;
 
+    if (new Date(dueDate) <= new Date()) {
+      toast({
+        title: "Invalid due date",
+        description: "The due date must be a date in the future.",
+        variant: "error",
+      });
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
 

@@ -2,16 +2,17 @@ import { pillConfig, type PillStatus } from "../config/pill";
 
 interface PillProps {
   status: PillStatus;
+  count?: number;
   className?: string;
 }
 
-export const Pill = ({ status, className = "" }: PillProps) => {
+export const Pill = ({ status, count, className = "" }: PillProps) => {
   const config = pillConfig[status];
   return (
     <span
       className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${config.bg} ${config.border} ${config.text} ${className}`}
     >
-      {config.label}
+      {count != null ? `${count} ${config.label}` : config.label}
     </span>
   );
 };
