@@ -6,10 +6,11 @@ interface FileDropProps {
   description: string;
   color: string;
   acceptedFiles?: string;
-  multiple?: boolean;
+  fileLimit?: string;
   onClick?: () => void;
   onFileSelect?: (file: File) => void;
   onFilesSelect?: (files: File[]) => void;
+  multiple?: boolean;
 }
 
 export const FileDrop = ({
@@ -18,30 +19,31 @@ export const FileDrop = ({
   description,
   color,
   acceptedFiles,
-  multiple,
+  fileLimit,
   onClick,
   onFileSelect,
   onFilesSelect,
+  multiple,
 }: FileDropProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  const handleFile = (file: File | undefined) => {
-    if (!file || !onFileSelect) return;
-    onFileSelect(file);
-  };
+  const hasFileHandler = !!(onFileSelect ?? onFilesSelect);
 
-  const handleFiles = (files: FileList | undefined) => {
-    if (!files || !onFilesSelect) return;
-    onFilesSelect(Array.from(files));
+  const handleFiles = (files: FileList | File[]) => {
+    const arr = Array.from(files);
+    if (arr.length === 0) return;
+    if (multiple && onFilesSelect) {
+      onFilesSelect(arr);
+    } else if (arr[0] && onFileSelect) {
+      onFileSelect(arr[0]);
+    }
   };
 
   const handleClick = () => {
     if (onClick) {
       onClick();
-    } else if (onFilesSelect) {
-      inputRef.current?.click();
-    } else if (onFileSelect) {
+    } else if (hasFileHandler) {
       inputRef.current?.click();
     }
   };
@@ -50,17 +52,13 @@ export const FileDrop = ({
     <div
       onDragOver={(e) => {
         e.preventDefault();
-        if (onFilesSelect || onFileSelect) setDragOver(true);
+        if (hasFileHandler) setDragOver(true);
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => {
         e.preventDefault();
         setDragOver(false);
-        if (onFilesSelect) {
-          handleFiles(e.dataTransfer.files);
-        } else {
-          handleFile(e.dataTransfer.files[0]);
-        }
+        handleFiles(e.dataTransfer.files);
       }}
       onClick={handleClick}
       className="aspect-square max-w-[300px] w-full cursor-pointer rounded-2xl border-2 border-dashed p-4 sm:p-6 flex flex-col items-center justify-center gap-2 transition-all hover:scale-[1.02]"
@@ -76,20 +74,19 @@ export const FileDrop = ({
       <span className="text-[10px] sm:text-xs text-center text-zinc-500 leading-tight">
         {description}
       </span>
-      {(onFileSelect || onFilesSelect) && (
+      {(acceptedFiles ?? fileLimit) && (
+        <span className="text-[10px] sm:text-xs text-center text-zinc-400 leading-tight">
+          ({[acceptedFiles, fileLimit].filter(Boolean).join(", ")})
+        </span>
+      )}
+      {hasFileHandler && (
         <input
           ref={inputRef}
           type="file"
           accept={acceptedFiles}
           multiple={multiple}
           className="hidden"
-          onChange={(e) => {
-            if (onFilesSelect) {
-              handleFiles(e.target.files ?? undefined);
-            } else {
-              handleFile(e.target.files?.[0]);
-            }
-          }}
+          onChange={(e) => handleFiles(e.target.files ?? [])}
         />
       )}
     </div>

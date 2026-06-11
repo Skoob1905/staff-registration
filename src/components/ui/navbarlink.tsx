@@ -22,11 +22,11 @@ export const NavbarLink = ({ to, children, end }: LinkProps) => (
   <NavLink
     to={to}
     end={end}
-    className={({ isActive }) =>
-      `relative flex items-center h-8 rounded-xl px-3 text-[11px] font-semibold transition sm:px-4 sm:text-sm ${
-        isActive ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]"
-      } after:absolute after:bottom-0 after:left-1/2 after:h-[2px] after:w-0 after:-translate-x-1/2 after:rounded-full after:bg-[var(--muted-foreground)] after:transition-all after:duration-200 hover:after:w-4/5`
-    }
+      className={({ isActive }) =>
+        `relative flex items-center h-8 rounded-xl px-3 text-[11px] font-semibold transition sm:px-4 sm:text-sm ${
+          isActive ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
+        } after:absolute after:bottom-0 after:left-1/2 after:h-[2px] after:w-0 after:-translate-x-1/2 after:rounded-full after:bg-[var(--primary)] after:transition-all after:duration-200 hover:after:w-4/5`
+      }
   >
     {children}
   </NavLink>
@@ -61,7 +61,7 @@ export const Navbar = () => {
 
   return (
     <header
-      className="sticky top-0 z-20 border-b border-[var(--border)] backdrop-blur"
+      className="sticky top-0 z-20 border-b border-[var(--accent-light)] backdrop-blur"
       style={{ backgroundColor: "var(--header-bg)" }}
     >
       <GlobalBanner />

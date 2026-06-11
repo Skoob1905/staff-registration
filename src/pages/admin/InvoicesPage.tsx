@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   AccordionRoot,
   AccordionItem,
@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { InvoicePills } from "../../components/InvoicePills";
-import { FileInteractionButtons } from "../../components/FileInteractionButtons";
+import { InvoiceCard } from "../../components/InvoiceCard";
 import { H2 } from "../../config/typography";
 import { useToast } from "../../context/ToastProvider";
 import {
@@ -130,97 +130,26 @@ export const AdminInvoicesPage = () => {
                     </span>
                   }
                 >
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs sm:text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
-                          <th className="py-2 pr-4 font-medium">Invoice</th>
-                          <th className="py-2 pr-4 font-medium">Uploaded</th>
-                          <th className="py-2 pr-4 font-medium">Due Date</th>
-                          <th className="py-2 pr-4 font-medium">Amount</th>
-                          <th className="py-2 font-medium text-center">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {agency.invoices.map((inv) => (
-                          <tr
-                            key={inv.id}
-                            className="border-b border-[var(--border)] last:border-0"
-                          >
-                            <td className="py-2.5 pr-4 font-medium">
-                              <span className="inline-flex items-center gap-1.5">
-                                {inv.fileName}
-                                <FileInteractionButtons
-                                  fileUrl={inv.fileUrl}
-                                  fileName={inv.fileName}
-                                  size="md"
-                                  interactionKey="invoice"
-                                  onDelete={() =>
-                                    handleDelete(agency.agencyId, inv.id)
-                                  }
-                                />
-                              </span>
-                            </td>
-                            <td className="py-2.5 pr-4">
-                              {new Date(inv.uploadedAt).toLocaleDateString(
-                                "en-GB",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                },
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-4">
-                              {new Date(inv.dueDate).toLocaleDateString(
-                                "en-GB",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                },
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-4 font-medium">
-                              £{parseFloat(inv.amountPayable).toFixed(2)}
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              {inv.status === "paid" ? (
-                                <span
-                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-500/80 text-white shadow-[0_2px_8px_rgba(34,197,94,0.25)]"
-                                  aria-label="Paid"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </span>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  disabled={payingInvoice === inv.id}
-                                  onClick={() =>
-                                    setConfirmPaid({
-                                      agencyId: agency.agencyId,
-                                      invoiceId: inv.id,
-                                      fileName: inv.fileName,
-                                      clientName: agency.agencyName,
-                                    })
-                                  }
-                                  className="h-10 px-4 text-xs"
-                                >
-                                  {payingInvoice === inv.id ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                      Paying...
-                                    </span>
-                                  ) : (
-                                    "Mark as Paid"
-                                  )}
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {agency.invoices.map((inv) => (
+                      <InvoiceCard
+                        key={inv.id}
+                        invoice={inv}
+                        agencyId={agency.agencyId}
+                        agencyName={agency.agencyName}
+                        admin
+                        payingInvoice={payingInvoice}
+                        onMarkPaid={() =>
+                          setConfirmPaid({
+                            agencyId: agency.agencyId,
+                            invoiceId: inv.id,
+                            fileName: inv.fileName,
+                            clientName: agency.agencyName,
+                          })
+                        }
+                        onDelete={handleDelete}
+                      />
+                    ))}
                   </div>
                 </AccordionItem>
               ))}

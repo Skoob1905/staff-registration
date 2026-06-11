@@ -31,6 +31,20 @@ const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
   "business",
   "companyname",
   "company",
+  "organisationname",
+  "organisation",
+  "organizationname",
+  "organization",
+  "agencyname",
+  "agency",
+  "clientname",
+  "client",
+  "firmname",
+  "firm",
+  "employername",
+  "employer",
+  "entityname",
+  "entity",
 ]);
 
 export function hasNIColumn(headers: string[]): boolean {

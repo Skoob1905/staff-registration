@@ -16,7 +16,7 @@ export const Footer = () => {
 
   return (
     <footer
-      className="border-t border-[var(--border)] py-3"
+      className="border-t border-[var(--accent-light)] py-3"
       style={{ backgroundColor: "var(--header-bg)" }}
     >
       <div className="mx-auto max-w-6xl px-4">
@@ -48,7 +48,7 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-3 max-w-6xl border-t border-[var(--border)] px-4 pt-3 text-center text-[11px] text-[var(--muted-foreground)]">
+      <div className="mx-auto mt-3 max-w-6xl border-t border-[var(--accent-light)] px-4 pt-3 text-center text-[11px] text-[var(--muted-foreground)]">
         Designed &amp; Created by Ruby Digital Services
       </div>
     </footer>
