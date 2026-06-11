@@ -8,18 +8,10 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import {
-  Button,
-  Card,
-  DialogContent,
-  DialogRoot,
-  DialogTitle,
-  Label,
-  ProgressBar,
-} from "../components/ui";
+import { Button, Card, Label, ProgressBar } from "../components/ui";
 import { ClientsDropdown } from "../components/ClientsDropdown";
+import { CVUploadModal, type CvFile } from "../components/CVUploadModal";
 import { PreviewModal } from "../components/PreviewModal";
-import { Caption } from "../config/typography";
 import { config } from "../config";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
@@ -51,15 +43,6 @@ const CATEGORIES = [
   { label: "Contract Response", value: "contract_response" },
   { label: "Payslip Query", value: "payslip_query" },
 ];
-
-interface CvFile {
-  file: File;
-  base64: string;
-  parsedForename: string;
-  parsedSurname: string;
-  match: BulkStaff | null;
-  error?: "size" | "format";
-}
 
 export const UploadPage = () => {
   useEffect(() => {
@@ -100,6 +83,8 @@ export const UploadPage = () => {
     !isAdmin && (statusLoading || registrationStatus !== "registered");
   const totalCount = cvFiles.length;
   const matchedCount = matched.length;
+  const fileInputAccept =
+    docType === "timesheet" ? ".csv" : docType === "invoice" ? ".pdf" : undefined;
 
   useEffect(() => {
     if (!isAdmin && appUser) {
@@ -267,6 +252,10 @@ export const UploadPage = () => {
     }
   };
 
+  const handleCvInputClick = () => {
+    document.getElementById("cvFileInput")?.click();
+  };
+
   const targetClientId = isAdmin ? selectedClientId : (appUser?.agencyId ?? "");
 
   const canSubmit = useMemo(() => {
@@ -421,6 +410,16 @@ export const UploadPage = () => {
     }
   };
 
+  const cvUploadModal = (
+    <CVUploadModal
+      cvFiles={cvFiles}
+      cvUploading={cvUploading}
+      open={cvReviewOpen}
+      onOpenChange={setCvReviewOpen}
+      onUpload={handleCvUpload}
+    />
+  );
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
@@ -487,13 +486,7 @@ export const UploadPage = () => {
                   id="uploadFile"
                   type="file"
                   disabled={registrationBlocked}
-                  accept={
-                    docType === "timesheet"
-                      ? ".csv"
-                      : docType === "invoice"
-                        ? ".pdf"
-                        : undefined
-                  }
+                  accept={fileInputAccept}
                   onChange={(event) => {
                     const selectedFile = event.target.files?.[0] ?? null;
                     if (docType === "invoice") {
@@ -572,7 +565,7 @@ export const UploadPage = () => {
 
             {cvFiles.length === 0 ? (
               <div
-                onClick={() => document.getElementById("cvFileInput")?.click()}
+                onClick={handleCvInputClick}
                 className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#0EA5E9] bg-[#0EA5E9]/5 p-8 transition hover:scale-[1.02]"
               >
                 <FileText className="h-8 w-8 text-[#0EA5E9]" />
@@ -594,10 +587,7 @@ export const UploadPage = () => {
                     </span>
                   </span>
                   <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => document.getElementById("cvFileInput")?.click()}
-                    >
+                    <Button type="button" onClick={handleCvInputClick}>
                       Add More
                     </Button>
                     <Button
@@ -666,111 +656,7 @@ export const UploadPage = () => {
         )}
       </Card>
 
-      <DialogRoot open={cvReviewOpen} onOpenChange={setCvReviewOpen}>
-        <DialogContent
-          className="max-w-5xl flex flex-col overflow-hidden max-sm:h-[90vh] max-sm:w-[96vw] sm:h-[85vh] sm:w-[90vw]"
-          onClose={() => {
-            if (!cvUploading) setCvReviewOpen(false);
-          }}
-        >
-          <DialogTitle className="text-base font-bold sm:text-lg">
-            Upload CVs
-          </DialogTitle>
-
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-sm font-semibold">
-              {totalCount} CV{totalCount !== 1 ? "s" : ""}
-              {" | "}
-              <span className="text-[var(--primary)]">{matchedCount} Matched</span>
-              {" | "}
-              <span className="text-red-600">{totalCount - matchedCount} Unmatched</span>
-            </span>
-          </div>
-
-          <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--border)]">
-            <table className="min-w-full text-left text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[color:rgba(0,95,87,0.06)]">
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">CV File</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Status</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Title</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Forename</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">Surname</th>
-                  <th className="px-3 py-2 font-medium text-[var(--foreground)]">NI Number</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cvFiles.map((cvFile, index) => (
-                  <tr
-                    key={`${cvFile.file.name}-${index}`}
-                    className={`border-b border-[var(--border)] last:border-0 ${cvFile.error || !cvFile.match ? "bg-red-50" : ""}`}
-                  >
-                    <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                      <span className={cvFile.error || !cvFile.match ? "text-red-600" : ""}>
-                        {cvFile.file.name}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {cvFile.match ? (
-                        <span className="text-[var(--primary)]">Matched</span>
-                      ) : cvFile.error === "size" ? (
-                        <span className="text-red-600">Too large</span>
-                      ) : cvFile.error === "format" ? (
-                        <span className="text-red-600">Not PDF</span>
-                      ) : (
-                        <span className="text-red-600">No match</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                      {cvFile.match?.Title ?? "-"}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                      {cvFile.match?.Forename ?? "-"}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                      {cvFile.match?.Surname ?? "-"}
-                    </td>
-                    <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                      {cvFile.match?.email ?? "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {cvUploading && (
-            <div className="mt-3">
-              <ProgressBar value={50} />
-              <Caption className="mt-1">Uploading CVs...</Caption>
-            </div>
-          )}
-
-          <div className="mt-4 flex justify-end gap-2">
-            <Button
-              type="button"
-              disabled={cvUploading}
-              onClick={() => setCvReviewOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              disabled={cvUploading || matchedCount === 0}
-              onClick={() => void handleCvUpload()}
-            >
-              {cvUploading ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Importing...
-                </span>
-              ) : (
-                `Import ${matchedCount} CV${matchedCount !== 1 ? "s" : ""}`
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </DialogRoot>
+      {cvUploadModal}
 
       <PreviewModal
         open={previewModalOpen}
