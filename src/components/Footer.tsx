@@ -33,10 +33,18 @@ export const Footer = () => {
               UPLOAD
             </NavLink>
             {isAdmin && (
-              <NavLink to="/clients" className={navLinkClass}>
-                CLIENTS
-              </NavLink>
+              <>
+                <NavLink to="/clients" className={navLinkClass}>
+                  CLIENTS
+                </NavLink>
+                <NavLink to="/timesheets" className={navLinkClass}>
+                  TIMESHEETS
+                </NavLink>
+              </>
             )}
+            <NavLink to="/invoices" className={navLinkClass}>
+              INVOICES
+            </NavLink>
             {isAdmin && (
               <NavLink to="/timesheets" className={navLinkClass}>
                 TIMESHEETS
