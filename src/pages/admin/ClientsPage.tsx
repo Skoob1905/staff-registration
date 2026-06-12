@@ -18,6 +18,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
 import { functions } from "../../services/firebase";
+import { toDate } from "../../utils/date";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
@@ -169,7 +170,7 @@ export const AdminClientsPage = () => {
             | undefined;
           const scName = meta?.signedContractName as string | undefined;
           const scUrl = meta?.signedContract as string | undefined;
-          const scDate = meta?.signedContractAt as string | undefined;
+          const scDate = meta?.signedContractAt as string | number | undefined;
           return (
             <AccordionItem
               key={client.id as string}
@@ -192,9 +193,9 @@ export const AdminClientsPage = () => {
                     value={
                       <span className="inline-flex items-center gap-2">
                         {scName}
-                        {scDate && (
+                        {scDate && toDate(scDate) && (
                           <span className="text-zinc-400">
-                            ({new Date(scDate).toLocaleDateString()})
+                            ({toDate(scDate)!.toLocaleDateString()})
                           </span>
                         )}
                       </span>

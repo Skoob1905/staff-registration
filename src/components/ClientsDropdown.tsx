@@ -87,7 +87,7 @@ export const ClientsDropdown = ({
         const hasContract = disableWithContract && !!(meta?.signedContract as string | undefined);
         return (
           <option key={c.id as string} value={c.id as string} disabled={hasContract}>
-            {getClientName(c)}{hasContract ? " (Contract uploaded)" : ""}
+            {getClientName(c)}{hasContract ? " (Contract Assigned)" : ""}
           </option>
         );
       })}

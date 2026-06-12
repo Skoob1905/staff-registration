@@ -9,7 +9,15 @@ export const toDate = (value: unknown): Date | null => {
   ) {
     return (value as { toDate: () => Date }).toDate();
   }
-  return null;
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "_seconds" in value
+  ) {
+    return new Date((value as { _seconds: number })._seconds * 1000);
+  }
+  const d = new Date(value as string);
+  return isNaN(d.getTime()) ? null : d;
 };
 
 export const formatInvitedAt = (value: unknown): string => {

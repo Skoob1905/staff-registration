@@ -199,6 +199,7 @@ export const PreviewModal = ({ open, file, onClose, mode = "invoice" }: PreviewM
                     setSelectedClientId(id);
                     setSelectedClientName(name);
                   }}
+                  disableWithContract
                   className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
                 />
               </div>
