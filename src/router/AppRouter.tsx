@@ -13,6 +13,7 @@ import { UserHomePage } from "../pages/clients/HomePage";
 import { InvoicesPage } from "../pages/clients/InvoicesPage";
 import { ProfilePage } from "../pages/clients/ProfilePage";
 import { SupportPage } from "../pages/clients/SupportPage";
+import { TimeSheetsPage } from "../pages/clients/TimeSheetsPage";
 import { UploadPage } from "../pages/Upload";
 import { RoleGuard } from "./RoleGuard";
 
@@ -49,6 +50,13 @@ const InvoicesSwitch = () => {
   return <InvoicesPage />;
 };
 
+const TimesheetsSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role === "admin") return <AdminTimesheetsPage />;
+  return <TimeSheetsPage />;
+};
+
 export const AppRouter = () => (
   <>
     <Routes>
@@ -60,13 +68,13 @@ export const AppRouter = () => (
           <Route path="/profile" element={<ProfileSwitch />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/invoices" element={<InvoicesSwitch />} />
+          <Route path="/timesheets" element={<TimesheetsSwitch />} />
           <Route path="/support" element={<SupportPage />} />
 
           <Route element={<RoleGuard role="admin" />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/clients" element={<AdminClientsPage />} />
-              <Route path="/timesheets" element={<AdminTimesheetsPage />} />
             </Route>
           </Route>
 

@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import {
-  AccordionItem,
-  AccordionRoot,
-} from "../../components/ui";
+import { AccordionItem, AccordionRoot } from "../../components/ui";
 import { Section } from "../../components/Section";
 import { AccordionTitle } from "../../components/AccordionTitle";
-import { FileInteractionButtons } from "../../components/FileInteractionButtons";
-import { Metadata } from "../../components/Metadata";
+import { TimesheetCard } from "../../components/TimesheetCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
@@ -79,16 +75,13 @@ export const AdminTimesheetsPage = () => {
   return (
     <div className="mx-auto space-y-4">
       <Section title="Timesheets">
-
         {loading ? (
           <p className="text-sm text-zinc-500">Loading...</p>
         ) : clientsWithTimesheets.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            No timesheets uploaded yet.
-          </p>
+          <p className="text-sm text-zinc-500">No timesheets uploaded yet.</p>
         ) : (
           <AccordionRoot className="mt-1.5 sm:mt-3 space-y-3" type="multiple">
-            {clientsWithTimesheets.map((client) => {
+            {clientsWithTimesheets.map((client, idx) => {
               const record = client as Record<string, unknown>;
               const meta = record.metadata as
                 | Record<string, unknown>
@@ -102,6 +95,10 @@ export const AdminTimesheetsPage = () => {
                 <AccordionItem
                   key={record.id as string}
                   value={record.id as string}
+                  className="animate-cascade"
+                  style={
+                    { animationDelay: `${idx * 5}ms` } as React.CSSProperties
+                  }
                   title={<AccordionTitle>{name}</AccordionTitle>}
                   actions={
                     <span className="text-xs text-zinc-400">
@@ -110,67 +107,23 @@ export const AdminTimesheetsPage = () => {
                     </span>
                   }
                 >
-                  {timesheets.map((entry, idx) => (
-                    <div key={idx} className="py-2 text-xs sm:text-sm">
-                      {/* Mobile layout */}
-                      <div className="flex sm:hidden flex-col gap-1">
-                        <Metadata
-                          title="Timesheet"
-                          value={
-                            <span className="inline-flex items-center gap-2">
-                              <span className="truncate min-w-0">
-                                {entry.fileName}
-                              </span>
-                              <FileInteractionButtons
-                                fileUrl={entry.fileUrl}
-                                fileName={entry.fileName}
-                                size="md"
-                                interactionKey="timesheet"
-                                onDelete={() => {
-                                  setDeleteTarget({
-                                    clientId: record.id as string,
-                                    clientName: name,
-                                    entry,
-                                  });
-                                }}
-                              />
-                            </span>
-                          }
-                        />
-                        <Metadata
-                          title="Uploaded by"
-                          value={`${entry.uploadedBy} at ${formatTimesheetDate(entry.uploadedAt)}`}
-                        />
-                      </div>
-                      {/* Desktop layout */}
-                      <div className="hidden sm:flex items-center gap-3">
-                        <FileInteractionButtons
-                          fileUrl={entry.fileUrl}
-                          fileName={entry.fileName}
-                          size="md"
-                          interactionKey="timesheet"
-                          onDelete={() => {
-                            setDeleteTarget({
-                              clientId: record.id as string,
-                              clientName: name,
-                              entry,
-                            });
-                          }}
-                        />
-                        <span className="truncate flex-1">
-                          {entry.fileName}
-                        </span>
-                        <Metadata
-                          title="Uploaded by"
-                          value={entry.uploadedBy}
-                        />
-                        <Metadata
-                          title="Date"
-                          value={formatTimesheetDate(entry.uploadedAt)}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {timesheets.map((entry, idx) => (
+                      <TimesheetCard
+                        key={idx}
+                        entry={entry}
+                        clientName={name}
+                        admin
+                        onDelete={() => {
+                          setDeleteTarget({
+                            clientId: record.id as string,
+                            clientName: name,
+                            entry,
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
                 </AccordionItem>
               );
             })}

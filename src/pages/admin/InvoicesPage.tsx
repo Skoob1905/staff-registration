@@ -108,10 +108,12 @@ export const AdminInvoicesPage = () => {
         ) : (
           <div>
             <AccordionRoot type="multiple">
-              {agencies.map((agency) => (
+              {agencies.map((agency, idx) => (
                 <AccordionItem
                   key={agency.agencyId}
                   value={agency.agencyId}
+                  className="animate-cascade"
+                  style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
                   title={
                     <span className="flex items-center gap-2">
                       <AccordionTitle>{agency.agencyName}</AccordionTitle>

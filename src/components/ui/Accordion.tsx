@@ -27,8 +27,8 @@ export const AccordionItem = ({
     style={style}
   >
     <Accordion.Header className="group/header flex items-center">
-      <Accordion.Trigger className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
-        <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-semibold">{title}</span>
+      <Accordion.Trigger className="flex w-full items-center justify-between gap-3 px-3 py-2 min-h-[3rem] text-left text-sm font-semibold text-[var(--foreground)] sm:px-4 sm:text-sm">
+        <span className="min-w-0 flex-1 font-semibold">{title}</span>
         {actions && (
           <div
             className="hidden sm:flex shrink-0 items-center gap-2"

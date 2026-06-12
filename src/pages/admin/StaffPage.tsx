@@ -289,6 +289,8 @@ export const AdminStaffPage = () => {
                 <div className="sm:hidden">
                   <Metadata
                     title="Assigned to"
+                    className="animate-cascade"
+                    style={{ animationDelay: "0ms" }}
                     value={
                       member.metadata?.assignedToName ? (
                         <>
@@ -321,6 +323,8 @@ export const AdminStaffPage = () => {
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Metadata
                     title="Tags"
+                    className="animate-cascade"
+                    style={{ animationDelay: "0ms" }}
                     value={
                       member.tags && member.tags.length > 0
                         ? member.tags.map((id) => tagsMap[id] || id).join(", ")
@@ -344,14 +348,15 @@ export const AdminStaffPage = () => {
             )}
             {member.metadata?.cv && member.metadata.cv.length > 0 && (
               <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                {member.metadata.cv.map((entry) => {
+                {member.metadata.cv.map((entry, idx) => {
                   const cvKey = `${member.id}::${entry.fileName}`;
                   const isDeleting = deletingCvKey === cvKey;
                   return (
                     <Metadata
                       key={cvKey}
                       title="CV"
-                      className="flex items-center"
+                      className="flex items-center animate-cascade"
+                      style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
                       value={
                         <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                           <span className="text-[var(--muted-foreground)]">
@@ -408,7 +413,7 @@ export const AdminStaffPage = () => {
                   <p
                     key={key}
                     className="whitespace-nowrap px-1 animate-cascade"
-                    style={{ animationDelay: `${idx * 3}ms` } as React.CSSProperties}
+                    style={{ animationDelay: `${idx * 12}ms` } as React.CSSProperties}
                   >
                     <span className="font-medium text-[var(--foreground)]">
                       {key}

@@ -337,6 +337,8 @@ export const AdminPage = () => {
               <div className="flex items-center justify-between gap-2">
                 <Metadata
                   title="Invited by"
+                  className="animate-cascade"
+                  style={{ animationDelay: "0ms" }}
                   value={
                     <>
                       {invitedByEmail} at{" "}

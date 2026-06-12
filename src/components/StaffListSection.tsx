@@ -151,15 +151,18 @@ export const StaffListSection = ({
             <Metadata
               title="Tags"
               value={member.tags.map((id) => tagsMap[id] || id).join(", ")}
+              className="animate-cascade"
+              style={{ animationDelay: "0ms" }}
             />
           )}
           {member.metadata?.cv && member.metadata.cv.length > 0 && (
             <div className="mt-2 flex flex-col gap-1 text-xs sm:text-sm">
-              {member.metadata.cv.map((entry) => (
+              {member.metadata.cv.map((entry, idx) => (
                 <Metadata
                   key={`${member.id}::${entry.fileName}`}
                   title="CV"
-                  className="flex items-center"
+                  className="flex items-center animate-cascade"
+                  style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
                   value={
                     <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                       <span className="text-[var(--muted-foreground)]">
@@ -206,7 +209,7 @@ export const StaffListSection = ({
                       className="whitespace-nowrap px-1 animate-cascade"
                       style={
                         {
-                          animationDelay: `${idx * 3}ms`,
+                          animationDelay: `${idx * 12}ms`,
                         } as React.CSSProperties
                       }
                     >

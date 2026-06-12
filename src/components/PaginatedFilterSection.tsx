@@ -82,8 +82,8 @@ export const PaginatedFilterSection = <T,>({
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (enableNameFilter && filters.name.length >= 3) count++;
-    if (enableTagFilter && filters.tagIds.length > 0) count++;
-    if (enableAgencyFilter && filters.agencyIds.length > 0) count++;
+    if (enableTagFilter) count += filters.tagIds.length;
+    if (enableAgencyFilter) count += filters.agencyIds.length;
     return count;
   }, [filters, enableNameFilter, enableTagFilter, enableAgencyFilter]);
 
@@ -97,7 +97,7 @@ export const PaginatedFilterSection = <T,>({
         >
           <Filter className="h-3.5 w-3.5" />
           {activeFilterCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--primary)] text-[9px] font-bold text-white">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[10px] font-bold text-white">
               {activeFilterCount}
             </span>
           )}

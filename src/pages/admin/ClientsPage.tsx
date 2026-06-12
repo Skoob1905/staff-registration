@@ -190,6 +190,8 @@ export const AdminClientsPage = () => {
                 <div className="mb-2 flex items-center gap-2">
                   <Metadata
                     title="Signed Contract"
+                    className="animate-cascade"
+                    style={{ animationDelay: "0ms" }}
                     value={
                       <span className="inline-flex items-center gap-2">
                         {scName}
@@ -221,7 +223,7 @@ export const AdminClientsPage = () => {
                   <p
                     key={field.label}
                     className="whitespace-nowrap px-1 animate-cascade"
-                    style={{ animationDelay: `${idx * 3}ms` } as React.CSSProperties}
+                    style={{ animationDelay: `${idx * 12}ms` } as React.CSSProperties}
                   >
                     <span className="font-medium text-[var(--foreground)]">
                       {field.label}

@@ -52,6 +52,12 @@
   --radius: 0.5rem;
 }
 
+:root {
+  --cascade-speed: 80ms;
+  --cascade-stagger: 8ms;
+  --accordion-speed: 12ms;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -143,7 +149,7 @@ body {
 }
 
 .animate-cascade {
-  animation: cascade-in 20ms ease-out forwards;
+  animation: cascade-in var(--cascade-speed, 150ms) ease-out forwards;
   opacity: 0;
 }
 
@@ -170,11 +176,19 @@ body {
 }
 
 .animate-accordion-down {
-  animation: accordion-down calc(var(--radix-accordion-content-height) / 1px * 6ms) ease-out forwards;
+  animation: accordion-down
+    calc(
+      var(--radix-accordion-content-height) / 1px * var(--accordion-speed, 12ms)
+    )
+    ease-out forwards;
 }
 
 .animate-accordion-up {
-  animation: accordion-up calc(var(--radix-accordion-content-height) / 1px * 6ms) ease-out forwards;
+  animation: accordion-up
+    calc(
+      var(--radix-accordion-content-height) / 1px * var(--accordion-speed, 12ms)
+    )
+    ease-out forwards;
 }
 
 .animate-border-flow {
@@ -182,6 +196,61 @@ body {
   background-clip: padding-box, border-box;
   background-origin: border-box;
   background-image:
-    linear-gradient(#fff, #fff),
-    conic-gradient(#99f6e4, #93c5fd, #99f6e4);
+    linear-gradient(#fff, #fff), conic-gradient(#99f6e4, #93c5fd, #99f6e4);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    scale: 0.95;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.95;
+  }
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.dialog-overlay[data-state="open"] {
+  animation: overlay-in 50ms ease-out forwards;
+}
+
+.dialog-overlay[data-state="closed"] {
+  animation: overlay-out 50ms ease-in forwards;
+}
+
+.dialog-content[data-state="open"] {
+  animation: dialog-in 50ms ease-out forwards;
+}
+
+.dialog-content[data-state="closed"] {
+  animation: dialog-out 50ms ease-in forwards;
 }

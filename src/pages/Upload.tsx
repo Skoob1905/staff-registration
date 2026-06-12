@@ -1,4 +1,9 @@
-import { type ElementType, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ElementType,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { httpsCallable } from "firebase/functions";
 import {
   Building2,
@@ -6,7 +11,6 @@ import {
   FileSignature,
   FileText,
   FileUser,
-  Loader2,
   Users,
 } from "lucide-react";
 import { AddModal } from "../components/AddModal";
@@ -14,7 +18,6 @@ import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
 import { CVUploadModal } from "../components/CVUploadModal";
 import { Section } from "../components/Section";
-import { config } from "../config";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
@@ -67,7 +70,7 @@ const ADMIN_TYPES: UploadType[] = [
     id: "staff",
     icon: Users,
     title: "Staff",
-    description: "Bulk import staff records",
+    description: "Bulk import your staff",
     color: "#4A90D9",
     acceptedFiles: ".csv",
     fileLimit: "Max 2MB",
@@ -76,7 +79,7 @@ const ADMIN_TYPES: UploadType[] = [
     id: "clients",
     icon: Building2,
     title: "Clients",
-    description: "Bulk import client records",
+    description: "Bulk import your clients",
     color: "#34A853",
     acceptedFiles: ".csv",
     fileLimit: "Max 2MB",
@@ -85,7 +88,7 @@ const ADMIN_TYPES: UploadType[] = [
     id: "contracts",
     icon: FileSignature,
     title: "Contracts",
-    description: "Upload signed contracts for your clients",
+    description: "Upload a contract against a client",
     color: "#FB8C00",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
@@ -94,7 +97,7 @@ const ADMIN_TYPES: UploadType[] = [
     id: "invoices",
     icon: FileText,
     title: "Invoices",
-    description: "Upload invoices for your clients",
+    description: "Upload an invoice a client to pay",
     color: "#E91E63",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
@@ -103,7 +106,7 @@ const ADMIN_TYPES: UploadType[] = [
     id: "cvs",
     icon: FileUser,
     title: "CVs",
-    description: "Bulk upload staff CVs",
+    description: "Bulk upload your staffs CV's",
     color: "#AB47BC",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB per file",
@@ -116,7 +119,7 @@ const CLIENT_TYPES: UploadType[] = [
     id: "timesheets",
     icon: Clock,
     title: "Timesheets",
-    description: "Upload your timesheet as a CSV file",
+    description: "Upload your timesheet",
     color: "#005F57",
     acceptedFiles: ".csv",
     fileLimit: "Max 2MB",
@@ -133,9 +136,7 @@ export const UploadPage = () => {
   const isAdmin = appUser?.role === "admin";
   const types = isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
 
-  const [uploading, setUploading] = useState(false);
-  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  const [cvUploading, setCvUploading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
   const [addModalCsvType, setAddModalCsvType] = useState<"staff" | "agency">(
@@ -143,13 +144,12 @@ export const UploadPage = () => {
   );
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewMode, setPreviewMode] = useState<"invoice" | "contract">(
+  const [previewMode, setPreviewMode] = useState<"invoice" | "contract" | "timesheet">(
     "invoice",
   );
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const [cvFiles, setCvFiles] = useState<CvFile[]>([]);
-  const [cvUploading, setCvUploading] = useState(false);
   const [showCvModal, setShowCvModal] = useState(false);
 
   const { items: staffList } = usePaginatedRecords<BulkStaff>({
@@ -158,23 +158,6 @@ export const UploadPage = () => {
     hitsPerPage: 10000,
   });
 
-  useEffect(() => {
-    if (uploading) {
-      loadingTimerRef.current = setTimeout(() => {
-        toast({
-          title: "Still uploading...",
-          variant: "info",
-          replaceToast: true,
-        });
-      }, 5000);
-    }
-    return () => {
-      if (loadingTimerRef.current) {
-        clearTimeout(loadingTimerRef.current);
-        loadingTimerRef.current = null;
-      }
-    };
-  }, [uploading, toast]);
 
   const handleCvUpload = useCallback(async () => {
     const valid = cvFiles.filter((f) => f.match && !f.error && f.base64);
@@ -278,72 +261,9 @@ export const UploadPage = () => {
         return;
       }
 
-      setUploading(true);
-
-      toast({
-        title: "Uploading timesheet...",
-        description: (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Please wait while we process your file
-          </span>
-        ),
-        variant: "info",
-        replaceToast: true,
-      });
-
-      try {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        const fn = httpsCallable<
-          {
-            fileBase64: string;
-            fileName: string;
-            clientId: string;
-            contentType: string;
-          },
-          { ok: boolean; url: string }
-        >(functions, "recordTimesheetUpload");
-
-        await fn({
-          fileBase64: base64,
-          fileName: file.name,
-          clientId: appUser?.agencyId ?? "",
-          contentType: file.type,
-        });
-
-        toast({
-          title: "Timesheet uploaded",
-          description: `${config.name} has received your timesheet`,
-          variant: "success",
-        });
-      } catch (err) {
-        const code = (err as { code?: string })?.code;
-        if (code === "already-exists" || code === "functions/already-exists") {
-          toast({
-            title: "Duplicate timesheet",
-            description: `A timesheet named "${file.name}" has already been uploaded.`,
-            variant: "error",
-            replaceToast: true,
-          });
-        } else {
-          toast({
-            title: "Upload failed",
-            description: `"${file.name}" could not be uploaded. Please try again.`,
-            variant: "error",
-          });
-        }
-      } finally {
-        setUploading(false);
-      }
+      setPreviewFile(file);
+      setPreviewMode("timesheet");
+      setShowPreviewModal(true);
     } else if (typeId === "contracts") {
       if (file.size > MAX_FILE_SIZE) {
         toast({
@@ -384,8 +304,8 @@ export const UploadPage = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-        <Section title="Upload">
-          <div className="flex flex-wrap justify-center gap-3">
+      <Section title="Upload">
+        <div className="flex flex-wrap justify-center gap-3">
           {types.map((type) => (
             <div
               key={type.id}
@@ -417,7 +337,7 @@ export const UploadPage = () => {
             </div>
           ))}
         </div>
-        </Section>
+      </Section>
 
       <AddModal
         open={showAddModal}

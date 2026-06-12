@@ -1,4 +1,4 @@
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Receipt } from "lucide-react";
 import { Button } from "./ui";
 import type { InvoiceEntry } from "../services/invoiceService";
 
@@ -26,7 +26,7 @@ export function InvoiceCard({
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-[var(--primary)]/15 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
+      className="relative overflow-hidden rounded-2xl border border-[var(--primary)]/15 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)] animate-cascade"
       style={{
         background: isPaid
           ? `linear-gradient(to top, rgba(34,197,94,0.05), transparent 50%),
@@ -42,9 +42,13 @@ export function InvoiceCard({
         className="pointer-events-none absolute -right-20 top-1/2 h-32 w-[380px] -translate-y-1/2 rotate-[-30deg] opacity-10 blur-xl"
         style={{ background: "var(--accent)" }}
       />
+      <Receipt
+        className="pointer-events-none absolute right-2/10 top-6/7 h-40 w-40 -translate-y-1/2 text-[var(--accent)]/10 rotate-[-20deg]"
+        strokeWidth={1}
+      />
       <div className="flex flex-col gap-1.5">
         <div className="flex items-start justify-between gap-3">
-          <span className="truncate text-base font-semibold">
+          <span className="truncate text-base font-bold">
             {invoice.fileName}
           </span>
           <div className="flex flex-col items-end gap-0.5 shrink-0">
