@@ -3,16 +3,11 @@ import { httpsCallable } from "firebase/functions";
 import {
   AccordionItem,
   AccordionRoot,
-  Button,
   Card,
 } from "../../components/ui";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
-import {
-  DialogContent,
-  DialogRoot,
-  DialogTitle,
-} from "../../components/ui/dialog";
 import { Metadata } from "../../components/Metadata";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
@@ -183,37 +178,15 @@ export const AdminTimesheetsPage = () => {
         )}
       </Card>
 
-      <DialogRoot
+      <DeleteConfirmModal
         open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open && !deleting) setDeleteTarget(null);
-        }}
-      >
-        <DialogContent
-          closeDisabled={deleting}
-          onClose={() => {
-            if (!deleting) setDeleteTarget(null);
-          }}
-        >
-          <DialogTitle className="text-base sm:text-lg font-bold">
-            Confirm Delete
-          </DialogTitle>
-          <p className="mt-2 text-xs sm:text-sm text-zinc-600">
-            Delete timesheet "{deleteTarget?.entry.fileName}" for{" "}
-            {deleteTarget?.clientName}? This cannot be undone.
-          </p>
-          <div className="mt-4 flex justify-end">
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700"
-              disabled={deleting}
-              onClick={() => void onDelete()}
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </Button>
-          </div>
-        </DialogContent>
-      </DialogRoot>
+        deleting={deleting}
+        label="timesheet"
+        itemName={deleteTarget?.entry.fileName ?? ""}
+        clientName={deleteTarget?.clientName ?? ""}
+        onDelete={() => void onDelete()}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

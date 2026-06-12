@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/dialog";
 import { InvoicePills } from "../../components/InvoicePills";
 import { InvoiceCard } from "../../components/InvoiceCard";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { H2 } from "../../config/typography";
 import { useToast } from "../../context/ToastProvider";
 import {
@@ -39,6 +40,13 @@ export const AdminInvoicesPage = () => {
     fileName: string;
     clientName: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    agencyId: string;
+    invoiceId: string;
+    fileName: string;
+    clientName: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchInvoices = useCallback(() => {
     setLoading(true);
@@ -74,12 +82,16 @@ export const AdminInvoicesPage = () => {
   };
 
   const handleDelete = async (agencyId: string, invoiceId: string) => {
+    setDeleting(true);
     try {
       await deleteInvoice(agencyId, invoiceId);
       toast({ title: "Invoice deleted", variant: "success" });
       fetchInvoices();
     } catch {
       toast({ title: "Failed to delete invoice", variant: "error" });
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -147,7 +159,14 @@ export const AdminInvoicesPage = () => {
                             clientName: agency.agencyName,
                           })
                         }
-                        onDelete={handleDelete}
+                        onDelete={(agencyId, invoiceId) =>
+                          setDeleteTarget({
+                            agencyId,
+                            invoiceId,
+                            fileName: inv.fileName,
+                            clientName: agency.agencyName,
+                          })
+                        }
                       />
                     ))}
                   </div>
@@ -207,6 +226,19 @@ export const AdminInvoicesPage = () => {
           </div>
         </DialogContent>
       </DialogRoot>
+
+      <DeleteConfirmModal
+        open={deleteTarget !== null}
+        deleting={deleting}
+        label="invoice"
+        itemName={deleteTarget?.fileName ?? ""}
+        clientName={deleteTarget?.clientName ?? ""}
+        onDelete={() => {
+          if (!deleteTarget) return;
+          void handleDelete(deleteTarget.agencyId, deleteTarget.invoiceId);
+        }}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };
