@@ -12,7 +12,7 @@ interface SectionProps {
 export const Section = ({ title, count, action, children, className }: SectionProps) => (
   <Card className={className}>
     <div className="flex items-center justify-between">
-      <h2 className="text-base sm:text-lg font-bold">
+      <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
         {title}
         {count !== undefined && ` (${count})`}
       </h2>

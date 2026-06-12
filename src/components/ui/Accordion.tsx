@@ -40,7 +40,7 @@ export const AccordionItem = ({
         <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
       </Accordion.Trigger>
     </Accordion.Header>
-    <Accordion.Content className="overflow-y-hidden overflow-x-auto data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
+    <Accordion.Content className="w-0 min-w-full overflow-hidden overflow-x-auto data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
       {children}
     </Accordion.Content>
   </Accordion.Item>

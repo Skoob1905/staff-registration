@@ -3,8 +3,8 @@ import { httpsCallable } from "firebase/functions";
 import {
   AccordionItem,
   AccordionRoot,
-  Card,
 } from "../../components/ui";
+import { Section } from "../../components/Section";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { Metadata } from "../../components/Metadata";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
@@ -77,17 +77,16 @@ export const AdminTimesheetsPage = () => {
 
   return (
     <div className="mx-auto space-y-4">
-      <Card>
-        <h2 className="text-lg font-bold">Timesheets</h2>
+      <Section title="Timesheets">
 
         {loading ? (
-          <p className="mt-4 text-sm text-zinc-500">Loading...</p>
+          <p className="text-sm text-zinc-500">Loading...</p>
         ) : clientsWithTimesheets.length === 0 ? (
-          <p className="mt-4 text-sm text-zinc-500">
+          <p className="text-sm text-zinc-500">
             No timesheets uploaded yet.
           </p>
         ) : (
-          <AccordionRoot className="mt-4 space-y-3" type="multiple">
+          <AccordionRoot className="mt-1.5 sm:mt-3 space-y-3" type="multiple">
             {clientsWithTimesheets.map((client) => {
               const record = client as Record<string, unknown>;
               const meta = record.metadata as
@@ -176,7 +175,7 @@ export const AdminTimesheetsPage = () => {
             })}
           </AccordionRoot>
         )}
-      </Card>
+      </Section>
 
       <DeleteConfirmModal
         open={deleteTarget !== null}

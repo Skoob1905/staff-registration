@@ -1,5 +1,4 @@
-import { Card } from "../../components/ui";
-import { H2 } from "../../config/typography";
+import { Section } from "../../components/Section";
 
 const contracts = [
   { title: "Site Labour Agreement", parties: "You & Acme Corp", start: "01 Jan 2026", end: "31 Dec 2026", status: "Active", value: "£45,000" },
@@ -11,10 +10,8 @@ const contracts = [
 
 export const ContractsPage = () => (
   <div className="space-y-4">
-    <Card>
-      <H2>Contracts</H2>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+    <Section title="Contracts">
+      <div className="grid gap-3 sm:grid-cols-2">
         {contracts.map((c) => (
           <div key={c.title} className="rounded-xl border border-[var(--border)] p-4">
             <div className="flex items-start justify-between gap-2">
@@ -38,13 +35,12 @@ export const ContractsPage = () => (
                 <span className="text-[var(--muted-foreground)]">End:</span> {c.end}
               </span>
             </div>
-            <p className="mt-2 text-xs">
-              <span className="text-[var(--muted-foreground)]">Value:</span>{" "}
-              <span className="font-semibold">{c.value}</span>
-            </p>
+            <div className="mt-2 flex items-center justify-between text-xs">
+              <span className="font-semibold text-green-700">{c.value}</span>
+            </div>
           </div>
         ))}
       </div>
-    </Card>
+    </Section>
   </div>
 );

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { FileText, Loader2, Pen, Plus } from "lucide-react";
-import { AddModal } from "../../components/AddModal";
+import { FileText, Loader2, Pen } from "lucide-react";
 import { ClientsDropdown } from "../../components/ClientsDropdown";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { ImportHistory } from "../../components/ImportHistory";
@@ -37,7 +36,6 @@ export const AdminStaffPage = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const [showAddModal, setShowAddModal] = useState(false);
 
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
@@ -210,24 +208,10 @@ export const AdminStaffPage = () => {
     setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
   };
 
-  const handleAddSuccess = async () => {
-    setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
-  };
-
   return (
     <div className="mx-auto space-y-4">
       <StaffListSection
         view="admin"
-        action={
-          <Button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            Add
-          </Button>
-        }
         refreshTrigger={staffRefreshTrigger}
         agencies={companies as unknown as Agency[]}
         renderItem={(member, idx) => (
@@ -403,7 +387,8 @@ export const AdminStaffPage = () => {
                 })}
               </div>
             )}
-            <div className="max-h-[100px] overflow-y-auto overflow-x-auto grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-fr gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
+            <div className="overflow-x-auto">
+              <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
               {Object.entries(member)
                 .filter(
                   ([key, value]) =>
@@ -420,14 +405,19 @@ export const AdminStaffPage = () => {
                     value !== undefined,
                 )
                 .sort(([a], [b]) => a.localeCompare(b))
-                .map(([key, value]) => (
-                  <p key={key} className="truncate px-1">
+                .map(([key, value], idx) => (
+                  <p
+                    key={key}
+                    className="whitespace-nowrap px-1 animate-cascade"
+                    style={{ animationDelay: `${idx * 3}ms` } as React.CSSProperties}
+                  >
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>
                     <span className="font-medium">: {String(value ?? "")}</span>
                   </p>
                 ))}
+            </div>
             </div>
           </AccordionItem>
         )}
@@ -558,19 +548,6 @@ export const AdminStaffPage = () => {
         cloudFunction="removeStaffImport"
         getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
         onDeleteSuccess={handleDeleteSuccess}
-      />
-
-      <AddModal
-        open={showAddModal}
-        onOpenChange={setShowAddModal}
-        cloudFunction="importStaffCsv"
-        storagePath="staff_imports"
-        itemLabel="staff"
-        itemLabelPlural="staff"
-        csvType="staff"
-        duplicateKey="NI Number"
-        onSuccess={handleAddSuccess}
-        confirmText={(count) => `Import ${count} staff`}
       />
     </div>
   );

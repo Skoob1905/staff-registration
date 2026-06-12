@@ -1,4 +1,4 @@
-import { Card } from "../../components/ui";
+import { Section } from "../../components/Section";
 
 const entries = [
   { date: "02 Jun 2026", project: "Acme Corp — Site Survey", hours: 7.5, rate: "£35.00", total: "£262.50", status: "Approved" },
@@ -11,13 +11,11 @@ const entries = [
 
 export const TimeSheetsPage = () => (
   <div className="space-y-4">
-    <Card>
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold sm:text-lg">Time Sheets</h2>
-        <span className="text-xs text-[var(--muted-foreground)]">This week: 21.5 hrs</span>
-      </div>
-
-      <div className="mt-3 overflow-x-auto">
+    <Section
+      title="Time Sheets"
+      action={<span className="text-xs text-[var(--muted-foreground)]">This week: 21.5 hrs</span>}
+    >
+      <div className="overflow-x-auto">
         <table className="w-full text-left text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
@@ -53,6 +51,6 @@ export const TimeSheetsPage = () => (
           </tbody>
         </table>
       </div>
-    </Card>
+    </Section>
   </div>
 );

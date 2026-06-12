@@ -170,11 +170,11 @@ body {
 }
 
 .animate-accordion-down {
-  animation: accordion-down 200ms ease-out forwards;
+  animation: accordion-down calc(var(--radix-accordion-content-height) / 1px * 6ms) ease-out forwards;
 }
 
 .animate-accordion-up {
-  animation: accordion-up 200ms ease-out forwards;
+  animation: accordion-up calc(var(--radix-accordion-content-height) / 1px * 6ms) ease-out forwards;
 }
 
 .animate-border-flow {

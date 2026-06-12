@@ -175,7 +175,8 @@ export const StaffListSection = ({
               ))}
             </div>
           )}
-          <div className="max-h-[100px] overflow-y-auto overflow-x-auto grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-fr gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600 mt-2">
+          <div className="overflow-x-auto mt-2">
+            <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
             {Object.entries(member)
               .filter(
                 ([key, value]) =>
@@ -192,13 +193,17 @@ export const StaffListSection = ({
                   value !== undefined,
               )
               .sort(([a], [b]) => a.localeCompare(b))
-              .map(([key, value]) => {
+              .map(([key, value], idx) => {
                 const display =
                   value instanceof Date
                     ? formatInvitedAt(value)
                     : String(value ?? "");
                 return (
-                  <p key={key} className="truncate px-1">
+                  <p
+                    key={key}
+                    className="whitespace-nowrap px-1 animate-cascade"
+                    style={{ animationDelay: `${idx * 3}ms` } as React.CSSProperties}
+                  >
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>
@@ -206,6 +211,7 @@ export const StaffListSection = ({
                   </p>
                 );
               })}
+          </div>
           </div>
         </AccordionItem>
       );

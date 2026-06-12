@@ -20,11 +20,36 @@ import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { readCvFile, type CvFile } from "../utils/cvUpload";
+import {
+  hasNIColumn,
+  hasBusinessNameColumn,
+} from "../utils/keyHeaderNormalisation";
 import type { BulkStaff } from "../types/domain";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+function parseCsvHeaders(text: string): string[] {
+  const firstLine = text.trim().split("\n")[0];
+  if (!firstLine) return [];
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < firstLine.length; i++) {
+    const char = firstLine[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
 
 interface UploadType {
   id: string;
@@ -196,11 +221,33 @@ export const UploadPage = () => {
         });
         return;
       }
+
+      const text = await file.text();
+      const headers = parseCsvHeaders(text);
+
       if (typeId === "staff") {
+        if (!hasNIColumn(headers)) {
+          toast({
+            title: "Invalid Staff Upload",
+            description:
+              "No NI Number column found. Ensure your CSV has a column like 'NI Number', 'NINO', or 'National Insurance Number'.",
+            variant: "error",
+          });
+          return;
+        }
         setAddModalFile(file);
         setAddModalCsvType("staff");
         setShowAddModal(true);
       } else {
+        if (!hasBusinessNameColumn(headers)) {
+          toast({
+            title: "Invalid Client Upload",
+            description:
+              "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
+            variant: "error",
+          });
+          return;
+        }
         setAddModalFile(file);
         setAddModalCsvType("agency");
         setShowAddModal(true);

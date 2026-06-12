@@ -4,8 +4,8 @@ import {
   AccordionRoot,
   AccordionItem,
   Button,
-  Card,
 } from "../../components/ui";
+import { Section } from "../../components/Section";
 import {
   DialogContent,
   DialogRoot,
@@ -14,7 +14,6 @@ import {
 import { InvoicePills } from "../../components/InvoicePills";
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
-import { H2 } from "../../config/typography";
 import { useToast } from "../../context/ToastProvider";
 import {
   deleteInvoice,
@@ -97,19 +96,16 @@ export const AdminInvoicesPage = () => {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <div className="flex items-center justify-between">
-          <H2>Invoices</H2>
-        </div>
+      <Section title="Invoices">
 
         {loading ? (
-          <div className="mt-4 flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
           </div>
         ) : agencies.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">No invoices found.</p>
+          <p className="text-sm text-zinc-500">No invoices found.</p>
         ) : (
-          <div className="mt-3">
+          <div>
             <AccordionRoot type="multiple">
               {agencies.map((agency) => (
                 <AccordionItem
@@ -175,7 +171,7 @@ export const AdminInvoicesPage = () => {
             </AccordionRoot>
           </div>
         )}
-      </Card>
+      </Section>
 
       <DialogRoot
         open={confirmPaid !== null}

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { FileSignature, Plus } from "lucide-react";
-import { AddModal } from "../../components/AddModal";
+import { FileSignature } from "lucide-react";
 import { ImportHistory } from "../../components/ImportHistory";
 import {
   AccordionItem,
@@ -28,7 +27,6 @@ export const AdminClientsPage = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const [showAddModal, setShowAddModal] = useState(false);
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<Record<
     string,
     unknown
@@ -102,10 +100,6 @@ export const AdminClientsPage = () => {
   };
 
   const handleDeleteSuccess = async () => {
-    setTimeout(() => refresh(), 2000);
-  };
-
-  const handleAddSuccess = async () => {
     setTimeout(() => refresh(), 2000);
   };
 
@@ -207,9 +201,14 @@ export const AdminClientsPage = () => {
                   />
                 </div>
               )}
-              <div className="max-h-[100px] overflow-y-auto overflow-x-auto grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-fr gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-                {getDisplayFields(client).map((field) => (
-                  <p key={field.label} className="truncate px-1">
+              <div className="overflow-x-auto">
+                <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
+                {getDisplayFields(client).map((field, idx) => (
+                  <p
+                    key={field.label}
+                    className="whitespace-nowrap px-1 animate-cascade"
+                    style={{ animationDelay: `${idx * 3}ms` } as React.CSSProperties}
+                  >
                     <span className="font-medium text-[var(--foreground)]">
                       {field.label}
                     </span>
@@ -217,19 +216,10 @@ export const AdminClientsPage = () => {
                   </p>
                 ))}
               </div>
+              </div>
             </AccordionItem>
           );
         }}
-        action={
-          <Button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            Add
-          </Button>
-        }
         page={page}
         totalPages={totalPages}
         pageSize={pageSize}
@@ -267,21 +257,6 @@ export const AdminClientsPage = () => {
           )
         }
         onDeleteSuccess={handleDeleteSuccess}
-      />
-
-      <AddModal
-        open={showAddModal}
-        onOpenChange={setShowAddModal}
-        cloudFunction="importAgencyCsv"
-        storagePath="agency_imports"
-        itemLabel="client"
-        itemLabelPlural="clients"
-        csvType="agency"
-        duplicateKey="business_name"
-        onSuccess={handleAddSuccess}
-        confirmText={(count) =>
-          `Import ${count} client${count !== 1 ? "s" : ""}`
-        }
       />
 
       <DialogRoot

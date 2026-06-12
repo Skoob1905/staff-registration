@@ -1,5 +1,4 @@
-import { Card } from "../../components/ui";
-import { H2 } from "../../config/typography";
+import { Section } from "../../components/Section";
 
 const payslips = [
   { period: "May 2026", gross: "£3,200.00", ni: "£180.40", tax: "£420.00", net: "£2,599.60", status: "Paid" },
@@ -11,10 +10,8 @@ const payslips = [
 
 export const PayslipsPage = () => (
   <div className="space-y-4">
-    <Card>
-      <H2>Payslips</H2>
-
-      <div className="mt-3 space-y-2">
+    <Section title="Payslips">
+      <div className="space-y-2">
         {payslips.map((p) => (
           <div key={p.period} className="flex items-center justify-between rounded-xl border border-[var(--border)] p-3">
             <div className="flex items-center gap-3">
@@ -37,6 +34,6 @@ export const PayslipsPage = () => (
           </div>
         ))}
       </div>
-    </Card>
+    </Section>
   </div>
 );
