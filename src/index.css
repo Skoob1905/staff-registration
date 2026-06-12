@@ -1,21 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8faf9;
-  --foreground: #1e293b;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #1e293b;
-  --muted: #f0f4f3;
+  --card-foreground: #0f172a;
+  --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --primary: #005f57;
+  --primary: #3b82f6;
   --primary-foreground: #ffffff;
+  --primary-100: #eff6ff;
+  --primary-200: #dbeafe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #2563eb;
+  --primary-dark: #1e3a8a;
+  --primary-dark-foreground: #f1f5f9;
+  --primary-dark-100: #eef2ff;
+  --primary-dark-200: #cbd5e1;
+  --primary-dark-300: #94a3b8;
+  --primary-dark-400: #475569;
+  --accent: #14b8a6;
+  --accent-foreground: #ffffff;
+  --accent-100: #ecfdf5;
+  --accent-200: #ccfbf1;
+  --accent-300: #99f6e4;
+  --accent-400: #5eead4;
+  --accent-light: #ccfbf1;
+  --primary-dark-foreground: #f1f5f9;
+  --accent: #14b8a6;
+  --accent-foreground: #ffffff;
+  --accent-light: #ccfbf1;
+  --secondary-100: #f1f5f9;
+  --secondary-200: #e2e8f0;
+  --secondary-300: #cbd5e1;
+  --secondary-400: #94a3b8;
+  --secondary-500: #64748b;
   --border: #e2e8f0;
-  --destructive: #be123c;
+  --destructive: #dc2626;
+  --destructive-100: #fef2f2;
+  --destructive-200: #fee2e2;
+  --destructive-300: #fecaca;
+  --destructive-400: #f87171;
+  --destructive-500: #dc2626;
   --header-bg: #ffffff;
   --surface: #f1f5f9;
-  --input-bg: rgba(255, 255, 255, 0.95);
+  --input-bg: #ffffff;
   --input-focus-bg: #ffffff;
   --placeholder: #94a3b8;
+  --text-secondary: #475569;
   --radius: 0.5rem;
 }
 
@@ -44,15 +77,29 @@ body {
 }
 
 .app-bg {
-  background: radial-gradient(
-    circle at top right,
-    color-mix(in srgb, var(--background) 85%, white 15%) 0%,
-    var(--background) 60%,
-    color-mix(in srgb, var(--background) 95%, black 5%) 100%
-  );
+  background-color: var(--background);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 20px,
+      rgba(20, 185, 166, 0.03) 20px,
+      rgba(20, 185, 166, 0.03) 21px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 20px,
+      rgba(20, 185, 166, 0.03) 20px,
+      rgba(20, 185, 166, 0.03) 21px
+    ),
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--background) 85%, white 15%) 0%,
+      var(--background) 60%,
+      color-mix(in srgb, var(--background) 92%, #1e3a8a 8%) 100%
+    );
 }
-
-
 
 @keyframes cascade-in {
   from {
@@ -66,13 +113,21 @@ body {
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes loading-fade-in {
-  from { opacity: 0.6; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes dissolve {
@@ -97,13 +152,21 @@ body {
 }
 
 @keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
 }
 
 @keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 .animate-accordion-down {
@@ -112,4 +175,13 @@ body {
 
 .animate-accordion-up {
   animation: accordion-up 200ms ease-out forwards;
+}
+
+.animate-border-flow {
+  border: 1px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: border-box;
+  background-image:
+    linear-gradient(#fff, #fff),
+    conic-gradient(#99f6e4, #93c5fd, #99f6e4);
 }

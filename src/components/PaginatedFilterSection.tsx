@@ -67,11 +67,11 @@ export const PaginatedFilterSection = <T,>({
   tags,
   tagCounts,
   agencies,
-  agencyCounts,
+    agencyCounts,
 
-  emptyMessage,
-  noMatchMessage = "Oops there are no records with that filter",
-}: PaginatedFilterSectionProps<T>) => {
+    emptyMessage,
+    noMatchMessage = "Oops there are no records with that filter",
+  }: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const hasAnyFilter =

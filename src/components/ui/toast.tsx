@@ -9,7 +9,7 @@ type ToastVariant = "default" | "success" | "error" | "info" | "warning";
 export interface AppToast {
   id: string;
   title: string;
-  description?: string;
+  description?: ReactNode;
   variant?: ToastVariant;
   icon?: ReactNode;
 }

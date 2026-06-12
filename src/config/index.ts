@@ -21,6 +21,26 @@ import type { Config, Theme } from "./types";
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
 export const slug = raw.toLowerCase();
 
+const unifiedTheme: Theme = {
+  appBackground: "#F8FAFC",
+  primaryTextColour: "#0F172A",
+  card: "#FFFFFF",
+  cardForeground: "#0F172A",
+  muted: "#F1F5F9",
+  mutedForeground: "#64748B",
+  primary: "#2563EB",
+  primaryForeground: "#FFFFFF",
+  border: "#E2E8F0",
+  destructive: "#DC2626",
+  headerBg: "#FFFFFF",
+  surface: "#F1F5F9",
+  inputBg: "#FFFFFF",
+  inputFocusBg: "#FFFFFF",
+  placeholder: "#94A3B8",
+  radius: "0.5rem",
+  typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
+};
+
 const images: Record<string, Config> = {
   blackrock: {
     navbar: blackrockNavbar,
@@ -28,25 +48,7 @@ const images: Record<string, Config> = {
     loading: blackrockLoading,
     name: "Blackrock Consultancy UK Ltd",
     homepage: "https://blackrockconsultancyuk.com/",
-    theme: {
-      appBackground: "#f8faf9", // A crisp, clean off-white with a tiny hint of sage/cool undertone
-      primaryTextColour: "#1e293b", // Deep slate-charcoal for excellent readability and contrast
-      card: "#ffffff", // Bright white cards to create depth against the background
-      cardForeground: "#1e293b", // High-contrast slate text inside cards
-      muted: "#f0f4f3", // Soft, desaturated teal-gray for hover states and subtle rows
-      mutedForeground: "#64748b", // Balanced slate-gray for captions and secondary text
-      primary: "#005F57", // Your deep pine teal for primary buttons, links, and accents
-      primaryForeground: "#ffffff", // Pure white text for crisp legibility on teal buttons
-      border: "#e2e8f0", // Clean, light gray borders to keep the UI structured
-      destructive: "#be123c", // A deep, rich crimson that pairs beautifully with teal without clashing
-      headerBg: "#ffffff", // Pure white header to ground the top navigation
-      surface: "#f1f5f9", // Very light cool gray for secondary buttons or code blocks
-      inputBg: "rgba(255, 255, 255, 0.95)", // Clean white for inputs
-      inputFocusBg: "#ffffff", // Solid white focus state
-      placeholder: "#94a3b8", // Soft gray for input placeholders
-      radius: "0.5rem", // standard 8px corners for a clean, professional, structured feel
-      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
-    },
+    theme: unifiedTheme,
   },
   cerobi: {
     navbar: cerobiNavbar,
@@ -54,25 +56,7 @@ const images: Record<string, Config> = {
     loading: cerobiLoading,
     name: "Cerobi Group Ltd",
     homepage: "https://cerobigroup-uk.com/",
-    theme: {
-      appBackground: "#f8fafc", // Ultra-clean, cool-tinted slate for a modern SaaS backdrop
-      primaryTextColour: "#0f172a", // Slate-900 (deep obsidian) for sharp, premium typography
-      card: "#ffffff", // Crisp white panels to lift content off the background
-      cardForeground: "#0f172a", // High-contrast deep slate text inside cards
-      muted: "#f1f5f9", // Light cool gray for hover states and subtle sections
-      mutedForeground: "#64748b", // Balanced slate-gray for secondary text and captions
-      primary: "#1E5EFF", // Your electric tech blue for buttons, links, and focus states
-      primaryForeground: "#ffffff", // Crisp white text for perfect readability on blue buttons
-      border: "#e2e8f0", // Thin, elegant dividers that keep the layout structured
-      destructive: "#ef4444", // Modern, energetic red for warnings and destructive actions
-      headerBg: "#ffffff", // Pure white navigation bar to anchor the top of the page
-      surface: "#f8fafc", // Light gray surface for secondary actions or table rows
-      inputBg: "rgba(255, 255, 255, 0.95)", // Clean white for text inputs
-      inputFocusBg: "#ffffff", // Solid white focus state
-      placeholder: "#94a3b8", // Soft gray for input placeholders
-      radius: "0.625rem", // Modern 10px corners—not too sharp, not too round
-      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
-    },
+    theme: unifiedTheme,
   },
   crs: {
     navbar: crsNavbar,
@@ -80,25 +64,7 @@ const images: Record<string, Config> = {
     loading: crsLoading,
     name: "CRS Group Holding Ltd",
     homepage: "https://crs-staffing.com/",
-    theme: {
-      appBackground: "#f4f7f5", // An incredibly soft, mint-tinted gray that makes the green pop
-      primaryTextColour: "#0f172a", // Slate-900 (deep charcoal/navy-gray) for maximum readability
-      card: "#ffffff", // Pure white cards to create a sharp contrast against the backdrop
-      cardForeground: "#0f172a", // Deep slate text inside cards
-      muted: "#e2e8f0", // Clean light gray for borders, hovers, and dividers
-      mutedForeground: "#475569", // Balanced medium slate for secondary text and captions
-      primary: "#008236", // Your vibrant forest green for buttons, badges, and primary links
-      primaryForeground: "#ffffff", // Crisp white text to ensure high contrast on green buttons
-      border: "#cbd5e1", // Mid-tone gray for clean, defined UI boundaries
-      destructive: "#df1c1c", // A bright, clear red for errors and destructive actions
-      headerBg: "#ffffff", // Pure white header to ground the top navigation
-      surface: "#f8fafc", // A very light slate for secondary buttons or table headers
-      inputBg: "rgba(255, 255, 255, 0.95)", // Clean white input fields
-      inputFocusBg: "#ffffff", // Pure white on input focus
-      placeholder: "#94a3b8", // Muted gray for placeholder text
-      radius: "0.5rem", // A sleek, standard 8px radius for a clean digital look
-      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
-    },
+    theme: unifiedTheme,
   },
   orbit: {
     navbar: orbitNavbar,
@@ -106,42 +72,7 @@ const images: Record<string, Config> = {
     loading: orbitLoading,
     name: "",
     homepage: "",
-    theme: {
-      appBackground: "#040916", // Deep space navy, almost black
-      primaryTextColour: "#E2E8F0", // Soft cool white
-      card: "#040916", // Rich navy card background
-      cardForeground: "#F8FAFC", // Clean white text on cards
-
-      muted: "#172554", // Dark orbital blue
-      mutedForeground: "#94A3B8", // Subtle slate gray
-
-      primary: "#4F7DAA", // Modern steel-blue from the rocket body
-      primaryForeground: "#FFFFFF",
-
-      border: "#0F2A4A", // Muted blue border, subtle presence against dark bg
-
-      destructive: "#DC2626", // Clean red for destructive actions
-
-      headerBg: "#0A1220", // Slightly elevated from background
-
-      surface: "#111C2F", // Secondary panels, sidebars, code blocks
-
-      inputBg: "rgba(15, 23, 42, 0.85)",
-      inputFocusBg: "#162338",
-
-      placeholder: "#64748B",
-
-      // Accent colours for charts, badges, indicators
-      // accent: "#FF8A1F", // Rocket exhaust orange
-      // accentForeground: "#FFFFFF",
-
-      // success: "#22C55E",
-      // warning: "#F59E0B",
-      // info: "#60A5FA",
-
-      radius: "8px", // 12px feels more modern and premium
-      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
-    },
+    theme: unifiedTheme,
   },
   tierone: {
     navbar: tierOneNavbar,
@@ -149,33 +80,7 @@ const images: Record<string, Config> = {
     loading: tierOneLoading,
     name: "Tier One Recruiting Ltd",
     homepage: "",
-    theme: {
-      appBackground: "#F9FAFB", // Crisp, bright off-white for a clean canvas
-      primaryTextColour: "#111827", // Near-black for sharp typography contrast
-      card: "#FFFFFF", // Pure white for cards to stand out crisply against the background
-      cardForeground: "#111827", // High-contrast text on cards
-
-      muted: "#F3F4F6", // Ultra-light gray for subtle non-interactive blocks
-      mutedForeground: "#6B7280", // Medium neutral gray for secondary text
-
-      primary: "#374151", // Charcoal gray for primary actions and prominent branding
-      primaryForeground: "#FFFFFF", // White text to ensure legibility on primary buttons
-
-      border: "#E5E7EB", // Clean, minimal gray border to separate layouts
-
-      destructive: "#DC2626", // Classic vivid red for destructive actions
-
-      headerBg: "#FFFFFF", // Clean white header to anchor the top navigation
-
-      surface: "#F3F4F6", // Light gray for sidebars, tables, or structural panels
-
-      inputBg: "#FFFFFF", // White background for crisp input fields
-      inputFocusBg: "#F9FAFB", // Subtle tint shift on input focus
-      placeholder: "#9CA3AF", // Soft gray for placeholder text
-
-      radius: "8px", // Clean geometric rounding
-      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
-    },
+    theme: unifiedTheme,
   },
   mumentum: {
     navbar: mumentumNavbar,
@@ -183,33 +88,7 @@ const images: Record<string, Config> = {
     loading: mumentumLoading,
     name: "Mumentum Group Holding Ltd",
     homepage: "",
-    theme: {
-      appBackground: "#F8FAFC", // Bright, clean slate-white for a crisp light background
-      primaryTextColour: "#0F172A", // Near-black slate for excellent text readability
-      card: "#FFFFFF", // Pure white for cards to pop against the background
-      cardForeground: "#0F172A", // Dark text for card content
-
-      muted: "#E2E8F0", // Soft, light gray-blue for non-interactive elements
-      mutedForeground: "#64748B", // Muted slate gray for secondary text
-
-      primary: "#143C70", // Your requested primary deep blue for main actions and branding
-      primaryForeground: "#FFFFFF", // White text for sharp contrast on primary elements
-
-      border: "#CBD5E1", // Defined, clean border to structure the layout
-
-      destructive: "#DC2626", // Clean red for destructive actions
-
-      headerBg: "#FFFFFF", // Clean white header to anchor the top navigation
-
-      surface: "#F1F5F9", // Soft gray-blue for sidebars, tables, or structural panels
-
-      inputBg: "#FFFFFF", // White background for form fields
-      inputFocusBg: "#F8FAFC", // Subtle shift on focus
-      placeholder: "#346296", // Your secondary blue, adapted here for a visible placeholder
-
-      radius: "8px", // Modern geometric rounding
-      typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
-    },
+    theme: unifiedTheme,
   },
 };
 

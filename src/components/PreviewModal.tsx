@@ -4,18 +4,21 @@ import { ClientsDropdown } from "./ClientsDropdown";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { uploadInvoice } from "../services/invoiceService";
+import { uploadClientContract } from "../services/contractService";
 import { H1 } from "../config/typography";
 
 interface PreviewModalProps {
   open: boolean;
   file: File | null;
   onClose: () => void;
+  mode?: "invoice" | "contract";
 }
 
-export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
+export const PreviewModal = ({ open, file, onClose, mode = "invoice" }: PreviewModalProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const isAdmin = appUser?.role === "admin";
+  const isContract = mode === "contract";
 
   const [downloadedFileUrl, setDownloadedFileUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -29,7 +32,9 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
   const targetClientId = isAdmin ? selectedClientId : (appUser?.agencyId ?? "");
   const targetClientName = isAdmin ? selectedClientName : "";
 
-  const canSubmit = dueDate.trim() && amountPayable.trim() && targetClientId;
+  const canSubmit = isContract
+    ? !!targetClientId
+    : dueDate.trim() && amountPayable.trim() && targetClientId;
 
   useEffect(() => {
     if (!open || !file) return;
@@ -71,7 +76,7 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
   const handleUpload = async () => {
     if (!canSubmit || uploading || !file || !targetClientId) return;
 
-    if (new Date(dueDate) <= new Date()) {
+    if (!isContract && new Date(dueDate) <= new Date()) {
       toast({
         title: "Invalid due date",
         description: "The due date must be a date in the future.",
@@ -84,18 +89,24 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
     setProgress(0);
 
     try {
-      await uploadInvoice(
-        file,
-        targetClientId,
-        dueDate,
-        amountPayable,
-        targetClientName,
-        setProgress,
-      );
+      if (isContract) {
+        await uploadClientContract(file, targetClientId);
+      } else {
+        await uploadInvoice(
+          file,
+          targetClientId,
+          dueDate,
+          amountPayable,
+          targetClientName,
+          setProgress,
+        );
+      }
 
       toast({
         title: "Upload Complete",
-        description: `Invoice has been sent to ${targetClientName || targetClientId}`,
+        description: isContract
+          ? `Contract has been uploaded for ${targetClientName || targetClientId}`
+          : `Invoice has been sent to ${targetClientName || targetClientId}`,
         variant: "success",
       });
 
@@ -103,7 +114,9 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
     } catch {
       toast({
         title: "Upload failed",
-        description: "The invoice could not be uploaded. Please try again.",
+        description: isContract
+          ? "The contract could not be uploaded. Please try again."
+          : "The invoice could not be uploaded. Please try again.",
         variant: "error",
       });
     } finally {
@@ -119,7 +132,7 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
         className="max-w-lg"
       >
         <DialogTitle asChild>
-          <H1>Invoice Preview</H1>
+          <H1>{isContract ? "Contract Preview" : "Invoice Preview"}</H1>
         </DialogTitle>
 
         {file ? (
@@ -143,33 +156,39 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
 
         {uploading ? (
           <div className="mt-4 space-y-2">
-            <p className="text-sm text-zinc-600">Uploading invoice...</p>
+            <p className="text-sm text-zinc-600">
+              {isContract ? "Uploading contract..." : "Uploading invoice..."}
+            </p>
             <ProgressBar value={progress} />
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            <div className="space-y-1">
-              <Label>Due Date</Label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-              />
-            </div>
+            {!isContract && (
+              <>
+                <div className="space-y-1">
+                  <Label>Due Date</Label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                  />
+                </div>
 
-            <div className="space-y-1">
-              <Label>Amount Payable (£)</Label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amountPayable}
-                onChange={(e) => setAmountPayable(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-              />
-            </div>
+                <div className="space-y-1">
+                  <Label>Amount Payable (£)</Label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={amountPayable}
+                    onChange={(e) => setAmountPayable(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+              </>
+            )}
 
             {isAdmin && (
               <div className="space-y-1">
@@ -191,7 +210,7 @@ export const PreviewModal = ({ open, file, onClose }: PreviewModalProps) => {
               onClick={handleUpload}
               className="w-full"
             >
-              Upload Invoice
+              {isContract ? "Upload Contract" : "Upload Invoice"}
             </Button>
           </div>
         )}

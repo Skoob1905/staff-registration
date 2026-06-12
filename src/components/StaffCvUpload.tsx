@@ -6,39 +6,7 @@ import { BodyMedium, Caption } from "../config/typography";
 import { functions } from "../services/firebase";
 import { useToast } from "../context/ToastProvider";
 import type { BulkStaff } from "../types/domain";
-
-const CV_FILE_SIZE_LIMIT = 2 * 1024 * 1024;
-
-interface CvFile {
-  file: File;
-  base64: string;
-  parsedName: string;
-  parsedForename: string;
-  parsedSurname: string;
-  match: BulkStaff | null;
-  error?: "size" | "format";
-}
-
-function parseFileName(name: string): { forename: string; surname: string } | null {
-  const withoutExt = name.replace(/\.pdf$/i, "").trim();
-  const parts = withoutExt.split(/\s+/);
-  if (parts.length < 2) return null;
-  return { forename: parts[0], surname: parts.slice(1).join(" ") };
-}
-
-function findMatch(
-  forename: string,
-  surname: string,
-  staffList: BulkStaff[],
-): BulkStaff | null {
-  return (
-    staffList.find(
-      (s) =>
-        s.Forename?.toLowerCase() === forename.toLowerCase() &&
-        s.Surname?.toLowerCase() === surname.toLowerCase(),
-    ) ?? null
-  );
-}
+import { readCvFile, type CvFile } from "../utils/cvUpload";
 
 interface StaffCvUploadProps {
   staffList: BulkStaff[];
@@ -65,81 +33,15 @@ export const StaffCvUpload = ({
     [cvFiles],
   );
 
-  const readFile = useCallback(
-    (file: File): Promise<CvFile> => {
-      return new Promise((resolve) => {
-        const parsed = parseFileName(file.name);
-        if (!file.name.toLowerCase().endsWith(".pdf")) {
-          resolve({
-            file,
-            base64: "",
-            parsedName: file.name,
-            parsedForename: "",
-            parsedSurname: "",
-            match: null,
-            error: "format",
-          });
-          return;
-        }
-        if (file.size > CV_FILE_SIZE_LIMIT) {
-          resolve({
-            file,
-            base64: "",
-            parsedName: file.name,
-            parsedForename: parsed?.forename ?? "",
-            parsedSurname: parsed?.surname ?? "",
-            match: null,
-            error: "size",
-          });
-          return;
-        }
-        if (!parsed) {
-          resolve({
-            file,
-            base64: "",
-            parsedName: file.name,
-            parsedForename: "",
-            parsedSurname: "",
-            match: null,
-          });
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve({
-            file,
-            base64: result.split(",")[1],
-            parsedName: file.name,
-            parsedForename: parsed.forename,
-            parsedSurname: parsed.surname,
-            match: findMatch(parsed.forename, parsed.surname, staffList),
-          });
-        };
-        reader.onerror = () => {
-          resolve({
-            file,
-            base64: "",
-            parsedName: file.name,
-            parsedForename: parsed.forename,
-            parsedSurname: parsed.surname,
-            match: null,
-          });
-        };
-        reader.readAsDataURL(file);
-      });
-    },
-    [staffList],
-  );
-
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
-      const results = await Promise.all(fileArray.map(readFile));
+      const results = await Promise.all(
+        fileArray.map((file) => readCvFile(file, staffList)),
+      );
       setCvFiles((prev) => [...prev, ...results]);
     },
-    [readFile],
+    [staffList],
   );
 
   const removeFile = useCallback((index: number) => {

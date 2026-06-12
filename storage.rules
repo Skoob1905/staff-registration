@@ -49,7 +49,7 @@ service firebase.storage {
     // avoid firestore.get() due to cross-service evaluation issues in this project.
     match /agency_imports/{agencyId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isAdmin(); 
+      allow write: if isSignedIn();
     }
 
     // Signed contracts uploaded by admin against a client.
