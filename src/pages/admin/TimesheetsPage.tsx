@@ -3,7 +3,6 @@ import { httpsCallable } from "firebase/functions";
 import {
   AccordionItem,
   AccordionRoot,
-  Button,
   Card,
 } from "../../components/ui";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
