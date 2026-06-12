@@ -138,7 +138,11 @@ export const StaffListSection = ({
             <div className="flex min-w-0 items-center gap-2">
               <AccordionTitle>{displayName}</AccordionTitle>
               {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                <Pill status="cv" icon={<FileText className="h-4 w-4" />} label="" />
+                <Pill
+                  status="cv"
+                  icon={<FileText className="h-4 w-4" />}
+                  label=""
+                />
               )}
             </div>
           }
@@ -175,41 +179,45 @@ export const StaffListSection = ({
           )}
           <div className="overflow-x-auto mt-2">
             <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-            {Object.entries(member)
-              .filter(
-                ([key, value]) =>
-                  key !== "id" &&
-                  key !== "uid" &&
-                  key !== "metadata" &&
-                  key !== "agencyId" &&
-                  key !== "importedByAgencyId" &&
-                  key !== "tags" &&
-                  key !== "typeIds" &&
-                  key !== "sortableName" &&
-                  value !== "" &&
-                  value !== null &&
-                  value !== undefined,
-              )
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([key, value], idx) => {
-                const display =
-                  value instanceof Date
-                    ? formatInvitedAt(value)
-                    : String(value ?? "");
-                return (
-                  <p
-                    key={key}
-                    className="whitespace-nowrap px-1 animate-cascade"
-                    style={{ animationDelay: `${idx * 3}ms` } as React.CSSProperties}
-                  >
-                    <span className="font-medium text-[var(--foreground)]">
-                      {key}
-                    </span>
-                    <span className="font-medium">: {display}</span>
-                  </p>
-                );
-              })}
-          </div>
+              {Object.entries(member)
+                .filter(
+                  ([key, value]) =>
+                    key !== "id" &&
+                    key !== "uid" &&
+                    key !== "metadata" &&
+                    key !== "agencyId" &&
+                    key !== "importedByAgencyId" &&
+                    key !== "tags" &&
+                    key !== "typeIds" &&
+                    key !== "sortableName" &&
+                    value !== "" &&
+                    value !== null &&
+                    value !== undefined,
+                )
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, value], idx) => {
+                  const display =
+                    value instanceof Date
+                      ? formatInvitedAt(value)
+                      : String(value ?? "");
+                  return (
+                    <p
+                      key={key}
+                      className="whitespace-nowrap px-1 animate-cascade"
+                      style={
+                        {
+                          animationDelay: `${idx * 3}ms`,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <span className="font-medium text-[var(--foreground)]">
+                        {key}
+                      </span>
+                      <span className="font-medium">: {display}</span>
+                    </p>
+                  );
+                })}
+            </div>
           </div>
         </AccordionItem>
       );
