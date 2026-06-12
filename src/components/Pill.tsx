@@ -20,10 +20,10 @@ export const Pill = ({
   const displayLabel = label ?? config.label;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${config.bg} ${config.border} ${config.text} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 min-h-7 text-[11px] font-semibold ${config.bg} ${config.border} ${config.text} ${className}`}
     >
       {count != null ? <span>{count}</span> : null}
-      <span>{displayLabel}</span>
+      {displayLabel ? <span>{displayLabel}</span> : null}
       {icon}
     </span>
   );

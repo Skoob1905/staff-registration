@@ -1759,6 +1759,7 @@ export const uploadSignedContract = onCall(
     await getFirestore().collection("agencies").doc(clientId).update({
       "metadata.signedContractName": fileName,
       "metadata.signedContract": downloadUrl,
+      "metadata.signedContractAt": FieldValue.serverTimestamp(),
     });
 
     return { ok: true, url: downloadUrl };

@@ -19,6 +19,7 @@ import { functions } from "../../services/firebase";
 import { formatInvitedAt } from "../../utils/date";
 import { getCompanyName } from "../../utils/company";
 import { Muted } from "../../config/typography";
+import { AccordionTitle } from "../../components/AccordionTitle";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
@@ -323,9 +324,9 @@ export const AdminPage = () => {
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
-                <span className="font-medium pr-4">
+                <AccordionTitle className="pr-4">
                   {userRecord.email || userRecord.id}
-                </span>
+                </AccordionTitle>
               }
               actions={
                 <span className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)] whitespace-nowrap">

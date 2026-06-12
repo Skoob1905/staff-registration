@@ -6,6 +6,8 @@ import { ClientsDropdown } from "../../components/ClientsDropdown";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { ImportHistory } from "../../components/ImportHistory";
 import { Metadata } from "../../components/Metadata";
+import { Pill } from "../../components/Pill";
+import { AccordionTitle } from "../../components/AccordionTitle";
 import { StaffListSection } from "../../components/StaffListSection";
 import {
   AccordionItem,
@@ -221,15 +223,11 @@ export const AdminStaffPage = () => {
             className="animate-cascade"
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium flex items-center gap-2">
-                  {getStaffName(member)}
-                  {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 shrink-0">
-                      <FileText className="h-3 w-3 text-blue-600" />
-                    </span>
-                  )}
-                </span>
+              <div className="flex min-w-0 items-center gap-2">
+                <AccordionTitle>{getStaffName(member)}</AccordionTitle>
+                {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                  <Pill status="cv" icon={<FileText className="h-4 w-4" />} label="" />
+                )}
               </div>
             }
             actions={
@@ -239,10 +237,10 @@ export const AdminStaffPage = () => {
                     <span className="truncate max-w-[200px] transition-all duration-200 group-hover:mr-1">
                       {member.metadata.assignedToName}
                     </span>
-                    <span className="hidden overflow-hidden w-0 transition-all duration-200 group-hover:w-4 sm:inline-flex">
+                    <span className="hidden overflow-hidden w-0 transition-all duration-200 group-hover:w-6 sm:inline-flex">
                       <ActionButton
                         variant="delete"
-                        size="sm"
+                        size="md"
                         ariaLabel="Unassign staff"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -276,7 +274,7 @@ export const AdminStaffPage = () => {
                       <button
                         type="button"
                         onClick={() => setActiveAssignMenu(member.id)}
-                        className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition hover:text-[var(--primary)]"
+                        className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
                       >
                         <Pen className="h-3.5 w-3.5" />
                       </button>
@@ -297,7 +295,7 @@ export const AdminStaffPage = () => {
                           {member.metadata.assignedToName}
                           <ActionButton
                             variant="delete"
-                            size="xs"
+                            size="md"
                             ariaLabel="Unassign staff"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -336,7 +334,7 @@ export const AdminStaffPage = () => {
                         e.stopPropagation();
                         setTagTarget(member);
                       }}
-                      className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition hover:text-[var(--primary)]"
+                      className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
                     >
                       <Pen className="h-3.5 w-3.5" />
                     </button>
@@ -362,8 +360,9 @@ export const AdminStaffPage = () => {
                           <FileInteractionButtons
                             fileUrl={entry.fileUrl}
                             fileName={entry.fileName}
+                            name={getStaffName(member)}
                             interactionKey="cv"
-                            size="sm"
+                size="md"
                             onDelete={
                               isDeleting
                                 ? undefined

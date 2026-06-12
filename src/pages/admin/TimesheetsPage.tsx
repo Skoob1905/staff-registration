@@ -5,6 +5,7 @@ import {
   AccordionRoot,
 } from "../../components/ui";
 import { Section } from "../../components/Section";
+import { AccordionTitle } from "../../components/AccordionTitle";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { Metadata } from "../../components/Metadata";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
@@ -101,7 +102,7 @@ export const AdminTimesheetsPage = () => {
                 <AccordionItem
                   key={record.id as string}
                   value={record.id as string}
-                  title={name}
+                  title={<AccordionTitle>{name}</AccordionTitle>}
                   actions={
                     <span className="text-xs text-zinc-400">
                       Latest upload:{" "}

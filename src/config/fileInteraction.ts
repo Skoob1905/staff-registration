@@ -16,7 +16,7 @@ export interface DeleteModalConfig {
 export const deleteModalConfig: Record<FileInteractionKey, DeleteModalConfig> = {
   cv: {
     title: "Delete CV",
-    message: "Are you sure you want to delete {fileName}?",
+    message: "Are you sure you want to delete {fileName}?\nThis CV will no longer be available to view or download for any client that has this staff member assigned.",
   },
   invoice: {
     title: "Delete Invoice",

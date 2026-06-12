@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { InvoicePills } from "../../components/InvoicePills";
+import { AccordionTitle } from "../../components/AccordionTitle";
 import { InvoiceCard } from "../../components/InvoiceCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../context/ToastProvider";
@@ -113,7 +114,7 @@ export const AdminInvoicesPage = () => {
                   value={agency.agencyId}
                   title={
                     <span className="flex items-center gap-2">
-                      {agency.agencyName}
+                      <AccordionTitle>{agency.agencyName}</AccordionTitle>
                       <InvoicePills invoices={agency.invoices} />
                     </span>
                   }
@@ -198,15 +199,7 @@ export const AdminInvoicesPage = () => {
               {confirmPaid?.clientName}
             </p>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button
-              type="button"
-              className="border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]"
-              disabled={payingInvoice !== null}
-              onClick={() => setConfirmPaid(null)}
-            >
-              Cancel
-            </Button>
+          <div className="mt-4 flex justify-end">
             <Button
               type="button"
               disabled={payingInvoice !== null}

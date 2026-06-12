@@ -11,6 +11,8 @@ import {
   DialogTitle,
   DownloadButton,
 } from "../../components/ui";
+import { Pill } from "../../components/Pill";
+import { AccordionTitle } from "../../components/AccordionTitle";
 import { Metadata } from "../../components/Metadata";
 import { useAuth } from "../../context/AuthProvider";
 import { useToast } from "../../context/ToastProvider";
@@ -167,6 +169,7 @@ export const AdminClientsPage = () => {
             | undefined;
           const scName = meta?.signedContractName as string | undefined;
           const scUrl = meta?.signedContract as string | undefined;
+          const scDate = meta?.signedContractAt as string | undefined;
           return (
             <AccordionItem
               key={client.id as string}
@@ -174,27 +177,37 @@ export const AdminClientsPage = () => {
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
-                <div className="flex min-w-0 w-full h-7 items-center gap-2">
-                  <span className="leading-none">{getPrimaryLabel(client)}</span>
+                <div className="flex min-w-0 w-full items-center gap-2">
+                  <AccordionTitle className="leading-none">{getPrimaryLabel(client)}</AccordionTitle>
                   {scName && (
-                    <span className="inline-flex items-center justify-center rounded-full bg-green-100 h-7 w-7 text-green-700 shadow-sm shrink-0">
-                      <FileSignature className="h-4 w-4" />
-                    </span>
+                    <Pill status="signed" icon={<FileSignature className="h-4 w-4" />} label="" />
                   )}
                 </div>
               }
             >
               {scName && scUrl && (
                 <div className="mb-2 flex items-center gap-2">
-                  <Metadata title="Signed Contract" value={scName} />
+                  <Metadata
+                    title="Signed Contract"
+                    value={
+                      <span className="inline-flex items-center gap-2">
+                        {scName}
+                        {scDate && (
+                          <span className="text-zinc-400">
+                            ({new Date(scDate).toLocaleDateString()})
+                          </span>
+                        )}
+                      </span>
+                    }
+                  />
                   <DownloadButton
-                    size="sm"
+                    size="md"
                     href={scUrl}
                     ariaLabel="Download contract"
                   />
                   <ActionButton
                     variant="delete"
-                    size="sm"
+                    size="md"
                     ariaLabel="Remove signed contract"
                     disabled={deletingContract}
                     onClick={() => setConfirmDeleteClient(client)}

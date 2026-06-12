@@ -16,6 +16,8 @@ import { useFilterParams } from "../hooks/useFilterParams";
 import { getStaffName } from "../utils/keyHeaderNormalisation";
 import { FileInteractionButtons } from "./FileInteractionButtons";
 import { Metadata } from "./Metadata";
+import { Pill } from "./Pill";
+import { AccordionTitle } from "./AccordionTitle";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
@@ -133,15 +135,11 @@ export const StaffListSection = ({
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
           title={
-            <div className="flex flex-col min-w-0">
-              <span className="font-medium flex items-center gap-2">
-                {displayName}
-                {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 shrink-0">
-                    <FileText className="h-3 w-3 text-blue-600" />
-                  </span>
-                )}
-              </span>
+            <div className="flex min-w-0 items-center gap-2">
+              <AccordionTitle>{displayName}</AccordionTitle>
+              {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                <Pill status="cv" icon={<FileText className="h-4 w-4" />} label="" />
+              )}
             </div>
           }
         >
@@ -167,7 +165,7 @@ export const StaffListSection = ({
                         fileUrl={entry.fileUrl}
                         fileName={entry.fileName}
                         interactionKey="cv"
-                        size="sm"
+                        size="md"
                       />
                     </span>
                   }

@@ -10,6 +10,7 @@ import {
 interface FileInteractionButtonsProps {
   fileUrl: string;
   fileName: string;
+  name?: string;
   onDelete?: () => void | Promise<void>;
   size?: "xs" | "sm" | "md";
   interactionKey: FileInteractionKey;
@@ -18,6 +19,7 @@ interface FileInteractionButtonsProps {
 export const FileInteractionButtons = ({
   fileUrl,
   fileName,
+  name,
   onDelete,
   size = "md",
   interactionKey,
@@ -65,19 +67,9 @@ export const FileInteractionButtons = ({
           onClose={() => !deleting && setConfirmOpen(false)}
           closeDisabled={deleting}
         >
-          <DialogTitle>{config.title}</DialogTitle>
-          <p className="mt-3 text-sm text-zinc-600">
-            {config.message.replace("{fileName}", fileName)}
-          </p>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button
-              type="button"
-              className="border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]"
-              disabled={deleting}
-              onClick={() => setConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
+          <DialogTitle className="font-bold">{config.title}</DialogTitle>
+          <p className="mt-3 text-sm text-zinc-600 whitespace-pre-line">{config.message.replace("{fileName}", name ? `${name}'s CV` : fileName)}</p>
+          <div className="mt-4 flex justify-end">
             <Button
               type="button"
               disabled={deleting}
