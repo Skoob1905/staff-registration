@@ -7,7 +7,6 @@ import { ClientsDropdown } from "../../components/ClientsDropdown";
 import { FileInteractionButtons } from "../../components/FileInteractionButtons";
 import { ImportHistory } from "../../components/ImportHistory";
 import { Metadata } from "../../components/Metadata";
-import { Pill } from "../../components/Pill";
 import { StaffListSection } from "../../components/StaffListSection";
 import {
   AccordionItem,
@@ -80,21 +79,24 @@ export const AdminStaffPage = () => {
     }
   }, [tagTarget]);
 
-  const handleDeleteCv = useCallback(async (staffId: string, fileName: string) => {
-    const key = `${staffId}::${fileName}`;
-    if (deletingCvKey) return;
-    setDeletingCvKey(key);
-    try {
-      const callable = httpsCallable(functions, "deleteStaffCv");
-      await callable({ staffId, fileName });
-      setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
-      toast({ title: "CV deleted" });
-    } catch {
-      toast({ title: "Failed to delete CV", variant: "error" as const });
-    } finally {
-      setDeletingCvKey(null);
-    }
-  }, [deletingCvKey, toast]);
+  const handleDeleteCv = useCallback(
+    async (staffId: string, fileName: string) => {
+      const key = `${staffId}::${fileName}`;
+      if (deletingCvKey) return;
+      setDeletingCvKey(key);
+      try {
+        const callable = httpsCallable(functions, "deleteStaffCv");
+        await callable({ staffId, fileName });
+        setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
+        toast({ title: "CV deleted" });
+      } catch {
+        toast({ title: "Failed to delete CV", variant: "error" as const });
+      } finally {
+        setDeletingCvKey(null);
+      }
+    },
+    [deletingCvKey, toast],
+  );
 
   const handleAssignTags = useCallback(async () => {
     if (!tagTarget) return;
@@ -236,15 +238,12 @@ export const AdminStaffPage = () => {
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
               <div className="flex flex-col min-w-0">
-                <span className="truncate font-medium flex items-center gap-2">
+                <span className="font-medium flex items-center gap-2">
                   {getStaffName(member)}
                   {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                    <Pill
-                      status="info"
-                      label="CV"
-                      icon={<FileText className="h-3 w-3" />}
-                      className="shrink-0"
-                    />
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 shrink-0">
+                      <FileText className="h-3 w-3 text-blue-600" />
+                    </span>
                   )}
                 </span>
               </div>
@@ -384,12 +383,14 @@ export const AdminStaffPage = () => {
                             onDelete={
                               isDeleting
                                 ? undefined
-                                : () => handleDeleteCv(member.id, entry.fileName)
+                                : () =>
+                                    handleDeleteCv(member.id, entry.fileName)
                             }
                           />
                           {entry.uploadedAt && (
                             <span className="text-zinc-400">
-                              ({new Date(entry.uploadedAt).toLocaleDateString()})
+                              ({new Date(entry.uploadedAt).toLocaleDateString()}
+                              )
                             </span>
                           )}
                           {isDeleting && (
@@ -402,23 +403,25 @@ export const AdminStaffPage = () => {
                 })}
               </div>
             )}
-            <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
+            <div className="max-h-[100px] overflow-y-auto overflow-x-auto grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-fr gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
               {Object.entries(member)
                 .filter(
                   ([key, value]) =>
                     key !== "id" &&
+                    key !== "uid" &&
                     key !== "metadata" &&
                     key !== "agencyId" &&
                     key !== "importedByAgencyId" &&
                     key !== "tags" &&
                     key !== "typeIds" &&
+                    key !== "sortableName" &&
                     value !== "" &&
                     value !== null &&
                     value !== undefined,
                 )
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([key, value]) => (
-                  <p key={key} className="break-inside-avoid">
+                  <p key={key} className="truncate px-1">
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>

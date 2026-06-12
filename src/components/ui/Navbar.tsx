@@ -1,7 +1,4 @@
-import { NavLink } from "react-router-dom";
-import type { ReactNode } from "react";
 import { logoutUser } from "../../services/authService";
-import { useAuth } from "../../context/AuthProvider";
 import { GlobalBanner } from "../../layouts/GlobalBanner";
 import { Button } from ".";
 import { config } from "../../config";

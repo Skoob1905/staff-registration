@@ -28,7 +28,7 @@ export const AccordionItem = ({
   >
     <Accordion.Header className="group/header flex items-center">
       <Accordion.Trigger className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm font-semibold text-[var(--foreground)] sm:px-4 sm:py-3 sm:text-sm">
-        <span className="min-w-0 flex-1 font-semibold">{title}</span>
+        <span className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-semibold">{title}</span>
         {actions && (
           <div
             className="hidden sm:flex shrink-0 items-center gap-2"
@@ -40,7 +40,7 @@ export const AccordionItem = ({
         <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
       </Accordion.Trigger>
     </Accordion.Header>
-    <Accordion.Content className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
+    <Accordion.Content className="overflow-y-hidden overflow-x-auto data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up px-3 pb-3 text-[11px] text-[var(--muted-foreground)] sm:px-4 sm:pb-4 sm:text-sm">
       {children}
     </Accordion.Content>
   </Accordion.Item>

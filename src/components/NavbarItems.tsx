@@ -18,7 +18,7 @@ const CLIENT_ROUTES = [
   { label: "PROFILE", to: "/profile" },
 ];
 
-export function NavbarItems({ className }) {
+export function NavbarItems({ className }: { className: (props: { isActive: boolean }) => string }) {
   const { appUser } = useAuth();
   const isAdmin = appUser?.role === "admin";
 

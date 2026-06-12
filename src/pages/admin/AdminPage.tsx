@@ -323,7 +323,7 @@ export const AdminPage = () => {
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
-                <span className="truncate font-medium pr-4">
+                <span className="font-medium pr-4">
                   {userRecord.email || userRecord.id}
                 </span>
               }

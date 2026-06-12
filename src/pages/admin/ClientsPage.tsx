@@ -181,7 +181,7 @@ export const AdminClientsPage = () => {
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
                 <div className="flex min-w-0 w-full h-7 items-center gap-2">
-                  <span className="truncate leading-none">{getPrimaryLabel(client)}</span>
+                  <span className="leading-none">{getPrimaryLabel(client)}</span>
                   {scName && (
                     <span className="inline-flex items-center justify-center rounded-full bg-green-100 h-7 w-7 text-green-700 shadow-sm shrink-0">
                       <FileSignature className="h-4 w-4" />
@@ -207,9 +207,9 @@ export const AdminClientsPage = () => {
                   />
                 </div>
               )}
-              <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600">
+              <div className="max-h-[100px] overflow-y-auto overflow-x-auto grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-fr gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
                 {getDisplayFields(client).map((field) => (
-                  <p key={field.label} className="truncate break-inside-avoid">
+                  <p key={field.label} className="truncate px-1">
                     <span className="font-medium text-[var(--foreground)]">
                       {field.label}
                     </span>

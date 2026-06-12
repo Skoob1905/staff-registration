@@ -43,8 +43,7 @@ export const Footer = () => {
       }}
     >
       <div className="mx-auto max-w-6xl px-4">
-        <div className="flex flex-col items-center gap-1">
-          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             {routes.map((route) => (
               <NavLink
                 key={route.to}
@@ -55,12 +54,11 @@ export const Footer = () => {
                 {route.label}
               </NavLink>
             ))}
-          </nav>
 
-          <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]">
-            <span>v{__APP_VERSION__}</span>
+            <span className="text-[11px] text-[var(--muted-foreground)]">
+              v{__APP_VERSION__}
+            </span>
           </div>
-        </div>
       </div>
       <div
         className="mx-auto mt-3 max-w-6xl border-t px-4 pt-3 text-center text-[11px] text-[var(--muted-foreground)]"

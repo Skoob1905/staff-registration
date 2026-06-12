@@ -16,7 +16,6 @@ import { useFilterParams } from "../hooks/useFilterParams";
 import { getStaffName } from "../utils/keyHeaderNormalisation";
 import { FileInteractionButtons } from "./FileInteractionButtons";
 import { Metadata } from "./Metadata";
-import { Pill } from "./Pill";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
@@ -135,28 +134,22 @@ export const StaffListSection = ({
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
           title={
             <div className="flex flex-col min-w-0">
-              <span className="truncate font-medium flex items-center gap-2">
+              <span className="font-medium flex items-center gap-2">
                 {displayName}
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                  <Pill
-                    status="info"
-                    icon={<FileText className="h-3 w-3" />}
-                    className="shrink-0"
-                  />
+                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 shrink-0">
+                    <FileText className="h-3 w-3 text-blue-600" />
+                  </span>
                 )}
               </span>
             </div>
           }
         >
           {member.tags && member.tags.length > 0 && (
-            <>
-              <span className="font-medium text-[var(--foreground)]">
-                Tags:
-              </span>
-              <span className="font-medium pl-1">
-                {member.tags.map((id) => tagsMap[id] || id).join(", ")}
-              </span>
-            </>
+            <Metadata
+              title="Tags"
+              value={member.tags.map((id) => tagsMap[id] || id).join(", ")}
+            />
           )}
           {member.metadata?.cv && member.metadata.cv.length > 0 && (
             <div className="mt-2 flex flex-col gap-1 text-xs sm:text-sm">
@@ -182,7 +175,7 @@ export const StaffListSection = ({
               ))}
             </div>
           )}
-          <div className="max-h-[100px] overflow-y-auto columns-2 gap-x-4 text-xs sm:text-sm text-zinc-600 mt-2">
+          <div className="max-h-[100px] overflow-y-auto overflow-x-auto grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-fr gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600 mt-2">
             {Object.entries(member)
               .filter(
                 ([key, value]) =>
@@ -193,6 +186,7 @@ export const StaffListSection = ({
                   key !== "importedByAgencyId" &&
                   key !== "tags" &&
                   key !== "typeIds" &&
+                  key !== "sortableName" &&
                   value !== "" &&
                   value !== null &&
                   value !== undefined,
@@ -204,7 +198,7 @@ export const StaffListSection = ({
                     ? formatInvitedAt(value)
                     : String(value ?? "");
                 return (
-                  <p key={key} className="break-inside-avoid">
+                  <p key={key} className="truncate px-1">
                     <span className="font-medium text-[var(--foreground)]">
                       {key}
                     </span>

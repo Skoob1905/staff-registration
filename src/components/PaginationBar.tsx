@@ -143,7 +143,7 @@ export const PaginationBar = ({
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+          className="hidden sm:block h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
         >
           {PAGE_SIZES.map((size) => (
             <option key={size} value={size}>
