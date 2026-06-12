@@ -20,7 +20,6 @@ export const SupportPage = () => {
     document.title = "Support";
     const el = textareaRef.current;
     if (el) {
-      el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
     }
   }, []);

@@ -127,7 +127,6 @@ export const FilterModal = ({
                 className="mt-1"
                 placeholder="Type at least 3 characters..."
                 value={name}
-                autoFocus
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
