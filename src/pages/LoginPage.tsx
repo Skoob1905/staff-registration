@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import {
   Alert,
@@ -15,6 +14,7 @@ import {
 import { loginWithEmail, sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
 import { config } from "../config";
+import { LoadingPage } from "../components/LoadingPage";
 
 /**
  * THEME SWITCHER LOGIC — uncomment to enable
@@ -95,6 +95,8 @@ export const LoginPage = () => {
     });
   };
 
+  if (loading) return <LoadingPage />;
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 app-bg">
       <Card className="w-full max-w-md">
@@ -104,9 +106,6 @@ export const LoginPage = () => {
             alt={config.name}
             className="w-auto h-auto max-h-[20vh] object-contain"
           />
-          {loading && (
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--muted-foreground)]" />
-          )}
         </div>
 
         <form onSubmit={onSubmit} className="space-y-3">
@@ -139,7 +138,7 @@ export const LoginPage = () => {
               disabled={loading}
               className="flex-1 h-auto md:h-auto py-2 text-sm"
             >
-              {loading ? "Signing in..." : "Login"}
+              Login
             </Button>
             <SecondaryButton
               type="button"
