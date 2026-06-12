@@ -16,8 +16,12 @@ export const Footer = () => {
 
   return (
     <footer
-      className="border-t border-[var(--accent-light)] py-3"
-      style={{ backgroundColor: "var(--header-bg)" }}
+      className="border-t py-3"
+      style={{
+        backgroundColor: "var(--header-bg)",
+        borderColor: "transparent",
+        borderImage: "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
+      }}
     >
       <div className="mx-auto max-w-6xl px-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:relative">
@@ -48,7 +52,11 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-3 max-w-6xl border-t border-[var(--accent-light)] px-4 pt-3 text-center text-[11px] text-[var(--muted-foreground)]">
+      <div className="mx-auto mt-3 max-w-6xl border-t px-4 pt-3 text-center text-[11px] text-[var(--muted-foreground)]"
+        style={{
+          borderColor: "transparent",
+          borderImage: "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
+        }}>
         Designed &amp; Created by Ruby Digital Services
       </div>
     </footer>

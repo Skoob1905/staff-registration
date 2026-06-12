@@ -73,6 +73,12 @@ export const AdminTimesheetsPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (deleteTarget) {
+      void onDelete();
+    }
+  }, [deleteTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const clientsWithTimesheets = clients.filter((c) => {
     const meta = (c as Record<string, unknown>).metadata as
       | Record<string, unknown>
@@ -202,23 +208,6 @@ export const AdminTimesheetsPage = () => {
             Delete timesheet "{deleteTarget?.entry.fileName}" for{" "}
             {deleteTarget?.clientName}? This cannot be undone.
           </p>
-          <div className="mt-4 flex justify-end">
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700"
-              disabled={deleting}
-              onClick={() => void onDelete()}
-            >
-              {deleting ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Deleting...
-                </span>
-              ) : (
-                "Confirm"
-              )}
-            </Button>
-          </div>
         </DialogContent>
       </DialogRoot>
     </div>

@@ -10,7 +10,6 @@ import {
   Users,
 } from "lucide-react";
 import { AddModal } from "../components/AddModal";
-import { Card, ProgressBar } from "../components/ui";
 import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
 import { CVUploadModal } from "../components/CVUploadModal";
@@ -110,7 +109,6 @@ export const UploadPage = () => {
   const types = isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
 
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -234,7 +232,18 @@ export const UploadPage = () => {
       }
 
       setUploading(true);
-      setProgress(0);
+
+      toast({
+        title: "Uploading timesheet...",
+        description: (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Please wait while we process your file
+          </span>
+        ),
+        variant: "info",
+        replaceToast: true,
+      });
 
       try {
         const base64 = await new Promise<string>((resolve, reject) => {
@@ -276,6 +285,7 @@ export const UploadPage = () => {
             title: "Duplicate timesheet",
             description: `A timesheet named "${file.name}" has already been uploaded.`,
             variant: "error",
+            replaceToast: true,
           });
         } else {
           toast({
@@ -286,7 +296,6 @@ export const UploadPage = () => {
         }
       } finally {
         setUploading(false);
-        setProgress(0);
       }
     } else if (typeId === "contracts") {
       if (file.size > MAX_FILE_SIZE) {
@@ -343,6 +352,8 @@ export const UploadPage = () => {
                 acceptedFiles={type.acceptedFiles}
                 fileLimit={type.fileLimit}
                 multiple={type.multiple}
+                feint={type.id === "timesheets"}
+                noScale={type.id === "timesheets"}
                 onFileSelect={
                   type.multiple
                     ? undefined
@@ -360,16 +371,6 @@ export const UploadPage = () => {
           ))}
         </div>
         </Section>
-
-        {uploading && (
-        <Card>
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Uploading...</span>
-          </div>
-          <ProgressBar value={progress} />
-        </Card>
-      )}
 
       <AddModal
         open={showAddModal}

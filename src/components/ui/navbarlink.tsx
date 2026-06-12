@@ -55,14 +55,19 @@ export const Navbar = () => {
       </NavbarLink>
       <NavbarLink to="/upload">UPLOAD</NavbarLink>
       <NavbarLink to="/invoices">INVOICES</NavbarLink>
+      <NavbarLink to="/support">SUPPORT</NavbarLink>
       <NavbarLink to="/profile">PROFILE</NavbarLink>
     </>
   );
 
   return (
     <header
-      className="sticky top-0 z-20 border-b border-[var(--accent-light)] backdrop-blur"
-      style={{ backgroundColor: "var(--header-bg)" }}
+      className="sticky top-0 z-20 border-b backdrop-blur"
+      style={{
+        backgroundColor: "var(--header-bg)",
+        borderColor: "transparent",
+        borderImage: "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
+      }}
     >
       <GlobalBanner />
       <div className="mx-auto max-w-6xl px-4 py-3">

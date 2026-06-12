@@ -7,7 +7,7 @@
   --card-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --primary: #2563eb;
+  --primary: #3b82f6;
   --primary-foreground: #ffffff;
   --primary-100: #eff6ff;
   --primary-200: #dbeafe;
@@ -175,4 +175,13 @@ body {
 
 .animate-accordion-up {
   animation: accordion-up 200ms ease-out forwards;
+}
+
+.animate-border-flow {
+  border: 1px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: border-box;
+  background-image:
+    linear-gradient(#fff, #fff),
+    conic-gradient(#99f6e4, #93c5fd, #99f6e4);
 }

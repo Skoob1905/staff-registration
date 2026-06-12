@@ -6,10 +6,11 @@ interface SectionProps {
   count?: number;
   action?: ReactNode;
   children: ReactNode;
+  className?: string;
 }
 
-export const Section = ({ title, count, action, children }: SectionProps) => (
-  <Card>
+export const Section = ({ title, count, action, children, className }: SectionProps) => (
+  <Card className={className}>
     <div className="flex items-center justify-between">
       <h2 className="text-base sm:text-lg font-bold">
         {title}

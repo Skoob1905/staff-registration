@@ -12,6 +12,7 @@ import { AdminStaffPage } from "../pages/admin/StaffPage";
 import { UserHomePage } from "../pages/clients/HomePage";
 import { InvoicesPage } from "../pages/clients/InvoicesPage";
 import { ProfilePage } from "../pages/clients/ProfilePage";
+import { SupportPage } from "../pages/clients/SupportPage";
 import { UploadPage } from "../pages/Upload";
 import { RoleGuard } from "./RoleGuard";
 
@@ -64,6 +65,7 @@ export const AppRouter = () => (
           <Route path="/profile" element={<ProfileSwitch />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/invoices" element={<InvoicesSwitch />} />
+          <Route path="/support" element={<SupportPage />} />
 
           <Route element={<RoleGuard role="admin" />}>
             <Route element={<AdminLayout />}>
