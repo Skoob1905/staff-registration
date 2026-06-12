@@ -22,4 +22,4 @@ export {
   ToastItem,
   ToastRegion,
 } from "./toast";
-export { NavbarLink, Navbar } from "./navbarlink";
+export { Navbar } from "./Navbar";

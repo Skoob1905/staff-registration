@@ -19,18 +19,13 @@ import { RoleGuard } from "./RoleGuard";
 const AppEntryRedirect = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  return (
-    <Navigate to="/staff" replace />
-  );
+  return <Navigate to="/staff" replace />;
 };
 
 const LoginRedirect = () => {
   const { firebaseUser, appUser, loading } = useAuth();
   if (loading) return <LoadingPage />;
-  if (firebaseUser && appUser)
-    return (
-      <Navigate to="/staff" replace />
-    );
+  if (firebaseUser && appUser) return <Navigate to="/staff" replace />;
   return <LoginPage />;
 };
 

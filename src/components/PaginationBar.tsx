@@ -67,55 +67,53 @@ export const PaginationBar = ({
   if (totalCount === 0 && !loading) return null;
 
   return (
-    <div className="mt-4 flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:items-center">
-      <div className="flex items-center gap-1 sm:col-start-2 sm:justify-self-center">
-        <button
-          type="button"
-          onClick={onPrev}
-          disabled={currentPage <= 1 || loading}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+    <div className="mt-4 sm:grid sm:grid-cols-3 sm:items-center">
+      <div className="flex flex-col items-center gap-2 sm:col-start-2 sm:flex-row sm:flex-nowrap sm:justify-normal sm:gap-1 sm:justify-self-center">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={currentPage <= 1 || loading}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
 
-        <div className="mx-1 flex items-center gap-0.5">
-          {pageNumbers.map((page, idx) =>
-            page === "..." ? (
-              <Caption
-                as="span"
-                key={`ellipsis-${idx}`}
-                className="px-1"
-              >
-                ...
-              </Caption>
-            ) : (
-              <button
-                key={page}
-                type="button"
-                onClick={() => onGoToPage(page)}
-                disabled={loading}
-                className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                  page === currentPage
-                    ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-                    : "text-[var(--muted-foreground)] hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {page}
-              </button>
-            ),
-          )}
+          <div className="mx-1 flex items-center gap-0.5">
+            {pageNumbers.map((page, idx) =>
+              page === "..." ? (
+                <Caption as="span" key={`ellipsis-${idx}`} className="px-1">
+                  ...
+                </Caption>
+              ) : (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => onGoToPage(page)}
+                  disabled={loading}
+                  className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1.5 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                    page === currentPage
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                      : "text-[var(--muted-foreground)] hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {page}
+                </button>
+              ),
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={currentPage >= totalPages || loading}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={currentPage >= totalPages || loading}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-
-        <div className="ml-2 flex items-center gap-1">
+        <div className="ml-2 hidden sm:flex items-center gap-1">
           <input
             type="text"
             value={pageInput}
@@ -137,7 +135,7 @@ export const PaginationBar = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-3 sm:col-start-3 sm:row-start-1 sm:justify-self-end">
+      <div className="flex items-center justify-center gap-3 sm:col-start-3 sm:row-start-1 sm:justify-self-end">
         <Caption as="span">
           {startItem}–{endItem} of {totalCount}
         </Caption>
