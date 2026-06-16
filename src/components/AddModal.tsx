@@ -126,19 +126,6 @@ export const AddModal = ({
     if (open) loadTags(true).catch(() => {});
   }, [open, loadTags]);
 
-  const fileProcessedRef = useRef(false);
-  const handleFileRef = useRef<(file: File) => void>(() => {});
-
-  useEffect(() => {
-    if (open && initialFile && !fileProcessedRef.current) {
-      fileProcessedRef.current = true;
-      handleFileRef.current(initialFile);
-    }
-    if (!open) {
-      fileProcessedRef.current = false;
-    }
-  }, [open, initialFile]);
-
   const clientFacetFilters = useMemo(
     () => (isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]]),
     [isAdmin, appUser?.agencyId],
@@ -169,58 +156,6 @@ export const AddModal = ({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
 
-  const tagsMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const tag of tags) {
-      map[tag.id] = tag.value;
-    }
-    return map;
-  }, [tags]);
-
-  const hasAssignment =
-    selectedClientId !== undefined || selectedTagIds.length > 0;
-
-  const selectedClientName = useMemo(() => {
-    if (!selectedClientId) return "";
-    const c = clients.find((c) => c.id === selectedClientId);
-    if (!c) return "Unknown";
-    return (
-      (c.name as string) ||
-      (c.business_name as string) ||
-      (c.Company_Name as string) ||
-      (c.company_name as string) ||
-      (c.agencyName as string) ||
-      findValueByNormalizedKey(
-        c as Record<string, unknown>,
-        "businessname",
-        "companyname",
-        "name",
-        "agencyname",
-        "organisation",
-        "company",
-      ) ||
-      "Unknown"
-    );
-  }, [clients, selectedClientId]);
-
-  useEffect(() => {
-    if (loading) {
-      loadingTimerRef.current = setTimeout(() => {
-        toast({
-          title: "Still uploading...",
-          variant: "info",
-          replaceToast: true,
-        });
-      }, 5000);
-    }
-    return () => {
-      if (loadingTimerRef.current) {
-        clearTimeout(loadingTimerRef.current);
-        loadingTimerRef.current = null;
-      }
-    };
-  }, [loading, toast]);
-
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".csv")) {
@@ -231,7 +166,11 @@ export const AddModal = ({
       });
       return;
     }
-    if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT && csvType !== "timesheet") {
+    if (
+      ALGOLIA_INDEX_PREFIX === "dev_" &&
+      file.size > DEV_FILE_SIZE_LIMIT &&
+      csvType !== "timesheet"
+    ) {
       toast({
         title: "File too large",
         description: "In preview mode, files are limited to 100KB.",
@@ -311,9 +250,74 @@ export const AddModal = ({
     reader.readAsText(file);
   };
 
+  const fileProcessedRef = useRef(false);
+  const handleFileRef = useRef<(file: File) => void>(() => {});
+
   useEffect(() => {
     handleFileRef.current = handleFile;
   });
+
+  useEffect(() => {
+    if (open && initialFile && !fileProcessedRef.current) {
+      fileProcessedRef.current = true;
+      handleFileRef.current(initialFile);
+    }
+    if (!open) {
+      fileProcessedRef.current = false;
+    }
+  }, [open, initialFile]);
+
+  const tagsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const tag of tags) {
+      map[tag.id] = tag.value;
+    }
+    return map;
+  }, [tags]);
+
+  const hasAssignment =
+    selectedClientId !== undefined || selectedTagIds.length > 0;
+
+  const selectedClientName = useMemo(() => {
+    if (!selectedClientId) return "";
+    const c = clients.find((c) => c.id === selectedClientId);
+    if (!c) return "Unknown";
+    return (
+      (c.name as string) ||
+      (c.business_name as string) ||
+      (c.Company_Name as string) ||
+      (c.company_name as string) ||
+      (c.agencyName as string) ||
+      findValueByNormalizedKey(
+        c as Record<string, unknown>,
+        "businessname",
+        "companyname",
+        "name",
+        "agencyname",
+        "organisation",
+        "company",
+      ) ||
+      "Unknown"
+    );
+  }, [clients, selectedClientId]);
+
+  useEffect(() => {
+    if (loading) {
+      loadingTimerRef.current = setTimeout(() => {
+        toast({
+          title: "Still uploading...",
+          variant: "info",
+          replaceToast: true,
+        });
+      }, 5000);
+    }
+    return () => {
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+    };
+  }, [loading, toast]);
 
   const onUpload = async () => {
     if (!csvData || !appUser) return;
@@ -349,7 +353,8 @@ export const AddModal = ({
       }
       if (ALGOLIA_INDEX_PREFIX === "dev_") {
         const collectionName = csvType === "staff" ? "staff" : "agencies";
-        const maxRecords = csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
+        const maxRecords =
+          csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
         const label = csvType === "staff" ? "staff" : "clients";
         const snap = await getCountFromServer(collection(db, collectionName));
         const existingCount = snap.data().count;
@@ -456,7 +461,10 @@ export const AddModal = ({
       await onSuccess?.(data.importId);
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
-      if (csvType === "timesheet" && (code === "already-exists" || code === "functions/already-exists")) {
+      if (
+        csvType === "timesheet" &&
+        (code === "already-exists" || code === "functions/already-exists")
+      ) {
         toast({
           title: "Duplicate timesheet",
           description: `A timesheet named "${csvData?.fileName ?? ""}" has already been uploaded.`,
@@ -554,7 +562,8 @@ export const AddModal = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold">{csvData.fileName}</h3>
                 <Muted as="span">
-                  {csvDupInfo.total} {csvType === "timesheet" ? "records" : itemLabelPlural}
+                  {csvDupInfo.total}{" "}
+                  {csvType === "timesheet" ? "records" : itemLabelPlural}
                 </Muted>
               </div>
 
