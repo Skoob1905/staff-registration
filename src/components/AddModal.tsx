@@ -4,6 +4,7 @@ import { collection, getCountFromServer } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
 import { Body, BodyMedium, Caption, Muted } from "../config/typography";
+import { config } from "../config";
 import { AssignModal } from "./AssignModal";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
@@ -25,6 +26,18 @@ const MAX_STAFF_RECORDS = 500;
 const MAX_CLIENT_RECORDS = 100;
 
 type CsvRow = Record<string, string>;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
   const lines = text.trim().split("\n");
@@ -115,6 +128,7 @@ export const AddModal = ({
 
   const fileProcessedRef = useRef(false);
   const handleFileRef = useRef<(file: File) => void>(() => {});
+
   useEffect(() => {
     if (open && initialFile && !fileProcessedRef.current) {
       fileProcessedRef.current = true;
@@ -217,7 +231,7 @@ export const AddModal = ({
       });
       return;
     }
-    if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT) {
+    if (ALGOLIA_INDEX_PREFIX === "dev_" && file.size > DEV_FILE_SIZE_LIMIT && csvType !== "timesheet") {
       toast({
         title: "File too large",
         description: "In preview mode, files are limited to 100KB.",
@@ -296,6 +310,7 @@ export const AddModal = ({
     };
     reader.readAsText(file);
   };
+
   useEffect(() => {
     handleFileRef.current = handleFile;
   });
@@ -306,6 +321,32 @@ export const AddModal = ({
     setUploadProgress(0);
     setProcessing(false);
     try {
+      if (csvType === "timesheet") {
+        setUploadProgress(50);
+        const base64 = await fileToBase64(csvData.rawFile);
+        setUploadProgress(80);
+        const fn = httpsCallable(functions, "recordTimesheetUpload");
+        await fn({
+          fileBase64: base64,
+          fileName: csvData.fileName,
+          clientId: appUser.agencyId ?? "",
+          contentType: csvData.rawFile.type,
+        });
+        setUploadProgress(100);
+
+        toast({
+          title: "Timesheet uploaded",
+          description: `${config.name} has received your timesheet. We will process this as soon as possible.`,
+          variant: "success",
+        });
+        setUploadProgress(0);
+        setCsvData(null);
+        setSelectedClientId(undefined);
+        setSelectedTagIds([]);
+        onOpenChange(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
       if (ALGOLIA_INDEX_PREFIX === "dev_") {
         const collectionName = csvType === "staff" ? "staff" : "agencies";
         const maxRecords = csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
@@ -414,19 +455,28 @@ export const AddModal = ({
 
       await onSuccess?.(data.importId);
     } catch (error: unknown) {
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "message" in error &&
-        typeof (error as { message?: string }).message === "string"
-          ? (error as { message: string }).message
-          : "Upload failed. Please try again.";
-      toast({
-        title: "Upload failed",
-        description: message,
-        variant: "error",
-        replaceToast: true,
-      });
+      const code = (error as { code?: string })?.code;
+      if (csvType === "timesheet" && (code === "already-exists" || code === "functions/already-exists")) {
+        toast({
+          title: "Duplicate timesheet",
+          description: `A timesheet named "${csvData?.fileName ?? ""}" has already been uploaded.`,
+          variant: "error",
+        });
+      } else {
+        const message =
+          typeof error === "object" &&
+          error !== null &&
+          "message" in error &&
+          typeof (error as { message?: string }).message === "string"
+            ? (error as { message: string }).message
+            : "Upload failed. Please try again.";
+        toast({
+          title: "Upload failed",
+          description: message,
+          variant: "error",
+          replaceToast: true,
+        });
+      }
     } finally {
       setLoading(false);
       setProcessing(false);
@@ -464,7 +514,7 @@ export const AddModal = ({
           }`}
         >
           <DialogTitle className="text-base sm:text-lg font-bold">
-            Bulk Upload
+            {csvType === "timesheet" ? "Timesheet Upload" : "Bulk Upload"}
           </DialogTitle>
 
           {!csvData ? (
@@ -504,7 +554,7 @@ export const AddModal = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold">{csvData.fileName}</h3>
                 <Muted as="span">
-                  {csvDupInfo.total} {itemLabelPlural}
+                  {csvDupInfo.total} {csvType === "timesheet" ? "records" : itemLabelPlural}
                 </Muted>
               </div>
 
@@ -599,6 +649,8 @@ export const AddModal = ({
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                         Importing...
                       </span>
+                    ) : csvType === "timesheet" ? (
+                      "Upload Timesheet"
                     ) : confirmText ? (
                       confirmText(csvDupInfo.total)
                     ) : (

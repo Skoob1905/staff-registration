@@ -57,18 +57,9 @@ interface AppState {
 
   importHistoryCache: Record<string, CsvImport[]>;
   importHistoryCacheLoaded: Record<string, boolean>;
-  loadImportHistory: (
-    type?: string,
-    force?: boolean,
-  ) => Promise<void>;
-  addImportEntry: (
-    type: string | undefined,
-    entry: CsvImport,
-  ) => void;
-  removeImportEntry: (
-    type: string | undefined,
-    importId: string,
-  ) => void;
+  loadImportHistory: (type?: string, force?: boolean) => Promise<void>;
+  addImportEntry: (type: string | undefined, entry: CsvImport) => void;
+  removeImportEntry: (type: string | undefined, importId: string) => void;
   clearImportHistoryCache: () => void;
 }
 

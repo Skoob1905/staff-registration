@@ -27,3 +27,14 @@ export const formatInvitedAt = (value: unknown): string => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(parsedDate.getDate())}-${pad(parsedDate.getMonth() + 1)}-${parsedDate.getFullYear()} ${pad(parsedDate.getHours())}:${pad(parsedDate.getMinutes())}:${pad(parsedDate.getSeconds())}`;
 };
+
+export const formatSentDate = (value: unknown): string => {
+  const parsedDate = toDate(value);
+  if (!parsedDate) return "";
+
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  return `${parsedDate.getDate()} ${months[parsedDate.getMonth()]} ${parsedDate.getFullYear()}`;
+};

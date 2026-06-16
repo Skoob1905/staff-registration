@@ -37,6 +37,11 @@ interface StaffListSectionProps {
   refreshTrigger?: number;
   renderItem?: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
+
+  leftAccordionValue?: string;
+  onLeftAccordionChange?: (value: string) => void;
+  rightAccordionValue?: string;
+  onRightAccordionChange?: (value: string) => void;
 }
 
 export const StaffListSection = ({
@@ -46,6 +51,11 @@ export const StaffListSection = ({
   refreshTrigger,
   renderItem,
   agencies,
+
+  leftAccordionValue,
+  onLeftAccordionChange,
+  rightAccordionValue,
+  onRightAccordionChange,
 }: StaffListSectionProps) => {
   const { appUser } = useAuth();
   const tags = useAppStore((s) => s.tags);
@@ -256,6 +266,10 @@ export const StaffListSection = ({
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem ?? defaultRenderItem}
+      leftAccordionValue={leftAccordionValue}
+      onLeftAccordionChange={onLeftAccordionChange}
+      rightAccordionValue={rightAccordionValue}
+      onRightAccordionChange={onRightAccordionChange}
     />
   );
 };

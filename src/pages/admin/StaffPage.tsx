@@ -9,6 +9,7 @@ import { Metadata } from "../../components/Metadata";
 import { Pill } from "../../components/Pill";
 import { AccordionTitle } from "../../components/AccordionTitle";
 import { StaffListSection } from "../../components/StaffListSection";
+import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 import {
   AccordionItem,
   ActionButton,
@@ -70,6 +71,7 @@ export const AdminStaffPage = () => {
     new Set(),
   );
   const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
+  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   useEffect(() => {
     if (tagTarget) {
@@ -216,6 +218,10 @@ export const AdminStaffPage = () => {
         view="admin"
         refreshTrigger={staffRefreshTrigger}
         agencies={companies as unknown as Agency[]}
+        leftAccordionValue={leftValue}
+        onLeftAccordionChange={onLeftChange}
+        rightAccordionValue={rightValue}
+        onRightAccordionChange={onRightChange}
         renderItem={(member, idx) => (
           <AccordionItem
             key={member.id}

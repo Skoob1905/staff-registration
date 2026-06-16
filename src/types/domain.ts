@@ -16,6 +16,7 @@ export interface AppUser {
   birthday?: string;
   address?: string;
   registeredAt?: Date;
+  lastLoginTime?: Date | null;
   payslipsSent?: string[];
 }
 

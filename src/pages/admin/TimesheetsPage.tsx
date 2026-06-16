@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAccordionParams } from "../../hooks/useAccordionParams";
 import { httpsCallable } from "firebase/functions";
-import { AccordionItem, AccordionRoot } from "../../components/ui";
+import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../../components/ui";
 import { Section } from "../../components/Section";
 import { AccordionTitle } from "../../components/AccordionTitle";
-import { TimesheetCard } from "../../components/TimesheetCard";
+import { InformationCard } from "../../components/InformationCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
-import { useAuth } from "../../context/AuthProvider";
+import { Pill } from "../../components/Pill";
 import { useToast } from "../../context/ToastProvider";
-import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
+import { useData } from "../../context/DataProvider";
 import { functions } from "../../services/firebase";
 import {
   getLatestTimesheetUpload,
   formatTimesheetDate,
   type TimesheetEntry,
 } from "../../utils/timesheets";
-import { getCompanyName } from "../../utils/company";
 
 interface DeleteTarget {
   clientId: string;
@@ -27,20 +27,56 @@ export const AdminTimesheetsPage = () => {
     document.title = "Timesheets";
   }, []);
 
-  const { appUser } = useAuth();
   const { toast } = useToast();
+  const {
+    timesheets: agencies,
+    timesheetsLoading: loading,
+    timesheetsByAgency,
+    refreshTimesheets,
+    markSeen,
+    markDownloaded,
+  } = useData();
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const {
-    items: clients,
-    loading,
-    refresh,
-  } = usePaginatedRecords({
-    indexName: "clients_name_desc",
-    agencyId: appUser?.agencyId ?? "",
-    hitsPerPage: 100,
-  });
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const t of Object.values(timers)) {
+        clearTimeout(t);
+      }
+    };
+  }, []);
+
+  const { openValues, handleAccordionChange } = useAccordionParams();
+
+  useEffect(() => {
+    const current = new Set(openValues);
+
+    for (const agencyId of Object.keys(timersRef.current)) {
+      if (!current.has(agencyId)) {
+        clearTimeout(timersRef.current[agencyId]);
+        delete timersRef.current[agencyId];
+      }
+    }
+
+    for (const agencyId of openValues) {
+      if (timersRef.current[agencyId]) continue;
+
+      timersRef.current[agencyId] = setTimeout(() => {
+        delete timersRef.current[agencyId];
+        const agency = agencies.find((a) => a.agencyId === agencyId);
+        if (!agency) return;
+        const unseenIds = agency.timesheets
+          .filter((ts) => ts.hasSeen === false)
+          .map((ts) => ts.fileName);
+        if (unseenIds.length > 0) {
+          markSeen("timesheets", agencyId, unseenIds).catch(() => {});
+        }
+      }, 3000);
+    }
+  }, [openValues, agencies, markSeen]);
 
   const onDelete = async () => {
     if (!deleteTarget) return;
@@ -53,7 +89,7 @@ export const AdminTimesheetsPage = () => {
       });
       toast({ title: "Timesheet deleted", variant: "success" });
       setDeleteTarget(null);
-      refresh();
+      refreshTimesheets();
     } catch {
       toast({
         title: "Delete failed",
@@ -65,41 +101,42 @@ export const AdminTimesheetsPage = () => {
     }
   };
 
-  const clientsWithTimesheets = clients.filter((c) => {
-    const meta = (c as Record<string, unknown>).metadata as
-      | Record<string, unknown>
-      | undefined;
-    return !!(meta?.timesheets as TimesheetEntry[] | undefined)?.length;
-  });
-
   return (
     <div className="mx-auto space-y-4">
       <Section title="Timesheets">
         {loading ? (
           <p className="text-sm text-zinc-500">Loading...</p>
-        ) : clientsWithTimesheets.length === 0 ? (
+        ) : agencies.length === 0 ? (
           <p className="text-sm text-zinc-500">No timesheets uploaded yet.</p>
         ) : (
-          <AccordionRoot className="mt-1.5 sm:mt-3 space-y-3" type="multiple">
-            {clientsWithTimesheets.map((client, idx) => {
-              const record = client as Record<string, unknown>;
-              const meta = record.metadata as
-                | Record<string, unknown>
-                | undefined;
-              const timesheets =
-                (meta?.timesheets as TimesheetEntry[] | undefined) ?? [];
-              const name = getCompanyName(record);
-              const latestUpload = getLatestTimesheetUpload(timesheets)!;
+          <AccordionRoot
+            className="mt-1.5 sm:mt-3 space-y-3"
+            type="multiple"
+            value={openValues}
+            onValueChange={handleAccordionChange}
+          >
+            {agencies.map((agency, idx) => {
+              const latestUpload = getLatestTimesheetUpload(agency.timesheets)!;
 
               return (
                 <AccordionItem
-                  key={record.id as string}
-                  value={record.id as string}
+                  key={agency.agencyId}
+                  value={agency.agencyId}
                   className="animate-cascade"
                   style={
                     { animationDelay: `${idx * 5}ms` } as React.CSSProperties
                   }
-                  title={<AccordionTitle>{name}</AccordionTitle>}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <AccordionTitle>{agency.agencyName}</AccordionTitle>
+                      {timesheetsByAgency[agency.agencyId] > 0 && (
+                        <Pill
+                          status="new"
+                          count={timesheetsByAgency[agency.agencyId]}
+                        />
+                      )}
+                    </span>
+                  }
                   actions={
                     <span className="text-xs text-zinc-400">
                       Latest upload:{" "}
@@ -108,19 +145,38 @@ export const AdminTimesheetsPage = () => {
                   }
                 >
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {timesheets.map((entry, idx) => (
-                      <TimesheetCard
-                        key={idx}
-                        entry={entry}
-                        clientName={name}
+                    {agency.timesheets.map((entry, entryIdx) => (
+                      <InformationCard
+                        key={entryIdx}
+                        variant="timesheet"
+                        name={entry.fileName}
+                        isNew={entry.hasSeen === false}
+                        hasDownloaded={!!entry.hasDownloaded}
+                        uploadedAt={entry.uploadedAt}
                         admin
-                        onDelete={() => {
-                          setDeleteTarget({
-                            clientId: record.id as string,
-                            clientName: name,
-                            entry,
-                          });
-                        }}
+                        documentInfo={null}
+                        actions={
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                window.open(entry.fileUrl, "_blank", "noopener,noreferrer");
+                                markDownloaded("timesheets", agency.agencyId, [entry.fileName]).catch(() => {});
+                              }}
+                            >
+                              Download
+                            </Button>
+                            <DeleteButton
+                              onClick={() => {
+                                setDeleteTarget({
+                                  clientId: agency.agencyId,
+                                  clientName: agency.agencyName,
+                                  entry,
+                                });
+                              }}
+                            />
+                          </div>
+                        }
                       />
                     ))}
                   </div>

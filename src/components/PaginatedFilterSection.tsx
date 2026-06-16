@@ -38,6 +38,11 @@ interface PaginatedFilterSectionProps<T> {
 
   emptyMessage?: string;
   noMatchMessage?: string;
+
+  leftAccordionValue?: string;
+  onLeftAccordionChange?: (value: string) => void;
+  rightAccordionValue?: string;
+  onRightAccordionChange?: (value: string) => void;
 }
 
 export const PaginatedFilterSection = <T,>({
@@ -71,6 +76,11 @@ export const PaginatedFilterSection = <T,>({
 
     emptyMessage,
     noMatchMessage = "Oops there are no records with that filter",
+
+    leftAccordionValue,
+    onLeftAccordionChange,
+    rightAccordionValue,
+    onRightAccordionChange,
   }: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -122,12 +132,24 @@ export const PaginatedFilterSection = <T,>({
           <div className="space-y-4">
             <div className="flex flex-col min-[1500px]:flex-row min-[1500px]:gap-x-3">
               <div className="flex-1">
-                <AccordionRoot type="single" collapsible>
+                <AccordionRoot
+                  type="single"
+                  collapsible
+                  {...(leftAccordionValue !== undefined && onLeftAccordionChange !== undefined
+                    ? { value: leftAccordionValue, onValueChange: onLeftAccordionChange }
+                    : {})}
+                >
                   {items.slice(0, mid).map((item, idx) => renderItem(item, idx))}
                 </AccordionRoot>
               </div>
               <div className="flex-1">
-                <AccordionRoot type="single" collapsible>
+                <AccordionRoot
+                  type="single"
+                  collapsible
+                  {...(rightAccordionValue !== undefined && onRightAccordionChange !== undefined
+                    ? { value: rightAccordionValue, onValueChange: onRightAccordionChange }
+                    : {})}
+                >
                   {items.slice(mid).map((item, idx) => renderItem(item, mid + idx))}
                 </AccordionRoot>
               </div>

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useAccordionParams } from "../../hooks/useAccordionParams";
+import { Check, Loader2 } from "lucide-react";
 import {
   AccordionRoot,
   AccordionItem,
   Button,
+  DeleteButton,
 } from "../../components/ui";
 import { Section } from "../../components/Section";
 import {
@@ -13,26 +15,18 @@ import {
 } from "../../components/ui/dialog";
 import { InvoicePills } from "../../components/InvoicePills";
 import { AccordionTitle } from "../../components/AccordionTitle";
-import { InvoiceCard } from "../../components/InvoiceCard";
+import { InformationCard } from "../../components/InformationCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../context/ToastProvider";
+import { useData } from "../../context/DataProvider";
 import {
   deleteInvoice,
-  getAllInvoices,
   markInvoicePaid,
-  type InvoiceEntry,
 } from "../../services/invoiceService";
-
-interface AgencyInvoices {
-  agencyId: string;
-  agencyName: string;
-  invoices: InvoiceEntry[];
-}
 
 export const AdminInvoicesPage = () => {
   const { toast } = useToast();
-  const [agencies, setAgencies] = useState<AgencyInvoices[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { invoices: agencies, invoicesLoading: loading, refreshInvoices, markDownloaded } = useData();
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{
     agencyId: string;
@@ -48,19 +42,7 @@ export const AdminInvoicesPage = () => {
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchInvoices = useCallback(() => {
-    setLoading(true);
-    getAllInvoices()
-      .then(setAgencies)
-      .catch(() => setAgencies([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    fetchInvoices();
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [fetchInvoices]);
+  const { openValues, handleAccordionChange } = useAccordionParams();
 
   const handleMarkPaid = async (agencyId: string, invoiceId: string) => {
     setPayingInvoice(invoiceId);
@@ -70,7 +52,7 @@ export const AdminInvoicesPage = () => {
         title: "Invoice marked as paid",
         variant: "success",
       });
-      fetchInvoices();
+      refreshInvoices();
     } catch {
       toast({
         title: "Failed to mark invoice as paid",
@@ -86,7 +68,7 @@ export const AdminInvoicesPage = () => {
     try {
       await deleteInvoice(agencyId, invoiceId);
       toast({ title: "Invoice deleted", variant: "success" });
-      fetchInvoices();
+      refreshInvoices();
     } catch {
       toast({ title: "Failed to delete invoice", variant: "error" });
     } finally {
@@ -107,7 +89,11 @@ export const AdminInvoicesPage = () => {
           <p className="text-sm text-zinc-500">No invoices found.</p>
         ) : (
           <div>
-            <AccordionRoot type="multiple">
+            <AccordionRoot
+              type="multiple"
+              value={openValues}
+              onValueChange={handleAccordionChange}
+            >
               {agencies.map((agency, idx) => (
                 <AccordionItem
                   key={agency.agencyId}
@@ -142,32 +128,95 @@ export const AdminInvoicesPage = () => {
                   }
                 >
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {agency.invoices.map((inv) => (
-                      <InvoiceCard
-                        key={inv.id}
-                        invoice={inv}
-                        agencyId={agency.agencyId}
-                        agencyName={agency.agencyName}
-                        admin
-                        payingInvoice={payingInvoice}
-                        onMarkPaid={() =>
-                          setConfirmPaid({
-                            agencyId: agency.agencyId,
-                            invoiceId: inv.id,
-                            fileName: inv.fileName,
-                            clientName: agency.agencyName,
-                          })
-                        }
-                        onDelete={(agencyId, invoiceId) =>
-                          setDeleteTarget({
-                            agencyId,
-                            invoiceId,
-                            fileName: inv.fileName,
-                            clientName: agency.agencyName,
-                          })
-                        }
-                      />
-                    ))}
+                    {agency.invoices.map((inv) => {
+                      const isPaid = inv.status === "paid";
+                      const amount = parseFloat(inv.amountPayable).toFixed(2);
+
+                      return (
+                        <InformationCard
+                          key={inv.id}
+                          variant="invoice"
+                          name={inv.fileName}
+                          isNew={inv.hasSeen === false}
+                          hasDownloaded={!!inv.hasDownloaded}
+                          uploadedAt={inv.uploadedAt}
+                          admin
+                          documentInfo={
+                            <span
+                              className="text-lg sm:text-xl font-bold tracking-tight"
+                              style={{ color: isPaid ? "var(--accent)" : "var(--primary)" }}
+                            >
+                              <span className="text-xs sm:text-sm">£</span>
+                              {amount}
+                            </span>
+                          }
+                          infoBottom={
+                            <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                              Due:{" "}
+                              {new Date(inv.dueDate).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          }
+                          actions={
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    window.open(inv.fileUrl, "_blank", "noopener,noreferrer");
+                                    markDownloaded("invoices", agency.agencyId, [inv.id]).catch(() => {});
+                                  }}
+                                >
+                                  Download
+                                </Button>
+                                <DeleteButton
+                                  onClick={() => {
+                                    setDeleteTarget({
+                                      agencyId: agency.agencyId,
+                                      invoiceId: inv.id,
+                                      fileName: inv.fileName,
+                                      clientName: agency.agencyName,
+                                    });
+                                  }}
+                                />
+                              </div>
+
+                              {isPaid ? (
+                                <span className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-green-500/80 text-white shadow-[0_2px_8px_rgba(34,197,94,0.25)]">
+                                  <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                </span>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  disabled={payingInvoice === inv.id}
+                                  onClick={() =>
+                                    setConfirmPaid({
+                                      agencyId: agency.agencyId,
+                                      invoiceId: inv.id,
+                                      fileName: inv.fileName,
+                                      clientName: agency.agencyName,
+                                    })
+                                  }
+                                  className="h-7 px-2.5 sm:h-8 sm:px-3 text-[10px] sm:text-[11px]"
+                                >
+                                  {payingInvoice === inv.id ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Paying...
+                                    </span>
+                                  ) : (
+                                    "Mark as Paid"
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 </AccordionItem>
               ))}

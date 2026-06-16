@@ -4,8 +4,8 @@ import { FileSignature } from "lucide-react";
 import { ImportHistory } from "../../components/ImportHistory";
 import {
   AccordionItem,
-  ActionButton,
   Button,
+  DeleteButton,
   DialogContent,
   DialogRoot,
   DialogTitle,
@@ -22,6 +22,7 @@ import { toDate } from "../../utils/date";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
+import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 
 export const AdminClientsPage = () => {
   useEffect(() => {
@@ -38,6 +39,7 @@ export const AdminClientsPage = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [clientFilters, setClientFilters] = useFilterParams();
+  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   const {
     items: clients,
@@ -208,13 +210,6 @@ export const AdminClientsPage = () => {
                     href={scUrl}
                     ariaLabel="Download contract"
                   />
-                  <ActionButton
-                    variant="delete"
-                    size="md"
-                    ariaLabel="Remove signed contract"
-                    disabled={deletingContract}
-                    onClick={() => setConfirmDeleteClient(client)}
-                  />
                 </div>
               )}
               <div className="overflow-x-auto">
@@ -233,6 +228,14 @@ export const AdminClientsPage = () => {
                 ))}
               </div>
               </div>
+              {scName && scUrl && (
+                <DeleteButton
+                  className="mt-2 animate-cascade"
+                  style={{ animationDelay: "12ms" }}
+                  disabled={deletingContract}
+                  onClick={() => setConfirmDeleteClient(client)}
+                />
+              )}
             </AccordionItem>
           );
         }}
@@ -247,6 +250,10 @@ export const AdminClientsPage = () => {
         onFiltersChange={handleClientFiltersChange}
         enableNameFilter
         enableTagFilter={false}
+        leftAccordionValue={leftValue}
+        onLeftAccordionChange={onLeftChange}
+        rightAccordionValue={rightValue}
+        onRightAccordionChange={onRightChange}
       />
 
       <ImportHistory
