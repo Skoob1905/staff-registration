@@ -16,6 +16,9 @@ import tierOneLoading from "../assets/tierOne/loading.jpg";
 import mumentumNavbar from "../assets/mumentum/navbar.jpg";
 import mumentumLogin from "../assets/mumentum/login.jpg";
 import mumentumLoading from "../assets/mumentum/loading.jpg";
+import wasNavbar from "../assets/was/Navbar.jpg";
+import wasLogin from "../assets/was/login.jpg";
+import wasLoading from "../assets/was/loading.jpg";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -87,6 +90,14 @@ const images: Record<string, Config> = {
     login: mumentumLogin,
     loading: mumentumLoading,
     name: "Mumentum Group Holding Ltd",
+    homepage: "",
+    theme: unifiedTheme,
+  },
+  was: {
+    navbar: wasNavbar,
+    login: wasLogin,
+    loading: wasLoading,
+    name: "Woodborough Admin Services Ltd",
     homepage: "",
     theme: unifiedTheme,
   },
