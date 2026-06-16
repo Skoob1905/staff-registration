@@ -11,7 +11,8 @@ export type PillStatus =
   | "review"
   | "info"
   | "signed"
-  | "cv";
+  | "cv"
+  | "new";
 
 export const pillConfig: Record<PillStatus, PillConfig> = {
   paid: {
@@ -49,5 +50,11 @@ export const pillConfig: Record<PillStatus, PillConfig> = {
     border: "border-blue-300",
     text: "text-blue-700",
     label: "",
+  },
+  new: {
+    bg: "bg-yellow-100",
+    border: "border-yellow-300",
+    text: "text-yellow-700",
+    label: "New",
   },
 };

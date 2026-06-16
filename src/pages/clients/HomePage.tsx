@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { getPayslipsForUser } from "../../services/payslipService";
 import type { Payslip } from "../../types/domain";
 import { StaffListSection } from "../../components/StaffListSection";
+import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 
 export const UserHomePage = () => {
   useEffect(() => {
@@ -10,6 +11,7 @@ export const UserHomePage = () => {
   }, []);
   const { appUser } = useAuth();
   const [, setPayslips] = useState<Payslip[]>([]);
+  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   useEffect(() => {
     const run = async () => {
@@ -342,7 +344,13 @@ export const UserHomePage = () => {
         </DialogContent>
       </DialogRoot> */}
 
-      <StaffListSection view="client" />
+      <StaffListSection
+        view="client"
+        leftAccordionValue={leftValue}
+        onLeftAccordionChange={onLeftChange}
+        rightAccordionValue={rightValue}
+        onRightAccordionChange={onRightChange}
+      />
 
       {/* <SignModal
         open={showSignModal}

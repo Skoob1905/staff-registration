@@ -16,6 +16,8 @@ export interface InvoiceEntry {
   status: "unpaid" | "paid" | "review";
   paidAt?: string;
   paidBy?: string;
+  hasSeen?: boolean;
+  hasDownloaded?: boolean;
 }
 
 export const uploadInvoice = async (
@@ -170,4 +172,28 @@ export const getLatestFileUpload = async (): Promise<{
   }
   if (!latest) return null;
   return { ...latest, unpaidCount };
+};
+
+export const markItemsSeen = async (
+  type: "invoices" | "timesheets",
+  agencyId: string,
+  ids: string[],
+): Promise<void> => {
+  const fn = httpsCallable<
+    { type: string; agencyId: string; ids: string[] },
+    { ok: boolean }
+  >(functions, "seenItems");
+  await fn({ type, agencyId, ids });
+};
+
+export const markItemsDownloaded = async (
+  type: "invoices" | "timesheets",
+  agencyId: string,
+  ids: string[],
+): Promise<void> => {
+  const fn = httpsCallable<
+    { type: string; agencyId: string; ids: string[] },
+    { ok: boolean }
+  >(functions, "setDownloaded");
+  await fn({ type, agencyId, ids });
 };

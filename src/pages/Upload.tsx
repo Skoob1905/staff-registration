@@ -139,12 +139,12 @@ export const UploadPage = () => {
   const [cvUploading, setCvUploading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
-  const [addModalCsvType, setAddModalCsvType] = useState<"staff" | "agency">(
+  const [addModalCsvType, setAddModalCsvType] = useState<"staff" | "agency" | "timesheet">(
     "staff",
   );
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewMode, setPreviewMode] = useState<"invoice" | "contract" | "timesheet">(
+  const [previewMode, setPreviewMode] = useState<"invoice" | "contract">(
     "invoice",
   );
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -261,9 +261,9 @@ export const UploadPage = () => {
         return;
       }
 
-      setPreviewFile(file);
-      setPreviewMode("timesheet");
-      setShowPreviewModal(true);
+      setAddModalFile(file);
+      setAddModalCsvType("timesheet");
+      setShowAddModal(true);
     } else if (typeId === "contracts") {
       if (file.size > MAX_FILE_SIZE) {
         toast({
@@ -346,15 +346,41 @@ export const UploadPage = () => {
           if (!open) setAddModalFile(null);
         }}
         cloudFunction={
-          addModalCsvType === "staff" ? "importStaffCsv" : "importAgencyCsv"
+          addModalCsvType === "timesheet"
+            ? "recordTimesheetUpload"
+            : addModalCsvType === "staff"
+              ? "importStaffCsv"
+              : "importAgencyCsv"
         }
         storagePath={
-          addModalCsvType === "staff" ? "staff_imports" : "agency_imports"
+          addModalCsvType === "timesheet"
+            ? "timesheet_imports"
+            : addModalCsvType === "staff"
+              ? "staff_imports"
+              : "agency_imports"
         }
-        itemLabel={addModalCsvType === "staff" ? "staff" : "client"}
-        itemLabelPlural={addModalCsvType === "staff" ? "staff" : "clients"}
+        itemLabel={
+          addModalCsvType === "timesheet"
+            ? "timesheet"
+            : addModalCsvType === "staff"
+              ? "staff"
+              : "client"
+        }
+        itemLabelPlural={
+          addModalCsvType === "timesheet"
+            ? "timesheets"
+            : addModalCsvType === "staff"
+              ? "staff"
+              : "clients"
+        }
         csvType={addModalCsvType}
-        duplicateKey={addModalCsvType === "staff" ? "niNumber" : "companyName"}
+        duplicateKey={
+          addModalCsvType === "timesheet"
+            ? "fileName"
+            : addModalCsvType === "staff"
+              ? "niNumber"
+              : "companyName"
+        }
         initialFile={addModalFile}
       />
 

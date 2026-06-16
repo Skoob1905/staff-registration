@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import {
   AccordionItem,
   Button,
+  DeleteButton,
   DialogContent,
   DialogRoot,
   DialogTitle,
@@ -19,8 +20,10 @@ import { functions } from "../../services/firebase";
 import { formatInvitedAt } from "../../utils/date";
 import { getCompanyName } from "../../utils/company";
 import { Muted } from "../../config/typography";
+import { config } from "../../config";
 import { AccordionTitle } from "../../components/AccordionTitle";
 import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
+import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
 import {
@@ -83,6 +86,7 @@ export const AdminPage = () => {
   const [loginsFilters, setLoginsFilters] = useFilterParams();
   const [loginsPage, setLoginsPage] = useState(0);
   const [loginsPageSize, setLoginsPageSize] = useState(50);
+  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   const loginsKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "assignedTo" }),
@@ -183,6 +187,7 @@ export const AdminPage = () => {
         email: email.trim().toLowerCase(),
         agencyDocId: selectedCompanyId,
         continueUrl: window.location.origin + "/login",
+        companyName: config.name,
       });
 
       setTimeout(() => refreshLogins(), 2000);
@@ -287,6 +292,10 @@ export const AdminPage = () => {
         enableTagFilter={false}
         agencies={filteredLoginsAgencies as unknown as Agency[]}
         agencyCounts={loginsAgencyCounts}
+        leftAccordionValue={leftValue}
+        onLeftAccordionChange={onLeftChange}
+        rightAccordionValue={rightValue}
+        onRightAccordionChange={onRightChange}
         emptyMessage="No users created yet."
         action={
           <Button
@@ -334,7 +343,7 @@ export const AdminPage = () => {
                 </span>
               }
             >
-              <div className="flex items-center justify-between gap-2">
+              <div>
                 <Metadata
                   title="Invited by"
                   className="animate-cascade"
@@ -346,17 +355,17 @@ export const AdminPage = () => {
                     </>
                   }
                 />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteTarget(user);
-                  }}
-                  className="shrink-0 rounded-xl bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_3px_10px_rgba(0,95,87,0.12)] transition hover:bg-red-700"
-                >
-                  Revoke
-                </button>
               </div>
+              <DeleteButton
+                className="mt-2 animate-cascade"
+                style={{ animationDelay: "12ms" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(user);
+                }}
+              >
+                Revoke
+              </DeleteButton>
             </AccordionItem>
           );
         }}

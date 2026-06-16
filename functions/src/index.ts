@@ -41,8 +41,33 @@ import { getStorage } from "firebase-admin/storage";
 
 initializeApp();
 
-const WEB_API_KEY = defineString("WEB_API_KEY");
-const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL"); // e.g. http://localhost:5173/login
+const RESEND_API_KEY = defineString("RESEND_API_KEY");
+
+async function sendResetEmail(
+  email: string,
+  resetLink: string,
+  companyName: string,
+): Promise<void> {
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY.value()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: companyName,
+      to: [email],
+      subject: `${companyName} - Set up your account`,
+      html: `<p>You've been invited to ${companyName}.</p><p><a href="${resetLink}">Click here to set your password</a></p>`,
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    console.error("Resend failed", { status: resp.status, body: text });
+    throw new Error(`Failed to send email: ${resp.status}`);
+  }
+}
 
 const normalizeEmail = (value: unknown): string =>
   String(value || "")
@@ -228,38 +253,23 @@ export const invitePortalUser = onCall(async (request) => {
     { merge: true },
   );
 
-  // Triggers Firebase password-reset email template
-  // (used as set-password invite).
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
-
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
+  // Generate password reset link — caller sends it via custom email
+  const continueUrl = String(request.data?.continueUrl || "");
+  if (!continueUrl) {
     throw new HttpsError(
-      "internal",
-      "Failed to send invite email: " + `${resp.status} `,
+      "invalid-argument",
+      "continueUrl is required for password reset.",
     );
   }
+
+  const resetLink = await adminAuth.generatePasswordResetLink(email, {
+    url: continueUrl,
+  });
+
+  const companyName = String(request.data?.companyName || "HandySign");
+  await sendResetEmail(email, resetLink, companyName).catch((err) => {
+    console.error("sendResetEmail failed:", err);
+  });
 
   return { ok: true, userId: user.uid };
 });
@@ -361,38 +371,43 @@ export const assignClientLogin = onCall(async (request) => {
     { merge: true },
   );
 
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
-
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
+  const continueUrl = String(request.data?.continueUrl || "");
+  if (!continueUrl) {
     throw new HttpsError(
-      "internal",
-      "Failed to send invite email: " + `${resp.status} `,
+      "invalid-argument",
+      "continueUrl is required for password reset.",
     );
   }
 
+  const resetLink = await adminAuth.generatePasswordResetLink(email, {
+    url: continueUrl,
+  });
+
+  const companyName = String(request.data?.companyName || "HandySign");
+  await sendResetEmail(email, resetLink, companyName).catch((err) => {
+    console.error("sendResetEmail failed:", err);
+  });
+
   return { ok: true, userId: user.uid };
+});
+
+export const sendPasswordReset = onCall(async (request) => {
+  const email = normalizeEmail(request.data?.email);
+  if (!email) throw new HttpsError("invalid-argument", "Email is required.");
+
+  const continueUrl = String(request.data?.continueUrl || "");
+  const companyName = String(request.data?.companyName || "HandySign");
+
+  const adminAuth = getAuth();
+  const resetLink = await adminAuth.generatePasswordResetLink(email, {
+    url: continueUrl,
+  });
+
+  await sendResetEmail(email, resetLink, companyName).catch((err) => {
+    console.error("sendResetEmail failed:", err);
+  });
+
+  return { ok: true };
 });
 
 export const removeUnregisteredStaffUser = onCall(async (request) => {
@@ -1917,6 +1932,8 @@ export const recordTimesheetUpload = onCall(async (request) => {
     uploadedAt: new Date().toISOString(),
     fileName,
     fileUrl,
+    hasSeen: false,
+    hasDownloaded: false,
   };
 
   await db
@@ -1927,6 +1944,118 @@ export const recordTimesheetUpload = onCall(async (request) => {
     });
 
   return { ok: true, url: fileUrl };
+});
+
+export const seenItems = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { type, ids, agencyId } = request.data as {
+    type?: string;
+    ids?: string[];
+    agencyId?: string;
+  };
+
+  if (!type || !Array.isArray(ids) || ids.length === 0 || !agencyId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "type ('invoices' | 'timesheets'), a non-empty ids array, and agencyId are required.",
+    );
+  }
+
+  if (type !== "invoices" && type !== "timesheets") {
+    throw new HttpsError(
+      "invalid-argument",
+      "type must be 'invoices' or 'timesheets'.",
+    );
+  }
+
+  const db = getFirestore();
+
+  const fieldPath =
+    type === "invoices" ? "metadata.invoices" : "metadata.timesheets";
+  const idKey = type === "invoices" ? "id" : "fileName";
+
+  const idSet = new Set(ids);
+  const snap = await db.collection("agencies").doc(agencyId).get();
+
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const data = snap.data() as Record<string, unknown> | undefined;
+  const meta = data?.metadata as Record<string, unknown> | undefined;
+  const items = (meta?.[type] as Array<Record<string, unknown>>) ?? [];
+
+  const updated = items.map((item) => {
+    if (idSet.has(String(item[idKey] ?? ""))) {
+      return { ...item, hasSeen: true };
+    }
+    return item;
+  });
+
+  await db
+    .collection("agencies")
+    .doc(agencyId)
+    .update({ [fieldPath]: updated });
+
+  return { ok: true };
+});
+
+export const setDownloaded = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { type, agencyId, ids } = request.data as {
+    type?: string;
+    agencyId?: string;
+    ids?: string[];
+  };
+
+  if (!type || !agencyId || !Array.isArray(ids) || ids.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "type ('invoices' | 'timesheets'), agencyId, and a non-empty ids array are required.",
+    );
+  }
+
+  if (type !== "invoices" && type !== "timesheets") {
+    throw new HttpsError(
+      "invalid-argument",
+      "type must be 'invoices' or 'timesheets'.",
+    );
+  }
+
+  const db = getFirestore();
+  const fieldPath =
+    type === "invoices" ? "metadata.invoices" : "metadata.timesheets";
+  const idKey = type === "invoices" ? "id" : "fileName";
+  const idSet = new Set(ids);
+
+  const snap = await db.collection("agencies").doc(agencyId).get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const data = snap.data() as Record<string, unknown> | undefined;
+  const meta = data?.metadata as Record<string, unknown> | undefined;
+  const items = (meta?.[type] as Array<Record<string, unknown>>) ?? [];
+
+  const updated = items.map((item) => {
+    if (idSet.has(String(item[idKey] ?? ""))) {
+      return { ...item, hasSeen: true, hasDownloaded: true };
+    }
+    return item;
+  });
+
+  await db
+    .collection("agencies")
+    .doc(agencyId)
+    .update({ [fieldPath]: updated });
+
+  return { ok: true };
 });
 
 export const deleteTimesheet = onCall(async (request) => {
@@ -2374,6 +2503,20 @@ export const uploadInvoice = onCall(async (request) => {
   };
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
 
+  const agencySnap = await db.collection("agencies").doc(agencyId).get();
+  if (agencySnap.exists) {
+    const agencyData = agencySnap.data() as {
+      metadata?: { invoices?: Array<{ fileName?: string }> };
+    };
+    const existing = agencyData.metadata?.invoices ?? [];
+    if (existing.some((inv) => inv.fileName === fileName)) {
+      throw new HttpsError(
+        "already-exists",
+        `An invoice named "${fileName}" already exists.`,
+      );
+    }
+  }
+
   const bucket = getStorage().bucket();
   const filePath = `invoices/${agencyId}/${fileName}`;
   const fileRef = bucket.file(filePath);
@@ -2407,6 +2550,8 @@ export const uploadInvoice = onCall(async (request) => {
     amountPayable,
     agencyName: agencyName ?? "",
     status: "unpaid",
+    hasSeen: false,
+    hasDownloaded: false,
   };
 
   await db
