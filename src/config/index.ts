@@ -16,7 +16,7 @@ import tierOneLoading from "../assets/tierOne/loading.jpg";
 import mumentumNavbar from "../assets/mumentum/navbar.jpg";
 import mumentumLogin from "../assets/mumentum/login.jpg";
 import mumentumLoading from "../assets/mumentum/loading.jpg";
-import wasNavbar from "../assets/was/Navbar.jpg";
+import wasNavbar from "../assets/was/navbar.jpg";
 import wasLogin from "../assets/was/login.jpg";
 import wasLoading from "../assets/was/loading.jpg";
 import type { Config, Theme } from "./types";
