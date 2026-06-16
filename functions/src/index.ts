@@ -41,33 +41,8 @@ import { getStorage } from "firebase-admin/storage";
 
 initializeApp();
 
-const RESEND_API_KEY = defineString("RESEND_API_KEY");
-
-async function sendResetEmail(
-  email: string,
-  resetLink: string,
-  companyName: string,
-): Promise<void> {
-  const resp = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: companyName,
-      to: [email],
-      subject: `${companyName} - Set up your account`,
-      html: `<p>You've been invited to ${companyName}.</p><p><a href="${resetLink}">Click here to set your password</a></p>`,
-    }),
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text();
-    console.error("Resend failed", { status: resp.status, body: text });
-    throw new Error(`Failed to send email: ${resp.status}`);
-  }
-}
+const WEB_API_KEY = defineString("WEB_API_KEY");
+const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 
 const normalizeEmail = (value: unknown): string =>
   String(value || "")
@@ -253,23 +228,38 @@ export const invitePortalUser = onCall(async (request) => {
     { merge: true },
   );
 
-  // Generate password reset link — caller sends it via custom email
-  const continueUrl = String(request.data?.continueUrl || "");
-  if (!continueUrl) {
+  // Triggers Firebase password-reset email template
+  // (used as set-password invite).
+  const continueUrl = String(
+    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
+  );
+
+  const resp = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestType: "PASSWORD_RESET",
+        email,
+        continueUrl,
+      }),
+    },
+  );
+
+  if (!resp.ok) {
+    const errorText = await resp.text();
+    console.error("sendOobCode failed", {
+      status: resp.status,
+      statusText: resp.statusText,
+      body: errorText,
+      email,
+    });
     throw new HttpsError(
-      "invalid-argument",
-      "continueUrl is required for password reset.",
+      "internal",
+      "Failed to send password reset email. Please try again later.",
     );
   }
-
-  const resetLink = await adminAuth.generatePasswordResetLink(email, {
-    url: continueUrl,
-  });
-
-  const companyName = String(request.data?.companyName || "HandySign");
-  await sendResetEmail(email, resetLink, companyName).catch((err) => {
-    console.error("sendResetEmail failed:", err);
-  });
 
   return { ok: true, userId: user.uid };
 });
@@ -371,22 +361,36 @@ export const assignClientLogin = onCall(async (request) => {
     { merge: true },
   );
 
-  const continueUrl = String(request.data?.continueUrl || "");
-  if (!continueUrl) {
+  const continueUrl = String(
+    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
+  );
+
+  const resp = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestType: "PASSWORD_RESET",
+        email,
+        continueUrl,
+      }),
+    },
+  );
+
+  if (!resp.ok) {
+    const errorText = await resp.text();
+    console.error("sendOobCode failed", {
+      status: resp.status,
+      statusText: resp.statusText,
+      body: errorText,
+      email,
+    });
     throw new HttpsError(
-      "invalid-argument",
-      "continueUrl is required for password reset.",
+      "internal",
+      "Failed to send password reset email. Please try again later.",
     );
   }
-
-  const resetLink = await adminAuth.generatePasswordResetLink(email, {
-    url: continueUrl,
-  });
-
-  const companyName = String(request.data?.companyName || "HandySign");
-  await sendResetEmail(email, resetLink, companyName).catch((err) => {
-    console.error("sendResetEmail failed:", err);
-  });
 
   return { ok: true, userId: user.uid };
 });
@@ -395,17 +399,36 @@ export const sendPasswordReset = onCall(async (request) => {
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
-  const continueUrl = String(request.data?.continueUrl || "");
-  const companyName = String(request.data?.companyName || "HandySign");
+  const continueUrl = String(
+    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
+  );
 
-  const adminAuth = getAuth();
-  const resetLink = await adminAuth.generatePasswordResetLink(email, {
-    url: continueUrl,
-  });
+  const resp = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestType: "PASSWORD_RESET",
+        email,
+        continueUrl,
+      }),
+    },
+  );
 
-  await sendResetEmail(email, resetLink, companyName).catch((err) => {
-    console.error("sendResetEmail failed:", err);
-  });
+  if (!resp.ok) {
+    const errorText = await resp.text();
+    console.error("sendOobCode failed", {
+      status: resp.status,
+      statusText: resp.statusText,
+      body: errorText,
+      email,
+    });
+    throw new HttpsError(
+      "internal",
+      "Failed to send password reset email. Please try again later.",
+    );
+  }
 
   return { ok: true };
 });
