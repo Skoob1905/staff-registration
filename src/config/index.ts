@@ -19,6 +19,9 @@ import mumentumLoading from "../assets/mumentum/loading.jpg";
 import wasNavbar from "../assets/was/navbar.jpg";
 import wasLogin from "../assets/was/login.jpg";
 import wasLoading from "../assets/was/loading.jpg";
+import sliverNavbar from "../assets/sliver/navbar.jpg";
+import sliverLogin from "../assets/sliver/login.jpg";
+import sliverLoading from "../assets/sliver/loading.jpg";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -98,6 +101,14 @@ const images: Record<string, Config> = {
     login: wasLogin,
     loading: wasLoading,
     name: "Woodborough Admin Services Ltd",
+    homepage: "",
+    theme: unifiedTheme,
+  },
+  sliver: {
+    navbar: sliverNavbar,
+    login: sliverLogin,
+    loading: sliverLoading,
+    name: "Sliver Ltd",
     homepage: "",
     theme: unifiedTheme,
   },
