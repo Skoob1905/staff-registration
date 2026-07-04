@@ -6,7 +6,7 @@ import { Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { useData } from "../context/DataProvider";
 
-export const InvoicesPage = () => {
+export const Invoices = () => {
   const { appUser } = useAuth();
   const { invoices, invoicesLoading: loading, markSeen, markDownloaded } = useData();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

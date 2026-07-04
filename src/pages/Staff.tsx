@@ -32,7 +32,7 @@ import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { Muted } from "../config/typography";
 import type { Agency, BulkStaff } from "../types/domain";
 
-export const StaffPage = () => {
+export const Staff = () => {
   useEffect(() => {
     document.title = "Staff";
   }, []);

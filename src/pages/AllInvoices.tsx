@@ -24,7 +24,7 @@ import {
   markInvoicePaid,
 } from "../services/invoiceService";
 
-export const AllInvoicesPage = () => {
+export const AllInvoices = () => {
   const { toast } = useToast();
   const { invoices: agencies, invoicesLoading: loading, refreshInvoices, markDownloaded } = useData();
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);

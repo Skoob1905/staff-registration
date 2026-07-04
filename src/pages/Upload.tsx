@@ -100,7 +100,7 @@ const CLIENT_TYPES: UploadType[] = [
   },
 ];
 
-export const UploadPage = () => {
+export const Upload = () => {
   useEffect(() => {
     document.title = "Upload";
   }, []);

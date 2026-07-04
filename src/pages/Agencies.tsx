@@ -24,9 +24,9 @@ import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 
-export const AgenciesPage = () => {
+export const Agencies = () => {
   useEffect(() => {
-    document.title = "Clients";
+    document.title = "Agencies";
   }, []);
 
   const { appUser } = useAuth();
@@ -163,7 +163,7 @@ export const AgenciesPage = () => {
   return (
     <div className="mx-auto space-y-4">
       <PaginatedFilterSection
-        title="Clients"
+        title="Agencies"
         items={clients}
         loading={loading}
         totalResults={totalResults}

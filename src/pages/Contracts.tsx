@@ -8,7 +8,7 @@ const contracts = [
   { title: "Holiday Cover Agreement", parties: "You & Epsilon Staffing", start: "01 Jun 2025", end: "31 Aug 2025", status: "Expired", value: "£6,200" },
 ];
 
-export const ContractsPage = () => (
+export const Contracts = () => (
   <div className="space-y-4">
     <Section title="Contracts">
       <div className="grid gap-3 sm:grid-cols-2">

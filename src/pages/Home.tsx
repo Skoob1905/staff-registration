@@ -5,7 +5,7 @@ import type { Payslip } from "../types/domain";
 import { StaffListSection } from "../components/StaffListSection";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 
-export const HomePage = () => {
+export const Home = () => {
   useEffect(() => {
     document.title = "Home";
   }, []);

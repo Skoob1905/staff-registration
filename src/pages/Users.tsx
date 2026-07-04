@@ -35,7 +35,7 @@ import {
   type FilterKeyMap,
 } from "../types/domain";
 
-export const UsersPage = () => {
+export const Users = () => {
   useEffect(() => {
     document.title = "Users";
   }, []);

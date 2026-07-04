@@ -8,7 +8,7 @@ import { sendForgotPassword } from "../services/authService";
 import { getCompanyName } from "../utils/company";
 import { Caption } from "../config/typography";
 
-export const ProfilePage = () => {
+export const Profile = () => {
   useEffect(() => {
     document.title = "Profile";
   }, []);

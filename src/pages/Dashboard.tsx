@@ -12,7 +12,7 @@ import { getPayslipsForUser } from "../services/payslipService";
 import type { Payslip, StaffUpload } from "../types/domain";
 import { Body, Muted } from "../config/typography";
 
-export const DashboardPage = () => {
+export const Dashboard = () => {
   useEffect(() => {
     document.title = "Dashboard";
   }, []);

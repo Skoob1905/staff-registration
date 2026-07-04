@@ -2,19 +2,19 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { LoadingPage } from "../components/LoadingPage";
-import { LoginPage } from "../pages/LoginPage";
-import { UsersPage } from "../pages/UsersPage";
-import { AgenciesPage } from "../pages/AgenciesPage";
-import { AllTimesheetsPage } from "../pages/AllTimesheetsPage";
-import { AllInvoicesPage } from "../pages/AllInvoicesPage";
-import { StaffPage } from "../pages/StaffPage";
-import { HomePage } from "../pages/HomePage";
-import { InvoicesPage } from "../pages/InvoicesPage";
-import { ProfilePage } from "../pages/ProfilePage";
-import { SupportPage } from "../pages/SupportPage";
-import { TimesheetsPage } from "../pages/TimesheetsPage";
-import { UploadPage } from "../pages/Upload";
-import { DashboardPage } from "../pages/DashboardPage";
+import { Login } from "../pages/Login";
+import { Users } from "../pages/Users";
+import { Agencies } from "../pages/Agencies";
+import { AllTimesheets } from "../pages/AllTimesheets";
+import { AllInvoices } from "../pages/AllInvoices";
+import { Staff } from "../pages/Staff";
+import { Home } from "../pages/Home";
+import { Invoices } from "../pages/Invoices";
+import { Profile } from "../pages/Profile";
+import { Support } from "../pages/Support";
+import { Timesheets } from "../pages/Timesheets";
+import { Upload } from "../pages/Upload";
+import { Dashboard } from "../pages/Dashboard";
 import { RoleGuard } from "./RoleGuard";
 
 const AppEntryRedirect = () => {
@@ -28,7 +28,7 @@ const LoginRedirect = () => {
   const { firebaseUser, appUser, loading } = useAuth();
   if (loading) return <LoadingPage />;
   if (firebaseUser && appUser) return <Navigate to="/staff" replace />;
-  return <LoginPage />;
+  return <Login />;
 };
 
 const StaffPageSwitch = () => {
@@ -36,35 +36,35 @@ const StaffPageSwitch = () => {
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
   if (appUser.role === "super" || appUser.role === "admin")
-    return <StaffPage />;
-  return <HomePage />;
+    return <Staff />;
+  return <Home />;
 };
 
 const ProfileSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  return <ProfilePage />;
+  return <Profile />;
 };
 
 const DashboardSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role !== "worker") return <Navigate to="/staff" replace />;
-  return <DashboardPage />;
+  return <Dashboard />;
 };
 
 const InvoicesSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "super") return <AllInvoicesPage />;
-  return <InvoicesPage />;
+  if (appUser.role === "super") return <AllInvoices />;
+  return <Invoices />;
 };
 
 const TimesheetsSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "super") return <AllTimesheetsPage />;
-  return <TimesheetsPage />;
+  if (appUser.role === "super") return <AllTimesheets />;
+  return <Timesheets />;
 };
 
 export const AppRouter = () => (
@@ -76,15 +76,15 @@ export const AppRouter = () => (
         <Route element={<AppLayout />}>
           <Route path="/staff" element={<StaffPageSwitch />} />
           <Route path="/profile" element={<ProfileSwitch />} />
-          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/upload" element={<Upload />} />
           <Route path="/invoices" element={<InvoicesSwitch />} />
           <Route path="/timesheets" element={<TimesheetsSwitch />} />
-          <Route path="/support" element={<SupportPage />} />
+          <Route path="/support" element={<Support />} />
           <Route path="/dashboard" element={<DashboardSwitch />} />
 
           <Route element={<RoleGuard role="super" />}>
-            <Route path="/admin" element={<UsersPage />} />
-            <Route path="/agencies" element={<AgenciesPage />} />
+            <Route path="/admin" element={<Users />} />
+            <Route path="/agencies" element={<Agencies />} />
           </Route>
 
           <Route path="/" element={<AppEntryRedirect />} />

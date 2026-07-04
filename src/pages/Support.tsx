@@ -15,7 +15,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const SupportPage = () => {
+export const Support = () => {
   useEffect(() => {
     document.title = "Support";
     const el = textareaRef.current;

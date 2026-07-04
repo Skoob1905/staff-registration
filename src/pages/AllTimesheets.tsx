@@ -22,7 +22,7 @@ interface DeleteTarget {
   entry: TimesheetEntry;
 }
 
-export const AllTimesheetsPage = () => {
+export const AllTimesheets = () => {
   useEffect(() => {
     document.title = "Timesheets";
   }, []);

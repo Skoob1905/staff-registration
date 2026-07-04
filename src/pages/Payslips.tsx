@@ -8,7 +8,7 @@ const payslips = [
   { period: "January 2026", gross: "£3,000.00", ni: "£165.60", tax: "£390.00", net: "£2,444.40", status: "Paid" },
 ];
 
-export const PayslipsPage = () => (
+export const Payslips = () => (
   <div className="space-y-4">
     <Section title="Payslips">
       <div className="space-y-2">

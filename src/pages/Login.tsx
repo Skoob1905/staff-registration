@@ -23,7 +23,7 @@ import { LoadingPage } from "../components/LoadingPage";
 
 const emailSchema = z.string().email("Enter a valid email address.");
 
-export const LoginPage = () => {
+export const Login = () => {
   useEffect(() => {
     document.title = "Login";
   }, []);

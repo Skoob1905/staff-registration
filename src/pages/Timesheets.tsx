@@ -5,7 +5,7 @@ import { Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { useData } from "../context/DataProvider";
 
-export const TimesheetsPage = () => {
+export const Timesheets = () => {
   const { appUser } = useAuth();
   const { timesheets, timesheetsLoading: loading, markSeen, markDownloaded } = useData();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
