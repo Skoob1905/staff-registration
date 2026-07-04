@@ -163,7 +163,7 @@ export const checkEmailStatus = async (
     const role = usersSnaps.docs[0].data().role as UserRole | undefined;
     return {
       exists: true,
-      role: role === "admin" ? "admin" : "client",
+      role: role || "client",
       state: "staff",
     };
   }

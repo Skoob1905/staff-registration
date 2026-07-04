@@ -97,12 +97,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [timesheetsLoading, setTimesheetsLoading] = useState(true);
 
   const isAdmin = appUser?.role === "admin";
+  const isSuper = appUser?.role === "super";
 
   const fetchInvoices = useCallback(() => {
     if (!appUser?.agencyId) return;
     setInvoicesLoading(true);
 
-    const request = isAdmin
+    const request = isAdmin || isSuper
       ? getAllInvoices()
       : getInvoicesForAgency(appUser.agencyId).then((items) => [{
           agencyId: appUser.agencyId,
@@ -120,13 +121,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setInvoices([]);
       })
       .finally(() => setInvoicesLoading(false));
-  }, [appUser, isAdmin]);
+  }, [appUser, isAdmin, isSuper]);
 
   const fetchTimesheets = useCallback(() => {
     if (!appUser?.agencyId) return;
     setTimesheetsLoading(true);
 
-    const request = isAdmin
+    const request = isAdmin || isSuper
       ? getAllTimesheets()
       : getTimesheetsForAgency(appUser.agencyId).then((items) => [{
           agencyId: appUser.agencyId,
@@ -144,7 +145,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setTimesheets([]);
       })
       .finally(() => setTimesheetsLoading(false));
-  }, [appUser, isAdmin]);
+  }, [appUser, isAdmin, isSuper]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- Data fetching on mount requires setState in effect */
   useEffect(() => {

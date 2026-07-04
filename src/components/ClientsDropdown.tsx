@@ -27,7 +27,7 @@ export const ClientsDropdown = ({
   disableWithContract,
 }: ClientsDropdownProps) => {
   const { appUser } = useAuth();
-  const isAdmin = appUser?.role === "admin";
+  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
 
   const clientFacetFilters = useMemo(
     () => isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]],

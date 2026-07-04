@@ -15,11 +15,13 @@ import { ProfilePage } from "../pages/clients/ProfilePage";
 import { SupportPage } from "../pages/clients/SupportPage";
 import { TimeSheetsPage } from "../pages/clients/TimeSheetsPage";
 import { UploadPage } from "../pages/Upload";
+import { DashboardPage } from "../pages/worker/DashboardPage";
 import { RoleGuard } from "./RoleGuard";
 
 const AppEntryRedirect = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
   return <Navigate to="/staff" replace />;
 };
 
@@ -33,7 +35,8 @@ const LoginRedirect = () => {
 const StaffPageSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "admin") return <AdminStaffPage />;
+  if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
+  if (appUser.role === "super" || appUser.role === "admin") return <AdminStaffPage />;
   return <UserHomePage />;
 };
 
@@ -43,17 +46,24 @@ const ProfileSwitch = () => {
   return <ProfilePage />;
 };
 
+const DashboardSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role !== "worker") return <Navigate to="/staff" replace />;
+  return <DashboardPage />;
+};
+
 const InvoicesSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "admin") return <AdminInvoicesPage />;
+  if (appUser.role === "super") return <AdminInvoicesPage />;
   return <InvoicesPage />;
 };
 
 const TimesheetsSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "admin") return <AdminTimesheetsPage />;
+  if (appUser.role === "super") return <AdminTimesheetsPage />;
   return <TimeSheetsPage />;
 };
 
@@ -70,8 +80,9 @@ export const AppRouter = () => (
           <Route path="/invoices" element={<InvoicesSwitch />} />
           <Route path="/timesheets" element={<TimesheetsSwitch />} />
           <Route path="/support" element={<SupportPage />} />
+          <Route path="/dashboard" element={<DashboardSwitch />} />
 
-          <Route element={<RoleGuard role="admin" />}>
+          <Route element={<RoleGuard role="super" />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/clients" element={<AdminClientsPage />} />

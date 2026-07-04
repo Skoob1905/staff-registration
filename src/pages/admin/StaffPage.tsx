@@ -290,7 +290,7 @@ export const AdminStaffPage = () => {
               </>
             }
           >
-            {(appUser?.role === "admin" || (member.tags?.length ?? 0) > 0) && (
+            {(appUser?.role === "admin" || appUser?.role === "super" || (member.tags?.length ?? 0) > 0) && (
               <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="sm:hidden">
                   <Metadata
@@ -312,7 +312,7 @@ export const AdminStaffPage = () => {
                             className="ml-1.5 align-middle"
                           />
                         </>
-                      ) : appUser?.role === "admin" ? (
+                      ) : appUser?.role === "admin" || appUser?.role === "super" ? (
                         <ClientsDropdown
                           disabled={assigningStaffId === member.id}
                           value=""
@@ -337,7 +337,7 @@ export const AdminStaffPage = () => {
                         : ""
                     }
                   />
-                  {appUser?.role === "admin" && (
+                  {(appUser?.role === "admin" || appUser?.role === "super") && (
                     <button
                       type="button"
                       onClick={(e) => {

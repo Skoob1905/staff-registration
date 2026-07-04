@@ -133,7 +133,7 @@ export const UploadPage = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const isAdmin = appUser?.role === "admin";
+  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
   const types = isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
 
   const [cvUploading, setCvUploading] = useState(false);

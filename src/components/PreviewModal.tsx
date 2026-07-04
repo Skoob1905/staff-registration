@@ -17,7 +17,7 @@ interface PreviewModalProps {
 export const PreviewModal = ({ open, file, onClose, mode = "invoice" }: PreviewModalProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const isAdmin = appUser?.role === "admin";
+  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
   const isContract = mode === "contract";
 
   const [downloadedFileUrl, setDownloadedFileUrl] = useState<string | null>(null);

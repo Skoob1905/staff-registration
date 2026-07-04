@@ -120,7 +120,7 @@ export const AddModal = ({
   const { toast } = useToast();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
-  const isAdmin = appUser?.role === "admin";
+  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
 
   useEffect(() => {
     if (open) loadTags(true).catch(() => {});
@@ -155,6 +155,7 @@ export const AddModal = ({
   >();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
@@ -413,6 +414,7 @@ export const AddModal = ({
             }
           : {}),
         ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
+        ...(autoLogin ? { autoLogin: true } : {}),
       });
       setProcessing(false);
 
@@ -647,6 +649,18 @@ export const AddModal = ({
                     >
                       {hasAssignment ? "Edit" : "Auto-Assign"}
                     </Button>
+                  )}
+                  {csvType === "staff" && (
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm">
+                      <input
+                        type="checkbox"
+                        checked={autoLogin}
+                        onChange={(e) => setAutoLogin(e.target.checked)}
+                        disabled={loading}
+                        className="rounded shrink-0"
+                      />
+                      <span>Auto Login</span>
+                    </label>
                   )}
                   <Button
                     type="button"

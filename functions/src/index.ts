@@ -153,17 +153,19 @@ export const invitePortalUser = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
+
+  const callerAgencyId = caller.agencyId ?? "";
 
   const existingRegistered = await db
     .collection("users")
     .where("email", "==", email)
-    .where("agencyId", "==", caller.agencyId)
+    .where("agencyId", "==", callerAgencyId)
     .limit(1)
     .get();
   if (!existingRegistered.empty) {
@@ -173,7 +175,7 @@ export const invitePortalUser = onCall(async (request) => {
   const existingAwaiting = await db
     .collection("unregistered_staff")
     .where("email", "==", email)
-    .where("agencyId", "==", caller.agencyId)
+    .where("agencyId", "==", callerAgencyId)
     .limit(1)
     .get();
   if (!existingAwaiting.empty) {
@@ -204,7 +206,7 @@ export const invitePortalUser = onCall(async (request) => {
     {
       uid: user.uid,
       email,
-      agencyId: caller.agencyId,
+      agencyId: callerAgencyId,
       role: "client",
       invitedByUid: callerUid,
       status: "awaiting",
@@ -220,8 +222,8 @@ export const invitePortalUser = onCall(async (request) => {
       uid: user.uid,
       email,
       role: "client",
-      agencyId: caller.agencyId,
-      invitedByAgencyId: caller.agencyId,
+      agencyId: callerAgencyId,
+      invitedByAgencyId: callerAgencyId,
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
@@ -295,10 +297,10 @@ export const assignClientLogin = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
@@ -354,7 +356,7 @@ export const assignClientLogin = onCall(async (request) => {
       email,
       role: "client",
       agencyId: agencyDocId,
-      invitedByAgencyId: caller.agencyId,
+      invitedByAgencyId: caller.agencyId ?? callerUid,
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
@@ -453,10 +455,10 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
@@ -638,7 +640,7 @@ export const markContractSent = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -648,7 +650,7 @@ export const markContractSent = onCall(async (request) => {
   }
 
   const target = targetSnap.data() as { agencyId?: string };
-  if (target.agencyId !== caller.agencyId) {
+  if (caller.role !== "super" && target.agencyId !== caller.agencyId) {
     throw new HttpsError(
       "permission-denied",
       "Target user is not in your agency.",
@@ -836,7 +838,7 @@ export const importAgencyCsv = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -851,20 +853,23 @@ export const importAgencyCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const agenciesRef = db.collection("agencies");
-  const [oldSnaps, newSnaps] = await Promise.all([
-    agenciesRef.where("importedByAgencyId", "==", caller.agencyId).get(),
-    agenciesRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-  ]);
-
-  const docSeen = new Set<string>();
   const existingNames = new Set<string>();
-  for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-    if (docSeen.has(doc.id)) continue;
-    docSeen.add(doc.id);
-    const data = doc.data();
-    const name = getBusinessName(data).toLowerCase().trim();
-    if (name) existingNames.add(name);
+
+  if (caller.agencyId) {
+    const agenciesRef = db.collection("agencies");
+    const [oldSnaps, newSnaps] = await Promise.all([
+      agenciesRef.where("importedByAgencyId", "==", caller.agencyId).get(),
+      agenciesRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
+    ]);
+
+    const docSeen = new Set<string>();
+    for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
+      if (docSeen.has(doc.id)) continue;
+      docSeen.add(doc.id);
+      const data = doc.data();
+      const name = getBusinessName(data).toLowerCase().trim();
+      if (name) existingNames.add(name);
+    }
   }
 
   const newRecords: Array<Record<string, unknown>> = [];
@@ -895,21 +900,31 @@ export const importAgencyCsv = onCall(async (request) => {
   const BATCH_LIMIT = 500;
   let writtenCount = 0;
 
+  const uploadedBy = caller.agencyId ?? callerUid;
+
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
+    const clientsBatch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("agencies").doc();
+      const clientDocRef = db.collection("clients").doc();
+      const meta = {
+        uploadedInFile: importId,
+        uploadedBy,
+        importedAt: FieldValue.serverTimestamp(),
+      };
       batch.set(docRef, {
         ...record,
-        metadata: {
-          uploadedInFile: importId,
-          uploadedBy: caller.agencyId,
-          importedAt: FieldValue.serverTimestamp(),
-        },
+        metadata: meta,
+      });
+      clientsBatch.set(clientDocRef, {
+        ...record,
+        metadata: meta,
       });
     }
     await batch.commit();
+    await clientsBatch.commit();
     writtenCount += chunk.length;
   }
 
@@ -917,7 +932,7 @@ export const importAgencyCsv = onCall(async (request) => {
 
   await importRef.set({
     type: "agency",
-    agencyId: caller.agencyId,
+    agencyId: caller.agencyId ?? "",
     fileName,
     fileUrl: fileUrl || null,
     recordCount: newRecords.length,
@@ -951,7 +966,7 @@ export const importStaffCsv = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -966,20 +981,23 @@ export const importStaffCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const staffRef = db.collection("staff");
-  const [oldSnaps, newSnaps] = await Promise.all([
-    staffRef.where("agencyId", "==", caller.agencyId).get(),
-    staffRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-  ]);
-
-  const docSeen = new Set<string>();
   const existingNiNumbers = new Set<string>();
-  for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-    if (docSeen.has(doc.id)) continue;
-    docSeen.add(doc.id);
-    const data = doc.data();
-    const ni = getNINumber(data).toLowerCase();
-    if (ni) existingNiNumbers.add(ni);
+
+  if (caller.agencyId) {
+    const staffRef = db.collection("staff");
+    const [oldSnaps, newSnaps] = await Promise.all([
+      staffRef.where("agencyId", "==", caller.agencyId).get(),
+      staffRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
+    ]);
+
+    const docSeen = new Set<string>();
+    for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
+      if (docSeen.has(doc.id)) continue;
+      docSeen.add(doc.id);
+      const data = doc.data();
+      const ni = getNINumber(data).toLowerCase();
+      if (ni) existingNiNumbers.add(ni);
+    }
   }
 
   let assignedToId = request.data?.assignedToId
@@ -989,8 +1007,8 @@ export const importStaffCsv = onCall(async (request) => {
     ? String(request.data.assignedToName)
     : null;
 
-  if (!assignedToId) {
-    assignedToId = caller.agencyId ?? null;
+  if (!assignedToId && caller.agencyId) {
+    assignedToId = caller.agencyId;
   }
   const callerAgencySnap = assignedToId
     ? await db.collection("agencies").doc(assignedToId).get()
@@ -1002,6 +1020,7 @@ export const importStaffCsv = onCall(async (request) => {
       : "");
 
   const tagIds = request.data?.tagIds as string[] | undefined;
+  const autoLogin = Boolean(request.data?.autoLogin);
 
   const newRecords: Array<Record<string, unknown>> = [];
   let duplicateCount = 0;
@@ -1061,8 +1080,9 @@ export const importStaffCsv = onCall(async (request) => {
         ...record,
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
         metadata: {
+          role: "level 4",
           uploadedInFile: importId,
-          uploadedBy: caller.agencyId,
+          uploadedBy: caller.agencyId ?? callerUid,
           importedAt: FieldValue.serverTimestamp(),
           ...(assignedToId
             ? {
@@ -1093,7 +1113,7 @@ export const importStaffCsv = onCall(async (request) => {
 
   await importRef.set({
     type: "staff",
-    agencyId: caller.agencyId,
+    agencyId: caller.agencyId ?? "",
     fileName,
     fileUrl: fileUrl || null,
     recordCount: newRecords.length,
@@ -1103,12 +1123,100 @@ export const importStaffCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
+  let loginAccountsCreated = 0;
+  let loginAccountsSkipped = 0;
+  let loginAccountsFailed = 0;
+
+  if (autoLogin) {
+    const adminAuth = getAuth();
+    const continueUrl = RESET_CONTINUE_URL.value();
+
+    for (let i = 0; i < newRecords.length; i++) {
+      const record = newRecords[i] as Record<string, unknown>;
+      const rawEmail = findNormalizedValue(record, "email") ?? "";
+      const email = normalizeEmail(rawEmail);
+
+      if (!email || !emailPattern.test(email)) {
+        loginAccountsSkipped++;
+        continue;
+      }
+
+      try {
+        let user;
+        try {
+          user = await adminAuth.getUserByEmail(email);
+        } catch (err: unknown) {
+          const authErr = err as { code?: string };
+          if (authErr.code === "auth/user-not-found") {
+            user = await adminAuth.createUser({ email });
+          } else {
+            throw err;
+          }
+        }
+
+        const userDoc: Record<string, unknown> = {
+          uid: user.uid,
+          email,
+          role: "worker",
+          metadata: {
+            registered: true,
+            invitedByAgencyId: caller.agencyId ?? callerUid,
+            invitedByUid: callerUid,
+            invitedAt: FieldValue.serverTimestamp(),
+          },
+        };
+        if (assignedToId) {
+          userDoc.agencyId = assignedToId;
+        }
+        await db
+          .collection("users")
+          .doc(user.uid)
+          .set(userDoc, { merge: true });
+
+        const resp = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              requestType: "PASSWORD_RESET",
+              email,
+              continueUrl,
+            }),
+          },
+        );
+
+        if (!resp.ok) {
+          console.warn("[importStaffCsv] sendOobCode failed", {
+            email,
+            status: resp.status,
+          });
+        }
+
+        loginAccountsCreated++;
+      } catch (err) {
+        console.error("[importStaffCsv] auto-login failed", {
+          email,
+          error: err,
+        });
+        loginAccountsFailed++;
+      }
+
+      if (i < newRecords.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+  }
+
   return {
     ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    loginAccountsCreated,
+    loginAccountsSkipped,
+    loginAccountsFailed,
   };
 });
 
@@ -1123,7 +1231,7 @@ export const assignStaffToAgency = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1182,7 +1290,7 @@ export const deleteUserContract = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Caller profile missing.");
   }
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1192,7 +1300,7 @@ export const deleteUserContract = onCall(async (request) => {
     throw new HttpsError("not-found", "Target user not found.");
   }
   const target = userSnap.data() as { agencyId?: string };
-  if (target.agencyId !== caller.agencyId) {
+  if (caller.role !== "super" && target.agencyId !== caller.agencyId) {
     throw new HttpsError(
       "permission-denied",
       "Target user is not in your agency.",
@@ -1261,7 +1369,7 @@ export const bulkUploadStaff = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1390,7 +1498,7 @@ export const removeAgencies = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1480,7 +1588,7 @@ export const removeStaffImport = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1572,7 +1680,7 @@ export const backfillAssignedBy = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1629,7 +1737,7 @@ export const unassignStaffFromAgency = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1685,7 +1793,7 @@ export const addStaffTag = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1730,10 +1838,10 @@ export const removeClientLogin = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
@@ -1815,7 +1923,7 @@ export const deleteContract = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin") {
+  if (caller.role !== "admin" && caller.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -1983,7 +2091,7 @@ export const seenItems = onCall(async (request) => {
   if (!type || !Array.isArray(ids) || ids.length === 0 || !agencyId) {
     throw new HttpsError(
       "invalid-argument",
-      "type ('invoices' | 'timesheets'), a non-empty ids array, and agencyId are required.",
+      "type, a non-empty ids array, and agencyId are required.",
     );
   }
 
@@ -2040,7 +2148,7 @@ export const setDownloaded = onCall(async (request) => {
   if (!type || !agencyId || !Array.isArray(ids) || ids.length === 0) {
     throw new HttpsError(
       "invalid-argument",
-      "type ('invoices' | 'timesheets'), agencyId, and a non-empty ids array are required.",
+      "type, agencyId, and a non-empty ids array are required.",
     );
   }
 
@@ -2102,7 +2210,7 @@ export const deleteTimesheet = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
+  if (callerData.role !== "admin" && callerData.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -2154,7 +2262,7 @@ export const uploadStaffCvs = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { email?: string; role?: string };
-  if (callerData.role !== "admin") {
+  if (callerData.role !== "admin" && callerData.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -2254,7 +2362,7 @@ export const deleteStaffCv = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
+  if (callerData.role !== "admin" && callerData.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -2321,6 +2429,35 @@ export const syncAgencyToAlgolia = onDocumentWritten(
       body: { objectID: event.params.docId, ...data, sortableName },
     });
     console.log(`Saved agency ${event.params.docId} to clients index`);
+  },
+);
+
+// ── Clients → clients index ──
+export const syncClientsToAlgolia = onDocumentWritten(
+  { document: "clients/{docId}", maxInstances: 10 },
+  async (event) => {
+    const client = getAlgoliaClient();
+    const snap = event.data;
+    if (!snap) return;
+
+    if (!snap.after.exists) {
+      await client.deleteObject({
+        indexName: algoliaIndex("clients"),
+        objectID: event.params.docId,
+      });
+      console.log(`Deleted client ${event.params.docId} from clients index`);
+      return;
+    }
+
+    const data = snap.after.data();
+    if (!data) return;
+    const sortableName = getBusinessName(data).toLowerCase().trim();
+
+    await client.saveObject({
+      indexName: algoliaIndex("clients"),
+      body: { objectID: event.params.docId, ...data, sortableName },
+    });
+    console.log(`Saved client ${event.params.docId} to clients index`);
   },
 );
 
@@ -2600,7 +2737,7 @@ export const markInvoicePaid = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
+  if (callerData.role !== "admin" && callerData.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
@@ -2656,7 +2793,7 @@ export const deleteInvoice = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
+  if (callerData.role !== "admin" && callerData.role !== "super") {
     throw new HttpsError("permission-denied", "Admin only.");
   }
 
