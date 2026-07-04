@@ -329,7 +329,6 @@ export const Staff = () => {
               </>
             }
           >
-            {(appUser?.role === "super" || (member.tags?.length ?? 0) > 0) && (
               <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="sm:hidden">
                   <Metadata
@@ -374,7 +373,7 @@ export const Staff = () => {
                     value={
                       member.tags && member.tags.length > 0
                         ? member.tags.map((id) => tagsMap[id] || id).join(", ")
-                        : ""
+                        : "None"
                     }
                   />
                   {appUser?.role === "super" && (
@@ -391,7 +390,6 @@ export const Staff = () => {
                   )}
                 </div>
               </div>
-            )}
             {member.metadata?.cv && member.metadata.cv.length > 0 && (
               <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
                 {member.metadata.cv.map((entry, idx) => {

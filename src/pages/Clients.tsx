@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { FileSignature } from "lucide-react";
+import { FileSignature, Pen } from "lucide-react";
+import { AgencyCheckboxDialog } from "../components/AgencyCheckboxDialog";
 import { ImportHistory } from "../components/ImportHistory";
 import {
   AccordionItem,
@@ -17,6 +18,7 @@ import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { getCompanyName } from "../utils/company";
 import { functions } from "../services/firebase";
 import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
@@ -41,6 +43,14 @@ export const Clients = () => {
   const [clientFilters, setClientFilters] = useFilterParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
+  const [assignAgenciesTarget, setAssignAgenciesTarget] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [selectedAgencyIds, setSelectedAgencyIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [assignAgenciesLoading, setAssignAgenciesLoading] = useState(false);
 
   const {
     items: clients,
@@ -55,6 +65,38 @@ export const Clients = () => {
     page,
     hitsPerPage: pageSize,
   });
+
+  const { items: agencies } = usePaginatedRecords({
+    indexName: "agencies_name_desc",
+    hitsPerPage: 1000,
+  });
+
+  const agenciesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const a of agencies) {
+      map[a.id as string] = getCompanyName(a as Record<string, unknown>);
+    }
+    return map;
+  }, [agencies]);
+
+  const agencyItems = useMemo(
+    () =>
+      agencies.map((a) => ({
+        id: a.id as string,
+        name: getCompanyName(a as Record<string, unknown>),
+      })),
+    [agencies],
+  );
+
+  useEffect(() => {
+    if (assignAgenciesTarget) {
+      const meta = assignAgenciesTarget.metadata as
+        | Record<string, unknown>
+        | undefined;
+      const ids = (meta?.assignedAgencies as string[] | undefined) ?? [];
+      setSelectedAgencyIds(new Set(ids));
+    }
+  }, [assignAgenciesTarget]);
 
   const getPrimaryLabel = (client: Record<string, unknown>): string => {
     return (
@@ -108,6 +150,33 @@ export const Clients = () => {
   const handleDeleteSuccess = async () => {
     setTimeout(() => refresh(), 2000);
   };
+
+  const handleAssignAgencies = useCallback(async () => {
+    if (!assignAgenciesTarget) return;
+    setAssignAgenciesLoading(true);
+    try {
+      const callable = httpsCallable(functions, "assignAgencyToClient");
+      await callable({
+        clientId: assignAgenciesTarget.id as string,
+        assignedAgencyIds: [...selectedAgencyIds],
+      });
+      setTimeout(() => refresh(), 2000);
+      setAssignAgenciesTarget(null);
+      toast({
+        title: "Agencies updated",
+        description: "Assigned agencies have been saved.",
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to assign agencies.",
+        variant: "error",
+      });
+    } finally {
+      setAssignAgenciesLoading(false);
+    }
+  }, [assignAgenciesTarget, selectedAgencyIds, toast]);
 
   const onPrevPage = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
   const onNextPage = useCallback(
@@ -217,6 +286,31 @@ export const Clients = () => {
                     href={scUrl}
                     ariaLabel="Download contract"
                   />
+                </div>
+              )}
+              {(appUser?.role === "super" || meta?.assignedAgencies) && (
+                <div className="flex items-center gap-2 mb-2">
+                  <Metadata
+                    title="Agencies"
+                    className="animate-cascade"
+                    style={{ animationDelay: "0ms" }}
+                    value={
+                      meta?.assignedAgencies
+                        ? (meta.assignedAgencies as string[])
+                            .map((id: string) => agenciesMap[id] || id)
+                            .join(", ")
+                        : "None"
+                    }
+                  />
+                  {appUser?.role === "super" && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignAgenciesTarget(client)}
+                      className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
+                    >
+                      <Pen className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               )}
               <div className="overflow-x-auto">
@@ -331,6 +425,16 @@ export const Clients = () => {
           </div>
         </DialogContent>
       </DialogRoot>
+
+      <AgencyCheckboxDialog
+        open={assignAgenciesTarget !== null}
+        onClose={() => setAssignAgenciesTarget(null)}
+        items={agencyItems}
+        selectedIds={selectedAgencyIds}
+        onSelectionChange={setSelectedAgencyIds}
+        onSave={() => void handleAssignAgencies()}
+        saving={assignAgenciesLoading}
+      />
     </div>
   );
 };

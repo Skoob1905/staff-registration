@@ -1692,6 +1692,42 @@ export const removeAgencies = onCall(async (request) => {
   return { ok: true, deletedCount, importId };
 });
 
+export const assignAgencyToClient = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const clientId = String(request.data?.clientId || "").trim();
+  const assignedAgencyIds: string[] = Array.isArray(request.data?.assignedAgencyIds)
+    ? request.data.assignedAgencyIds.map(String)
+    : [];
+
+  if (!clientId) {
+    throw new HttpsError("invalid-argument", "clientId is required.");
+  }
+
+  await db.collection("clients").doc(clientId).set(
+    {
+      metadata: {
+        assignedAgencies: assignedAgencyIds,
+      },
+    },
+    { merge: true },
+  );
+
+  return { ok: true, clientId, assignedAgencyIds };
+});
+
 export const removeClients = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
