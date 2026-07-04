@@ -15,9 +15,8 @@ const CLIENT_BADGE_MAP: Record<string, BadgeKey> = {
 
 const SUPER_ROUTES = [
   { label: "STAFF", to: "/staff" },
-  { label: "CLIENTS", to: "/clients" },
+  { label: "AGENCIES", to: "/agencies" },
   { label: "UPLOAD", to: "/upload" },
-  { label: "INVOICES", to: "/invoices" },
   { label: "USERS", to: "/admin" },
   { label: "PROFILE", to: "/profile" },
 ];

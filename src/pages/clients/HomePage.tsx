@@ -17,7 +17,7 @@ export const UserHomePage = () => {
     const run = async () => {
       if (!appUser) return;
       const [slips] = await Promise.all([
-        getPayslipsForUser(appUser.uid, appUser.agencyId),
+        getPayslipsForUser(appUser.email),
       ]);
       setPayslips(slips);
     };

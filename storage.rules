@@ -66,15 +66,9 @@ service firebase.storage {
     }
 
     // Payslips
-    match /payslips/{agencyId}/{userId}/{allPaths=**} {
-      allow read: if isSignedIn() && (
-        (request.auth.uid == userId &&
-         userDoc().data.agencyId == agencyId &&
-         (isClient() || isWorker())) ||
-        (isSuper() && userDoc().data.agencyId == agencyId) ||
-        adminHasAgency(agencyId)
-      );
-      allow write: if isSuper() && userDoc().data.agencyId == agencyId;
+    match /payslips/{userId}/{allPaths=**} {
+      allow read: if isSignedIn()
+      allow write: if isSuper();
     }
 
     // Staff uploads
@@ -109,7 +103,8 @@ service firebase.storage {
 
     // CSV imports for staff data
     match /staff_imports/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isSuper();
     }
 
     // CVs uploaded for staff members

@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
-import { AdminLayout } from "../layouts/AdminLayout";
 import { LoadingPage } from "../components/LoadingPage";
 import { LoginPage } from "../pages/LoginPage";
 import { AdminPage } from "../pages/admin/AdminPage";
@@ -36,7 +35,8 @@ const StaffPageSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
-  if (appUser.role === "super" || appUser.role === "admin") return <AdminStaffPage />;
+  if (appUser.role === "super" || appUser.role === "admin")
+    return <AdminStaffPage />;
   return <UserHomePage />;
 };
 
@@ -83,10 +83,8 @@ export const AppRouter = () => (
           <Route path="/dashboard" element={<DashboardSwitch />} />
 
           <Route element={<RoleGuard role="super" />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/clients" element={<AdminClientsPage />} />
-            </Route>
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/agencies" element={<AdminClientsPage />} />
           </Route>
 
           <Route path="/" element={<AppEntryRedirect />} />

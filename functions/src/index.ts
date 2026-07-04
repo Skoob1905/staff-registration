@@ -8,6 +8,7 @@
  */
 
 import { setGlobalOptions } from "firebase-functions";
+
 // import { onRequest } from "firebase-functions/https";
 // import * as logger from "firebase-functions/logger";
 
@@ -24,25 +25,25 @@ import { setGlobalOptions } from "firebase-functions";
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { algoliasearch } from "algoliasearch";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-
 import { defineString } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-initializeApp();
-
+const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
+const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
+const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
 const WEB_API_KEY = defineString("WEB_API_KEY");
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
+
+setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
+
+initializeApp();
 
 const normalizeEmail = (value: unknown): string =>
   String(value || "")
@@ -154,7 +155,7 @@ export const invitePortalUser = onCall(async (request) => {
     agencyId?: string;
   };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
   if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
@@ -298,7 +299,7 @@ export const assignClientLogin = onCall(async (request) => {
     email?: string;
   };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
   if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
@@ -350,18 +351,21 @@ export const assignClientLogin = onCall(async (request) => {
     }
   }
 
-  await db.collection("users").doc(user.uid).set(
-    {
-      uid: user.uid,
-      email,
-      role: "client",
-      agencyId: agencyDocId,
-      invitedByAgencyId: caller.agencyId ?? callerUid,
-      invitedByUid: callerUid,
-      invitedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await db
+    .collection("users")
+    .doc(user.uid)
+    .set(
+      {
+        uid: user.uid,
+        email,
+        role: "client",
+        agencyId: agencyDocId,
+        invitedByAgencyId: caller.agencyId ?? callerUid,
+        invitedByUid: callerUid,
+        invitedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
   const continueUrl = String(
     request.data?.continueUrl || RESET_CONTINUE_URL.value(),
@@ -456,7 +460,7 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
   if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
@@ -641,7 +645,7 @@ export const markContractSent = onCall(async (request) => {
     email?: string;
   };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const targetSnap = await db.collection("users").doc(targetUserId).get();
@@ -839,7 +843,7 @@ export const importAgencyCsv = onCall(async (request) => {
     email?: string;
   };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const records = request.data?.records;
@@ -966,8 +970,8 @@ export const importStaffCsv = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const records = request.data?.records;
@@ -1080,7 +1084,7 @@ export const importStaffCsv = onCall(async (request) => {
         ...record,
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
         metadata: {
-          role: "level 4",
+          role: "worker",
           uploadedInFile: importId,
           uploadedBy: caller.agencyId ?? callerUid,
           importedAt: FieldValue.serverTimestamp(),
@@ -1231,8 +1235,8 @@ export const assignStaffToAgency = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const staffId = String(request.data?.staffId || "").trim();
@@ -1291,7 +1295,7 @@ export const deleteUserContract = onCall(async (request) => {
   }
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const userRef = db.collection("users").doc(targetUserId);
@@ -1369,8 +1373,8 @@ export const bulkUploadStaff = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const agencyId = String(request.data?.agencyId || "").trim();
@@ -1499,7 +1503,7 @@ export const removeAgencies = onCall(async (request) => {
     agencyId?: string;
   };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const importId = String(request.data?.importId || "").trim();
@@ -1588,8 +1592,8 @@ export const removeStaffImport = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const importId = String(request.data?.importId || "").trim();
@@ -1681,7 +1685,7 @@ export const backfillAssignedBy = onCall(async (request) => {
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const agencyId = caller.agencyId;
@@ -1737,8 +1741,8 @@ export const unassignStaffFromAgency = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const staffId = String(request.data?.staffId || "").trim();
@@ -1793,8 +1797,8 @@ export const addStaffTag = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const staffId = String(request.data?.staffId || "").trim();
@@ -1839,7 +1843,7 @@ export const removeClientLogin = onCall(async (request) => {
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
   if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
@@ -1924,7 +1928,7 @@ export const deleteContract = onCall(async (request) => {
 
   const caller = callerSnap.data() as { role?: string };
   if (caller.role !== "admin" && caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const clientId = String(request.data?.clientId || "").trim();
@@ -2211,7 +2215,7 @@ export const deleteTimesheet = onCall(async (request) => {
 
   const callerData = callerSnap.data() as { role?: string };
   if (callerData.role !== "admin" && callerData.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const storagePath = `timesheets/${clientId}/${fileName}`;
@@ -2262,8 +2266,8 @@ export const uploadStaffCvs = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { email?: string; role?: string };
-  if (callerData.role !== "admin" && callerData.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
@@ -2362,8 +2366,8 @@ export const deleteStaffCv = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin" && callerData.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const storagePath = `cvs/${staffId}/${fileName}`;
@@ -2390,13 +2394,6 @@ export const deleteStaffCv = onCall(async (request) => {
 
   return { ok: true };
 });
-
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import { algoliasearch } from "algoliasearch";
-
-const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
-const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
-const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
 
 const getAlgoliaClient = () =>
   algoliasearch(ALGOLIA_APP_ID.value(), ALGOLIA_ADMIN_API_KEY.value());
@@ -2738,7 +2735,7 @@ export const markInvoicePaid = onCall(async (request) => {
 
   const callerData = callerSnap.data() as { role?: string };
   if (callerData.role !== "admin" && callerData.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const agencyId = String(request.data?.agencyId || "").trim();
@@ -2794,7 +2791,7 @@ export const deleteInvoice = onCall(async (request) => {
 
   const callerData = callerSnap.data() as { role?: string };
   if (callerData.role !== "admin" && callerData.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin only.");
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const agencyId = String(request.data?.agencyId || "").trim();
@@ -2865,4 +2862,68 @@ export const getMaintenanceWindow = onCall(async () => {
     start: data.start?.toMillis() ?? null,
     end: data.end?.toMillis() ?? null,
   };
+});
+
+export const uploadPayslipToStaff = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const { fileBase64, fileName, userId, agencyId } = request.data;
+  if (!fileBase64 || !fileName || !userId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "fileBase64, fileName, and userId are required.",
+    );
+  }
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+  const caller = callerSnap.data() as { role?: string; email?: string };
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const bucket = getStorage().bucket();
+  const filePath = `payslips/${userId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  const token =
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const buffer = Buffer.from(fileBase64, "base64");
+
+  await fileRef.save(buffer, {
+    metadata: {
+      contentType: "application/pdf",
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+  const sentBy = caller.email ?? "Unknown";
+
+  const payslipRef = await db.collection("payslips").add({
+    userId,
+    agencyId: agencyId ?? "",
+    fileName,
+    fileUrl,
+    sentBy,
+    timestamp: FieldValue.serverTimestamp(),
+    hasDownloaded: false,
+  });
+
+  const staffRef = db.collection("staff").doc(userId);
+  const staffSnap = await staffRef.get();
+  const existing = (staffSnap.data()?.payslipsSent as string[]) ?? [];
+  await staffRef.set(
+    {
+      payslipsSent: [payslipRef.id, ...existing],
+    },
+    { merge: true },
+  );
+
+  return { ok: true, payslipId: payslipRef.id, url: fileUrl };
 });

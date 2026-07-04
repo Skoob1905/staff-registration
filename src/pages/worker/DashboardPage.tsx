@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import { Section } from "../../components/Section";
 import { Pill } from "../../components/Pill";
+import { InformationCard } from "../../components/InformationCard";
 import { ActionButton } from "../../components/ui";
-import {
-  AccordionRoot,
-  AccordionItem,
-} from "../../components/ui";
+import { AccordionRoot, AccordionItem } from "../../components/ui";
+import { Button } from "../../components/ui";
 import { useAuth } from "../../context/AuthProvider";
 import { getPayslipsForUser } from "../../services/payslipService";
 import type { Payslip, StaffUpload } from "../../types/domain";
@@ -31,22 +24,27 @@ export const DashboardPage = () => {
   useEffect(() => {
     if (!appUser) return;
     const run = async () => {
-      const [slips, docsSnaps] = await Promise.all([
-        getPayslipsForUser(appUser.uid, appUser.agencyId),
-        getDocs(
+      try {
+        const slips = await getPayslipsForUser(appUser.email);
+        setPayslips(slips);
+      } catch (err) {
+        console.error("Failed to fetch payslips", err);
+      }
+
+      try {
+        const docsSnaps = await getDocs(
           query(
             collection(db, "staff_uploads"),
             where("userId", "==", appUser.uid),
             orderBy("uploadedAt", "desc"),
           ),
-        ),
-      ]);
-      setPayslips(slips);
-      setDocuments(
-        docsSnaps.docs.map(
-          (d) => ({ id: d.id, ...d.data() } as StaffUpload),
-        ),
-      );
+        );
+        setDocuments(
+          docsSnaps.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffUpload),
+        );
+      } catch {
+        // staff_uploads won't match for workers without agency
+      }
     };
     void run();
   }, [appUser]);
@@ -108,43 +106,39 @@ export const DashboardPage = () => {
       </Section>
 
       <Section title="Payslips" count={payslips.length}>
-        {payslips.length ? (
-          <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-            <AccordionRoot type="single" collapsible>
-              {payslips.map((payslip) => (
-                <AccordionItem
-                  key={payslip.id}
-                  value={payslip.id}
-                  title={
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{payslip.fileName}</span>
-                      {!payslip.hasDownloaded && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                          New
-                        </span>
-                      )}
-                      <ActionButton
-                        variant="download"
-                        ariaLabel="Download payslip"
-                        href={payslip.fileUrl}
-                      />
-                    </div>
-                  }
-                >
-                  <div className="space-y-1">
-                    <p>
-                      <b>Sent By:</b> {payslip.sentBy ?? "Unknown"}
-                    </p>
-                    <p>
-                      <b>Sent At:</b> {toDateStr(payslip.timestamp)}
-                    </p>
-                  </div>
-                </AccordionItem>
-              ))}
-            </AccordionRoot>
-          </div>
-        ) : (
+        {payslips.length === 0 ? (
           <Muted>No payslips available.</Muted>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {payslips.map((payslip, idx) => (
+              <InformationCard
+                key={idx}
+                variant="payslip"
+                name={payslip.fileName}
+                isNew={!payslip.hasDownloaded}
+                hasDownloaded={!!payslip.hasDownloaded}
+                uploadedAt={payslip.timestamp as unknown as string}
+                admin={false}
+                documentInfo={null}
+                actions={
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        window.open(
+                          payslip.fileUrl,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                      }}
+                    >
+                      Download
+                    </Button>
+                  </div>
+                }
+              />
+            ))}
+          </div>
         )}
       </Section>
     </div>

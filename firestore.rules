@@ -65,17 +65,13 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSignedIn() && (
         request.auth.uid == uid ||
-        (isSuper() && (
-          sameAgency(resource.data.agencyId) ||
-          sameAgency(resource.data.invitedByAgencyId)
-        ))
+        isSuper()
       );
 
       allow create: if isSuper() &&
         request.resource.data.agencyId == userAgencyId();
 
-      allow update, delete: if isSuper() &&
-        resource.data.agencyId == userAgencyId();
+      allow update, delete: if isSuper();
     }
 
     // Unsigned contracts
@@ -113,22 +109,13 @@ service cloud.firestore {
 
     // Payslips
     match /payslips/{docId} {
-      allow read: if isSignedIn() && (
-        (resource.data.userId == request.auth.uid &&
-         sameAgency(resource.data.agencyId) &&
-         (isClient() || isWorker())) ||
-        (isSuper() && sameAgency(resource.data.agencyId)) ||
-        adminHasAgency(resource.data.agencyId)
-      );
+      allow read: if isSignedIn();
 
-      allow create, delete: if isSuper() &&
-        request.resource.data.agencyId == userAgencyId();
+      allow create, delete: if isSuper();
 
-      allow update: if isSuper() && resource.data.agencyId == userAgencyId();
+      allow update: if isSuper();
 
       allow update: if isSignedIn() &&
-        resource.data.userId == request.auth.uid &&
-        resource.data.agencyId == userAgencyId() &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.agencyId == resource.data.agencyId &&
         request.resource.data.fileName == resource.data.fileName &&
@@ -165,9 +152,7 @@ service cloud.firestore {
 
     // Staff records imported via CSV
     match /staff/{docId} {
-      allow read: if isSignedIn() && (
-        isSuper() || isAdmin() || isClient()
-      );
+      allow read: if isSignedIn();
       allow write: if isSuper();
     }
 
