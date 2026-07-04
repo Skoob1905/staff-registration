@@ -4,7 +4,7 @@ import { db } from "../services/firebase";
 import { Section } from "../components/Section";
 import { Pill } from "../components/Pill";
 import { InformationCard } from "../components/InformationCard";
-import { Button } from "../components/ui";
+import { Button, Card } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { getPayslipsForUser } from "../services/payslipService";
 import type { Payslip } from "../types/domain";
@@ -69,12 +69,15 @@ export const Dashboard = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <Section title="Dashboard">
-        <div className="flex items-center gap-3">
+      <Card>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
+            Dashboard
+          </h2>
           <Pill status="registered" />
         </div>
         <Body className="mt-2">Nothing to do</Body>
-      </Section>
+      </Card>
 
       <Section title="Documents" count={documents.length}>
         {documents.length === 0 ? (
@@ -84,7 +87,7 @@ export const Dashboard = () => {
             {documents.map((doc, idx) => (
               <InformationCard
                 key={idx}
-                variant="payslip"
+                variant="document"
                 name={doc.fileName}
                 isNew={false}
                 hasDownloaded={false}
