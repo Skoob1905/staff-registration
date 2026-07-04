@@ -1,4 +1,4 @@
-import { Section } from "../../components/Section";
+import { Section } from "../components/Section";
 
 const payslips = [
   { period: "May 2026", gross: "£3,200.00", ni: "£180.40", tax: "£420.00", net: "£2,599.60", status: "Paid" },

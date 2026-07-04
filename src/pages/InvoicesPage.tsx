@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Check } from "lucide-react";
-import { Section } from "../../components/Section";
-import { InformationCard } from "../../components/InformationCard";
-import { Button } from "../../components/ui";
-import { useAuth } from "../../context/AuthProvider";
-import { useData } from "../../context/DataProvider";
+import { Section } from "../components/Section";
+import { InformationCard } from "../components/InformationCard";
+import { Button } from "../components/ui";
+import { useAuth } from "../context/AuthProvider";
+import { useData } from "../context/DataProvider";
 
 export const InvoicesPage = () => {
   const { appUser } = useAuth();

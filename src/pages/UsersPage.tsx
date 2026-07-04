@@ -10,32 +10,32 @@ import {
   DialogTitle,
   Input,
   Label,
-} from "../../components/ui";
-import { useAuth } from "../../context/AuthProvider";
-import { useToast } from "../../context/ToastProvider";
-import { ClientsDropdown } from "../../components/ClientsDropdown";
-import { Metadata } from "../../components/Metadata";
-import { useAppStore } from "../../stores/appStore";
-import { functions } from "../../services/firebase";
-import { formatInvitedAt } from "../../utils/date";
-import { getCompanyName } from "../../utils/company";
-import { Muted } from "../../config/typography";
-import { config } from "../../config";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
-import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
-import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { useFilterParams } from "../../hooks/useFilterParams";
+} from "../components/ui";
+import { useAuth } from "../context/AuthProvider";
+import { useToast } from "../context/ToastProvider";
+import { ClientsDropdown } from "../components/ClientsDropdown";
+import { Metadata } from "../components/Metadata";
+import { useAppStore } from "../stores/appStore";
+import { functions } from "../services/firebase";
+import { formatInvitedAt } from "../utils/date";
+import { getCompanyName } from "../utils/company";
+import { Muted } from "../config/typography";
+import { config } from "../config";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
+import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
+import { useFilterParams } from "../hooks/useFilterParams";
 import {
   buildFacetFilters,
   buildFacetRequestFields,
-} from "../../utils/loginsFilter";
+} from "../utils/loginsFilter";
 import {
   type Agency,
   type FilterKeyMap,
-} from "../../types/domain";
+} from "../types/domain";
 
-export const AdminPage = () => {
+export const UsersPage = () => {
   useEffect(() => {
     document.title = "Users";
   }, []);

@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { useAccordionParams } from "../../hooks/useAccordionParams";
+import { useAccordionParams } from "../hooks/useAccordionParams";
 import { httpsCallable } from "firebase/functions";
-import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../../components/ui";
-import { Section } from "../../components/Section";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { InformationCard } from "../../components/InformationCard";
-import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
-import { Pill } from "../../components/Pill";
-import { useToast } from "../../context/ToastProvider";
-import { useData } from "../../context/DataProvider";
-import { functions } from "../../services/firebase";
+import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../components/ui";
+import { Section } from "../components/Section";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { InformationCard } from "../components/InformationCard";
+import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
+import { Pill } from "../components/Pill";
+import { useToast } from "../context/ToastProvider";
+import { useData } from "../context/DataProvider";
+import { functions } from "../services/firebase";
 import {
   getLatestTimesheetUpload,
   formatTimesheetDate,
   type TimesheetEntry,
-} from "../../utils/timesheets";
+} from "../utils/timesheets";
 
 interface DeleteTarget {
   clientId: string;
@@ -22,7 +22,7 @@ interface DeleteTarget {
   entry: TimesheetEntry;
 }
 
-export const AdminTimesheetsPage = () => {
+export const AllTimesheetsPage = () => {
   useEffect(() => {
     document.title = "Timesheets";
   }, []);

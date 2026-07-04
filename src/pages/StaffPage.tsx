@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { FileText, Loader2, Pen } from "lucide-react";
-import { ClientsDropdown } from "../../components/ClientsDropdown";
-import { FileInteractionButtons } from "../../components/FileInteractionButtons";
-import { ImportHistory } from "../../components/ImportHistory";
-import { Metadata } from "../../components/Metadata";
-import { Pill } from "../../components/Pill";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { StaffListSection } from "../../components/StaffListSection";
-import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
+import { ClientsDropdown } from "../components/ClientsDropdown";
+import { FileInteractionButtons } from "../components/FileInteractionButtons";
+import { ImportHistory } from "../components/ImportHistory";
+import { Metadata } from "../components/Metadata";
+import { Pill } from "../components/Pill";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { StaffListSection } from "../components/StaffListSection";
+import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
   AccordionItem,
   ActionButton,
@@ -18,21 +18,21 @@ import {
   DialogRoot,
   DialogTitle,
   Input,
-} from "../../components/ui";
-import { useAuth } from "../../context/AuthProvider";
-import { useToast } from "../../context/ToastProvider";
-import { useAppStore } from "../../stores/appStore";
-import { db, functions } from "../../services/firebase";
-import { getCompanyName } from "../../utils/company";
+} from "../components/ui";
+import { useAuth } from "../context/AuthProvider";
+import { useToast } from "../context/ToastProvider";
+import { useAppStore } from "../stores/appStore";
+import { db, functions } from "../services/firebase";
+import { getCompanyName } from "../utils/company";
 import {
   getStaffName,
   getStaffNameFromRawRecord,
-} from "../../utils/keyHeaderNormalisation";
-import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { Muted } from "../../config/typography";
-import type { Agency, BulkStaff } from "../../types/domain";
+} from "../utils/keyHeaderNormalisation";
+import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
+import { Muted } from "../config/typography";
+import type { Agency, BulkStaff } from "../types/domain";
 
-export const AdminStaffPage = () => {
+export const StaffPage = () => {
   useEffect(() => {
     document.title = "Staff";
   }, []);

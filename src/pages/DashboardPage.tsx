@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
-import { db } from "../../services/firebase";
-import { Section } from "../../components/Section";
-import { Pill } from "../../components/Pill";
-import { InformationCard } from "../../components/InformationCard";
-import { ActionButton } from "../../components/ui";
-import { AccordionRoot, AccordionItem } from "../../components/ui";
-import { Button } from "../../components/ui";
-import { useAuth } from "../../context/AuthProvider";
-import { getPayslipsForUser } from "../../services/payslipService";
-import type { Payslip, StaffUpload } from "../../types/domain";
-import { Body, Muted } from "../../config/typography";
+import { db } from "../services/firebase";
+import { Section } from "../components/Section";
+import { Pill } from "../components/Pill";
+import { InformationCard } from "../components/InformationCard";
+import { ActionButton } from "../components/ui";
+import { AccordionRoot, AccordionItem } from "../components/ui";
+import { Button } from "../components/ui";
+import { useAuth } from "../context/AuthProvider";
+import { getPayslipsForUser } from "../services/payslipService";
+import type { Payslip, StaffUpload } from "../types/domain";
+import { Body, Muted } from "../config/typography";
 
 export const DashboardPage = () => {
   useEffect(() => {

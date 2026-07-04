@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { FileSignature } from "lucide-react";
-import { ImportHistory } from "../../components/ImportHistory";
+import { ImportHistory } from "../components/ImportHistory";
 import {
   AccordionItem,
   Button,
@@ -10,21 +10,21 @@ import {
   DialogRoot,
   DialogTitle,
   DownloadButton,
-} from "../../components/ui";
-import { Pill } from "../../components/Pill";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { Metadata } from "../../components/Metadata";
-import { useAuth } from "../../context/AuthProvider";
-import { useToast } from "../../context/ToastProvider";
-import { findValueByNormalizedKey } from "../../utils/keyHeaderNormalisation";
-import { functions } from "../../services/firebase";
-import { toDate } from "../../utils/date";
-import { PaginatedFilterSection } from "../../components/PaginatedFilterSection";
-import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { useFilterParams } from "../../hooks/useFilterParams";
-import { useDualAccordionParams } from "../../hooks/useDualAccordionParams";
+} from "../components/ui";
+import { Pill } from "../components/Pill";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { Metadata } from "../components/Metadata";
+import { useAuth } from "../context/AuthProvider";
+import { useToast } from "../context/ToastProvider";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { functions } from "../services/firebase";
+import { toDate } from "../utils/date";
+import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
+import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
+import { useFilterParams } from "../hooks/useFilterParams";
+import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 
-export const AdminClientsPage = () => {
+export const AgenciesPage = () => {
   useEffect(() => {
     document.title = "Clients";
   }, []);
@@ -39,7 +39,8 @@ export const AdminClientsPage = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [clientFilters, setClientFilters] = useFilterParams();
-  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
+  const { leftValue, rightValue, onLeftChange, onRightChange } =
+    useDualAccordionParams();
 
   const {
     items: clients,
@@ -181,9 +182,15 @@ export const AdminClientsPage = () => {
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
                 <div className="flex min-w-0 w-full items-center gap-2">
-                  <AccordionTitle className="leading-none">{getPrimaryLabel(client)}</AccordionTitle>
+                  <AccordionTitle className="leading-none">
+                    {getPrimaryLabel(client)}
+                  </AccordionTitle>
                   {scName && (
-                    <Pill status="signed" icon={<FileSignature className="h-4 w-4" />} label="" />
+                    <Pill
+                      status="signed"
+                      icon={<FileSignature className="h-4 w-4" />}
+                      label=""
+                    />
                   )}
                 </div>
               }
@@ -214,19 +221,23 @@ export const AdminClientsPage = () => {
               )}
               <div className="overflow-x-auto">
                 <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-                {getDisplayFields(client).map((field, idx) => (
-                  <p
-                    key={field.label}
-                    className="whitespace-nowrap px-1 animate-cascade"
-                    style={{ animationDelay: `${idx * 12}ms` } as React.CSSProperties}
-                  >
-                    <span className="font-medium text-[var(--foreground)]">
-                      {field.label}
-                    </span>
-                    : {field.value}
-                  </p>
-                ))}
-              </div>
+                  {getDisplayFields(client).map((field, idx) => (
+                    <p
+                      key={field.label}
+                      className="whitespace-nowrap px-1 animate-cascade"
+                      style={
+                        {
+                          animationDelay: `${idx * 12}ms`,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <span className="font-medium text-[var(--foreground)]">
+                        {field.label}
+                      </span>
+                      : {field.value}
+                    </p>
+                  ))}
+                </div>
               </div>
               {scName && scUrl && (
                 <DeleteButton

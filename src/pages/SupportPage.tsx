@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Section } from "../../components/Section";
-import { Body, Caption } from "../../config/typography";
+import { Section } from "../components/Section";
+import { Body, Caption } from "../config/typography";
 
 const MAX_CHARS = 500;
 

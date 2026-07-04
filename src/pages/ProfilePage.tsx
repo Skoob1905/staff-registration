@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Mail, Key, Building, Shield } from "lucide-react";
-import { Button } from "../../components/ui";
-import { Section } from "../../components/Section";
-import { useAuth } from "../../context/AuthProvider";
-import { useToast } from "../../context/ToastProvider";
-import { sendForgotPassword } from "../../services/authService";
-import { getCompanyName } from "../../utils/company";
-import { Caption } from "../../config/typography";
+import { Button } from "../components/ui";
+import { Section } from "../components/Section";
+import { useAuth } from "../context/AuthProvider";
+import { useToast } from "../context/ToastProvider";
+import { sendForgotPassword } from "../services/authService";
+import { getCompanyName } from "../utils/company";
+import { Caption } from "../config/typography";
 
 export const ProfilePage = () => {
   useEffect(() => {

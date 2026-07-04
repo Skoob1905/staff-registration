@@ -3,18 +3,18 @@ import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { LoadingPage } from "../components/LoadingPage";
 import { LoginPage } from "../pages/LoginPage";
-import { AdminPage } from "../pages/admin/AdminPage";
-import { AdminClientsPage } from "../pages/admin/ClientsPage";
-import { AdminTimesheetsPage } from "../pages/admin/TimesheetsPage";
-import { AdminInvoicesPage } from "../pages/admin/InvoicesPage";
-import { AdminStaffPage } from "../pages/admin/StaffPage";
-import { UserHomePage } from "../pages/clients/HomePage";
-import { InvoicesPage } from "../pages/clients/InvoicesPage";
-import { ProfilePage } from "../pages/clients/ProfilePage";
-import { SupportPage } from "../pages/clients/SupportPage";
-import { TimeSheetsPage } from "../pages/clients/TimeSheetsPage";
+import { UsersPage } from "../pages/UsersPage";
+import { AgenciesPage } from "../pages/AgenciesPage";
+import { AllTimesheetsPage } from "../pages/AllTimesheetsPage";
+import { AllInvoicesPage } from "../pages/AllInvoicesPage";
+import { StaffPage } from "../pages/StaffPage";
+import { HomePage } from "../pages/HomePage";
+import { InvoicesPage } from "../pages/InvoicesPage";
+import { ProfilePage } from "../pages/ProfilePage";
+import { SupportPage } from "../pages/SupportPage";
+import { TimesheetsPage } from "../pages/TimesheetsPage";
 import { UploadPage } from "../pages/Upload";
-import { DashboardPage } from "../pages/worker/DashboardPage";
+import { DashboardPage } from "../pages/DashboardPage";
 import { RoleGuard } from "./RoleGuard";
 
 const AppEntryRedirect = () => {
@@ -36,8 +36,8 @@ const StaffPageSwitch = () => {
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
   if (appUser.role === "super" || appUser.role === "admin")
-    return <AdminStaffPage />;
-  return <UserHomePage />;
+    return <StaffPage />;
+  return <HomePage />;
 };
 
 const ProfileSwitch = () => {
@@ -56,15 +56,15 @@ const DashboardSwitch = () => {
 const InvoicesSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "super") return <AdminInvoicesPage />;
+  if (appUser.role === "super") return <AllInvoicesPage />;
   return <InvoicesPage />;
 };
 
 const TimesheetsSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "super") return <AdminTimesheetsPage />;
-  return <TimeSheetsPage />;
+  if (appUser.role === "super") return <AllTimesheetsPage />;
+  return <TimesheetsPage />;
 };
 
 export const AppRouter = () => (
@@ -83,8 +83,8 @@ export const AppRouter = () => (
           <Route path="/dashboard" element={<DashboardSwitch />} />
 
           <Route element={<RoleGuard role="super" />}>
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/agencies" element={<AdminClientsPage />} />
+            <Route path="/admin" element={<UsersPage />} />
+            <Route path="/agencies" element={<AgenciesPage />} />
           </Route>
 
           <Route path="/" element={<AppEntryRedirect />} />

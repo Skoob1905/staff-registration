@@ -1,4 +1,4 @@
-import { Section } from "../../components/Section";
+import { Section } from "../components/Section";
 
 const contracts = [
   { title: "Site Labour Agreement", parties: "You & Acme Corp", start: "01 Jan 2026", end: "31 Dec 2026", status: "Active", value: "£45,000" },

@@ -1,30 +1,30 @@
 import { useState } from "react";
-import { useAccordionParams } from "../../hooks/useAccordionParams";
+import { useAccordionParams } from "../hooks/useAccordionParams";
 import { Check, Loader2 } from "lucide-react";
 import {
   AccordionRoot,
   AccordionItem,
   Button,
   DeleteButton,
-} from "../../components/ui";
-import { Section } from "../../components/Section";
+} from "../components/ui";
+import { Section } from "../components/Section";
 import {
   DialogContent,
   DialogRoot,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { InvoicePills } from "../../components/InvoicePills";
-import { AccordionTitle } from "../../components/AccordionTitle";
-import { InformationCard } from "../../components/InformationCard";
-import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
-import { useToast } from "../../context/ToastProvider";
-import { useData } from "../../context/DataProvider";
+} from "../components/ui/dialog";
+import { InvoicePills } from "../components/InvoicePills";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { InformationCard } from "../components/InformationCard";
+import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
+import { useToast } from "../context/ToastProvider";
+import { useData } from "../context/DataProvider";
 import {
   deleteInvoice,
   markInvoicePaid,
-} from "../../services/invoiceService";
+} from "../services/invoiceService";
 
-export const AdminInvoicesPage = () => {
+export const AllInvoicesPage = () => {
   const { toast } = useToast();
   const { invoices: agencies, invoicesLoading: loading, refreshInvoices, markDownloaded } = useData();
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
