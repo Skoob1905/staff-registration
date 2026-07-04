@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { Section } from "../components/Section";
 import { Pill } from "../components/Pill";
 import { InformationCard } from "../components/InformationCard";
-import { ActionButton } from "../components/ui";
-import { AccordionRoot, AccordionItem } from "../components/ui";
 import { Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { getPayslipsForUser } from "../services/payslipService";
-import type { Payslip, StaffUpload } from "../types/domain";
+import type { Payslip } from "../types/domain";
 import { Body, Muted } from "../config/typography";
+
+interface StaffDocumentEntry {
+  fileName: string;
+  fileUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
 
 export const Dashboard = () => {
   useEffect(() => {
@@ -19,7 +24,7 @@ export const Dashboard = () => {
 
   const { appUser } = useAuth();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
-  const [documents, setDocuments] = useState<StaffUpload[]>([]);
+  const [documents, setDocuments] = useState<StaffDocumentEntry[]>([]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -32,32 +37,34 @@ export const Dashboard = () => {
       }
 
       try {
-        const docsSnaps = await getDocs(
+        const staffSnaps = await getDocs(
           query(
-            collection(db, "staff_uploads"),
-            where("userId", "==", appUser.uid),
-            orderBy("uploadedAt", "desc"),
+            collection(db, "staff"),
+            where("email", "==", appUser.email?.toLowerCase()),
           ),
         );
-        setDocuments(
-          docsSnaps.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffUpload),
-        );
-      } catch {
-        // staff_uploads won't match for workers without agency
+        if (!staffSnaps.empty) {
+          const data = staffSnaps.docs[0].data() as {
+            metadata?: { documents?: StaffDocumentEntry[] };
+          };
+          setDocuments(data.metadata?.documents ?? []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch staff documents", err);
       }
     };
     void run();
   }, [appUser]);
 
-  const toDateStr = (ts: unknown) => {
-    const d = (ts as { toDate: () => Date } | null)?.toDate?.();
-    return d
-      ? d.toLocaleDateString("en-GB", {
+  const toDateStr = (iso: string) => {
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+      ? "—"
+      : d.toLocaleDateString("en-GB", {
           day: "numeric",
           month: "short",
           year: "numeric",
-        })
-      : "—";
+        });
   };
 
   return (
@@ -70,38 +77,39 @@ export const Dashboard = () => {
       </Section>
 
       <Section title="Documents" count={documents.length}>
-        {documents.length ? (
-          <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-            <AccordionRoot type="single" collapsible>
-              {documents.map((doc) => (
-                <AccordionItem
-                  key={doc.id}
-                  value={doc.id}
-                  title={
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{doc.fileName}</span>
-                      <ActionButton
-                        variant="download"
-                        ariaLabel="Download document"
-                        href={doc.fileUrl}
-                      />
-                    </div>
-                  }
-                >
-                  <div className="space-y-1">
-                    <p>
-                      <b>Category:</b> {doc.category || "General"}
-                    </p>
-                    <p>
-                      <b>Uploaded:</b> {toDateStr(doc.uploadedAt)}
-                    </p>
-                  </div>
-                </AccordionItem>
-              ))}
-            </AccordionRoot>
-          </div>
-        ) : (
+        {documents.length === 0 ? (
           <Muted>No documents available.</Muted>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {documents.map((doc, idx) => (
+              <InformationCard
+                key={idx}
+                variant="payslip"
+                name={doc.fileName}
+                isNew={false}
+                hasDownloaded={false}
+                uploadedAt={doc.uploadedAt}
+                admin={false}
+                documentInfo={null}
+                actions={
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        window.open(
+                          doc.fileUrl,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                      }}
+                    >
+                      Download
+                    </Button>
+                  </div>
+                }
+              />
+            ))}
+          </div>
         )}
       </Section>
 

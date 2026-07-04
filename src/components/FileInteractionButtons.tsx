@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionButton } from "./ui/ActionButton";
 import { DialogContent, DialogRoot, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui";
@@ -28,6 +28,8 @@ export const FileInteractionButtons = ({
   const [deleting, setDeleting] = useState(false);
 
   const config = deleteModalConfig[interactionKey];
+
+  const messageParts = useMemo(() => config.message.split("{fileName}"), [config.message]);
 
   const handleDelete = async () => {
     if (!onDelete) return;
@@ -68,7 +70,9 @@ export const FileInteractionButtons = ({
           closeDisabled={deleting}
         >
           <DialogTitle className="font-bold">{config.title}</DialogTitle>
-          <p className="mt-3 text-sm text-zinc-600 whitespace-pre-line">{config.message.replace("{fileName}", name ? `${name}'s CV` : fileName)}</p>
+          <p className="mt-3 text-sm text-zinc-600 whitespace-pre-line">
+            {messageParts[0]}<strong>{fileName}</strong>{messageParts[1]}
+          </p>
           <div className="mt-4 flex justify-end">
             <Button
               type="button"

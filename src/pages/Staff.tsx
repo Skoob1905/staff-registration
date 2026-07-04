@@ -73,6 +73,7 @@ export const Staff = () => {
   const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
   const [deleteStaffTarget, setDeleteStaffTarget] = useState<BulkStaff | null>(null);
   const [deleteStaffLoading, setDeleteStaffLoading] = useState(false);
+  const [deletingDocumentKey, setDeletingDocumentKey] = useState<string | null>(null);
   const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   useEffect(() => {
@@ -82,6 +83,25 @@ export const Staff = () => {
       setTagInput("");
     }
   }, [tagTarget]);
+
+  const handleDeleteDocument = useCallback(
+    async (staffId: string, fileName: string) => {
+      const key = `${staffId}::${fileName}`;
+      if (deletingDocumentKey) return;
+      setDeletingDocumentKey(key);
+      try {
+        const callable = httpsCallable(functions, "deleteStaffDocument");
+        await callable({ staffId, fileName });
+        setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
+        toast({ title: "Document deleted" });
+      } catch {
+        toast({ title: "Failed to delete document", variant: "error" as const });
+      } finally {
+        setDeletingDocumentKey(null);
+      }
+    },
+    [deletingDocumentKey, toast],
+  );
 
   const handleDeleteCv = useCallback(
     async (staffId: string, fileName: string) => {
@@ -422,6 +442,51 @@ export const Staff = () => {
                           {entry.uploadedAt && (
                             <span className="text-zinc-400">
                               ({new Date(entry.uploadedAt).toLocaleDateString()}
+                              )
+                            </span>
+                          )}
+                          {isDeleting && (
+                            <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
+                          )}
+                        </span>
+                      }
+                    />
+                  );
+                })}
+              </div>
+            )}
+            {member.metadata?.documents && member.metadata.documents.length > 0 && (
+              <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+                {member.metadata.documents.map((entry: Record<string, unknown>, idx: number) => {
+                  const docKey = `${member.id}::${entry.fileName}`;
+                  const isDeleting = deletingDocumentKey === docKey;
+                  return (
+                    <Metadata
+                      key={docKey}
+                      title="Document"
+                      className="flex items-center animate-cascade"
+                      style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
+                      value={
+                        <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                          <span className="text-[var(--muted-foreground)]">
+                            {entry.fileName as string}
+                          </span>
+                          <FileInteractionButtons
+                            fileUrl={entry.fileUrl as string}
+                            fileName={entry.fileName as string}
+                            name={getStaffName(member)}
+                            interactionKey="document"
+                            size="md"
+                            onDelete={
+                              isDeleting
+                                ? undefined
+                                : () =>
+                                    handleDeleteDocument(member.id, entry.fileName as string)
+                            }
+                          />
+                          {entry.uploadedAt && (
+                            <span className="text-zinc-400">
+                              ({new Date(entry.uploadedAt as string).toLocaleDateString()}
                               )
                             </span>
                           )}

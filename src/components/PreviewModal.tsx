@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import {
   Button,
   DialogContent,
@@ -14,8 +15,7 @@ import { useToast } from "../context/ToastProvider";
 import { uploadInvoice } from "../services/invoiceService";
 import { uploadClientContract } from "../services/contractService";
 import { uploadPayslip } from "../services/payslipService";
-import { uploadStaffDocument } from "../services/staffUploadService";
-import { db } from "../services/firebase";
+import { db, functions } from "../services/firebase";
 import type { BulkStaff } from "../types/domain";
 import { H1 } from "../config/typography";
 
@@ -36,9 +36,12 @@ export const PreviewModal = ({
   const { toast } = useToast();
   const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
   const isContract = mode === "contract";
-  const isPayslip = mode === "payslip";
   const isDocument = mode === "document";
-  const isStaffUpload = isPayslip || isDocument;
+  const isInvoice = mode === "invoice";
+
+  const [documentType, setDocumentType] = useState<"document" | "payslip">("document");
+  const isPayslip = isDocument && documentType === "payslip";
+  const isStaffUpload = isDocument;
 
   const [staffList, setStaffList] = useState<BulkStaff[]>([]);
 
@@ -111,6 +114,7 @@ export const PreviewModal = ({
       setSelectedClientId("");
       setSelectedClientName("");
       setSelectedStaffId("");
+      setDocumentType("document");
       setProgress(0);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
@@ -144,7 +148,17 @@ export const PreviewModal = ({
         if (isPayslip) {
           await uploadPayslip(file, selectedStaffId, agencyId);
         } else {
-          await uploadStaffDocument(file, selectedStaffId, agencyId, "general");
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              resolve(result.split(",")[1]);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const callable = httpsCallable(functions, "uploadStaffDocument");
+          await callable({ staffId: selectedStaffId, fileName: file.name, fileBase64: base64 });
         }
       } else if (isContract) {
         await uploadClientContract(file, targetClientId);
@@ -161,10 +175,10 @@ export const PreviewModal = ({
 
       toast({
         title: "Upload Complete",
-        description: isStaffUpload
+        description: isDocument
           ? isPayslip
-            ? `Payslip has been uploaded`
-            : `Document has been uploaded`
+            ? "Payslip has been uploaded"
+            : "Document has been uploaded"
           : isContract
             ? `Contract has been uploaded for ${targetClientName || targetClientId}`
             : `Invoice has been sent to ${targetClientName || targetClientId}`,
@@ -183,7 +197,7 @@ export const PreviewModal = ({
       } else {
         toast({
           title: "Upload failed",
-          description: isStaffUpload
+          description: isDocument
             ? isPayslip
               ? "The payslip could not be uploaded. Please try again."
               : "The document could not be uploaded. Please try again."
@@ -207,13 +221,11 @@ export const PreviewModal = ({
       >
         <DialogTitle asChild>
           <H1>
-            {isPayslip
-              ? "Payslip Preview"
-              : isDocument
-                ? "Document Preview"
-                : isContract
-                  ? "Contract Preview"
-                  : "Invoice Preview"}
+            {isDocument
+              ? "Document Preview"
+              : isContract
+                ? "Contract Preview"
+                : "Invoice Preview"}
           </H1>
         </DialogTitle>
 
@@ -241,36 +253,49 @@ export const PreviewModal = ({
         {uploading ? (
           <div className="mt-4 space-y-2">
             <p className="text-sm text-zinc-600">
-              {isPayslip
-                ? "Uploading payslip..."
-                : isDocument
-                  ? "Uploading document..."
-                  : isContract
-                    ? "Uploading contract..."
-                    : "Uploading invoice..."}
+              {isDocument
+                ? isPayslip
+                  ? "Uploading payslip..."
+                  : "Uploading document..."
+                : isContract
+                  ? "Uploading contract..."
+                  : "Uploading invoice..."}
             </p>
             <ProgressBar value={progress} />
           </div>
         ) : (
           <div className="mt-4 space-y-3">
             {isStaffUpload ? (
-              <div className="space-y-1">
-                <Label>Staff Member</Label>
-                <select
-                  value={selectedStaffId}
-                  onChange={(e) => setSelectedStaffId(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">Select a staff member...</option>
-                  {staffList.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.FullName ||
-                        `${s.Forename ?? ""} ${s.Surname ?? ""}`.trim() ||
-                        s.email ||
-                        s.id}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Type</Label>
+                  <select
+                    value={documentType}
+                    onChange={(e) => setDocumentType(e.target.value as "document" | "payslip")}
+                    className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="document">Document</option>
+                    <option value="payslip">Payslip</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Staff Member</Label>
+                  <select
+                    value={selectedStaffId}
+                    onChange={(e) => setSelectedStaffId(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Select a staff member...</option>
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.FullName ||
+                          `${s.Forename ?? ""} ${s.Surname ?? ""}`.trim() ||
+                          s.email ||
+                          s.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ) : (
               <>
@@ -319,13 +344,13 @@ export const PreviewModal = ({
             )}
 
             <Button type="button" disabled={!canSubmit} onClick={handleUpload}>
-              {isPayslip
-                ? "Upload Payslip"
-                : isDocument
-                  ? "Upload Document"
-                  : isContract
-                    ? "Upload Contract"
-                    : "Upload Invoice"}
+              {isDocument
+                ? isPayslip
+                  ? "Upload Payslip"
+                  : "Upload Document"
+                : isContract
+                  ? "Upload Contract"
+                  : "Upload Invoice"}
             </Button>
           </div>
         )}

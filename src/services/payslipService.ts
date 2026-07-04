@@ -46,12 +46,15 @@ export const uploadPayslip = async (
 
 export const getPayslipsForUser = async (email: string): Promise<Payslip[]> => {
   const staffSnaps = await getDocs(
-    query(collection(db, "staff"), where("Email", "==", email)),
+    query(collection(db, "staff"), where("email", "==", email.toLowerCase())),
   );
 
   if (staffSnaps.empty) return [];
 
-  const payslipIds = (staffSnaps.docs[0].data().payslipsSent as string[]) ?? [];
+  const data = staffSnaps.docs[0].data() as {
+    metadata?: { payslipsSent?: string[] };
+  };
+  const payslipIds = data?.metadata?.payslipsSent ?? [];
   if (!payslipIds.length) return [];
 
   const payslipDocs = await Promise.all(

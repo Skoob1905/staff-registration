@@ -83,15 +83,6 @@ const SUPER_TYPES: UploadType[] = [
     fileLimit: "Max 2MB",
   },
   {
-    id: "payslips",
-    icon: FileText,
-    title: "Payslips",
-    description: "Upload a staff payslip",
-    color: "#E91E63",
-    acceptedFiles: ".pdf,.docx",
-    fileLimit: "Max 2MB",
-  },
-  {
     id: "documents",
     icon: FolderOpen,
     title: "Documents",

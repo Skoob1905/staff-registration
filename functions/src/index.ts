@@ -49,6 +49,17 @@ const normalizeEmail = (value: unknown): string =>
   String(value || "")
     .trim()
     .toLowerCase();
+
+const normalizeRecordKeys = (
+  record: Record<string, unknown>,
+): Record<string, unknown> => {
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    normalized[normalizeKey(key)] = value;
+  }
+  return normalized;
+};
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const namePattern = /^[A-Za-z' -]+$/;
 
@@ -917,7 +928,7 @@ export const importAgencyCsv = onCall(async (request) => {
         importedAt: FieldValue.serverTimestamp(),
       };
       batch.set(docRef, {
-        ...record,
+        ...normalizeRecordKeys(record),
         metadata: meta,
       });
     }
@@ -1038,7 +1049,7 @@ export const importClientCsv = onCall(async (request) => {
         importedAt: FieldValue.serverTimestamp(),
       };
       batch.set(docRef, {
-        ...record,
+        ...normalizeRecordKeys(record),
         metadata: meta,
       });
     }
@@ -1195,7 +1206,7 @@ export const importStaffCsv = onCall(async (request) => {
     for (const record of chunk) {
       const docRef = db.collection("staff").doc();
       batch.set(docRef, {
-        ...record,
+        ...normalizeRecordKeys(record),
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
         metadata: {
           role: "worker",
@@ -1561,8 +1572,8 @@ export const bulkUploadStaff = onCall(async (request) => {
       email,
       title,
       initial: String(row.initial || "").trim(),
-      Forename: forename,
-      Surname: surname,
+      forename,
+      surname,
       address1: String(row.address1 || "").trim(),
       address2: String(row.address2 || "").trim(),
       agencyId,
@@ -1708,7 +1719,9 @@ export const assignAgencyToClient = onCall(async (request) => {
   }
 
   const clientId = String(request.data?.clientId || "").trim();
-  const assignedAgencyIds: string[] = Array.isArray(request.data?.assignedAgencyIds)
+  const assignedAgencyIds: string[] = Array.isArray(
+    request.data?.assignedAgencyIds,
+  )
     ? request.data.assignedAgencyIds.map(String)
     : [];
 
@@ -1716,14 +1729,17 @@ export const assignAgencyToClient = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "clientId is required.");
   }
 
-  await db.collection("clients").doc(clientId).set(
-    {
-      metadata: {
-        assignedAgencies: assignedAgencyIds,
+  await db
+    .collection("clients")
+    .doc(clientId)
+    .set(
+      {
+        metadata: {
+          assignedAgencies: assignedAgencyIds,
+        },
       },
-    },
-    { merge: true },
-  );
+      { merge: true },
+    );
 
   return { ok: true, clientId, assignedAgencyIds };
 });
@@ -2656,6 +2672,128 @@ export const deleteStaffCv = onCall(async (request) => {
   return { ok: true };
 });
 
+export const uploadStaffDocument = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { staffId, fileName, fileBase64 } = request.data as {
+    staffId: string;
+    fileName: string;
+    fileBase64: string;
+  };
+  if (!staffId || !fileName || !fileBase64) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: staffId, fileName, fileBase64",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { email?: string; role?: string };
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const staffSnap = await db.collection("staff").doc(staffId).get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff not found.");
+  }
+
+  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+  const bucket = getStorage().bucket();
+  const filePath = `documents/${staffId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  const token =
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const buffer = Buffer.from(fileBase64, "base64");
+
+  await fileRef.save(buffer, {
+    metadata: {
+      contentType: "application/pdf",
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+  const entry = {
+    fileName,
+    fileUrl,
+    uploadedBy,
+    uploadedAt: new Date().toISOString(),
+  };
+
+  await db
+    .collection("staff")
+    .doc(staffId)
+    .update({
+      "metadata.documents": FieldValue.arrayUnion(entry),
+    });
+
+  return { ok: true, staffId, fileName };
+});
+
+export const deleteStaffDocument = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { staffId, fileName } = request.data as {
+    staffId: string;
+    fileName: string;
+  };
+  if (!staffId || !fileName) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: staffId, fileName",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const storagePath = `documents/${staffId}/${fileName}`;
+  try {
+    await getStorage().bucket().file(storagePath).delete();
+  } catch {
+    // file may not exist — proceed with clearing the entry
+  }
+
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff not found.");
+  }
+
+  const data = staffSnap.data() as {
+    metadata?: { documents?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.documents ?? [];
+
+  await staffRef.update({
+    "metadata.documents": current.filter((e) => e.fileName !== fileName),
+  });
+
+  return { ok: true };
+});
+
 export const removeStaffMember = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -3266,10 +3404,15 @@ export const uploadPayslipToStaff = onCall(async (request) => {
 
   const staffRef = db.collection("staff").doc(userId);
   const staffSnap = await staffRef.get();
-  const existing = (staffSnap.data()?.payslipsSent as string[]) ?? [];
+  const staffData = staffSnap.data() as {
+    metadata?: { payslipsSent?: string[] };
+  };
+  const existing = staffData?.metadata?.payslipsSent ?? [];
   await staffRef.set(
     {
-      payslipsSent: [payslipRef.id, ...existing],
+      metadata: {
+        payslipsSent: [payslipRef.id, ...existing],
+      },
     },
     { merge: true },
   );

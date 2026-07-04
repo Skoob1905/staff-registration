@@ -4,7 +4,8 @@ export type FileInteractionKey =
   | "staff"
   | "client"
   | "timesheet"
-  | "contract";
+  | "contract"
+  | "document";
 
 export interface DeleteModalConfig {
   title: string;
@@ -37,5 +38,9 @@ export const deleteModalConfig: Record<FileInteractionKey, DeleteModalConfig> = 
   contract: {
     title: "Delete Contract",
     message: "This will permanently delete the signed contract {fileName} from storage.",
+  },
+  document: {
+    title: "Delete Document",
+    message: "Are you sure you want to delete {fileName}? This action cannot be undone.",
   },
 };
