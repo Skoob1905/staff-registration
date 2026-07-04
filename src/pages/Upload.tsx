@@ -1,5 +1,12 @@
 import { type ElementType, useEffect, useState } from "react";
-import { Building2, Clock, FileText, FolderOpen, Users } from "lucide-react";
+import {
+  Building2,
+  Clock,
+  FileText,
+  FolderOpen,
+  Receipt,
+  Users,
+} from "lucide-react";
 import { AddModal } from "../components/AddModal";
 import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
@@ -58,11 +65,20 @@ const SUPER_TYPES: UploadType[] = [
     fileLimit: "Max 2MB",
   },
   {
-    id: "clients",
+    id: "agencies",
     icon: Building2,
     title: "Agencies",
-    description: "Bulk import your clients",
+    description: "Bulk import agencies",
     color: "#34A853",
+    acceptedFiles: ".csv",
+    fileLimit: "Max 2MB",
+  },
+  {
+    id: "clients",
+    icon: Building2,
+    title: "Clients",
+    description: "Bulk import clients",
+    color: "#9C27B0",
     acceptedFiles: ".csv",
     fileLimit: "Max 2MB",
   },
@@ -81,6 +97,15 @@ const SUPER_TYPES: UploadType[] = [
     title: "Documents",
     description: "Upload a staff document",
     color: "#FB8C00",
+    acceptedFiles: ".pdf,.docx",
+    fileLimit: "Max 2MB",
+  },
+  {
+    id: "invoices",
+    icon: Receipt,
+    title: "Invoices",
+    description: "Upload an invoice for your client.",
+    color: "#7C3AED",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
   },
@@ -114,7 +139,7 @@ export const Upload = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
   const [addModalCsvType, setAddModalCsvType] = useState<
-    "staff" | "agency" | "timesheet"
+    "staff" | "agency" | "client" | "timesheet"
   >("staff");
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
@@ -124,11 +149,17 @@ export const Upload = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const handleFileSelect = async (file: File, typeId: string) => {
-    if (typeId === "staff" || typeId === "clients") {
+    if (typeId === "staff" || typeId === "agencies" || typeId === "clients") {
+      const typeLabel =
+        typeId === "staff"
+          ? "Staff"
+          : typeId === "agencies"
+            ? "Agency"
+            : "Client";
       if (file.size > MAX_FILE_SIZE) {
         toast({
           title: "File too large",
-          description: `${typeId === "staff" ? "Staff" : "Client"} CSV must be 2MB or less.`,
+          description: `${typeLabel} CSV must be 2MB or less.`,
           variant: "error",
         });
         return;
@@ -153,7 +184,7 @@ export const Upload = () => {
       } else {
         if (!hasBusinessNameColumn(headers)) {
           toast({
-            title: "Invalid Client Upload",
+            title: `Invalid ${typeLabel} Upload`,
             description:
               "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
             variant: "error",
@@ -161,7 +192,7 @@ export const Upload = () => {
           return;
         }
         setAddModalFile(file);
-        setAddModalCsvType("agency");
+        setAddModalCsvType(typeId === "agencies" ? "agency" : "client");
         setShowAddModal(true);
       }
     } else if (typeId === "timesheets") {
@@ -288,14 +319,18 @@ export const Upload = () => {
             ? "recordTimesheetUpload"
             : addModalCsvType === "staff"
               ? "importStaffCsv"
-              : "importAgencyCsv"
+              : addModalCsvType === "agency"
+                ? "importAgencyCsv"
+                : "importClientCsv"
         }
         storagePath={
           addModalCsvType === "timesheet"
             ? "timesheet_imports"
             : addModalCsvType === "staff"
-              ? "staff_imports"
-              : "agency_imports"
+              ? "staff"
+              : addModalCsvType === "agency"
+                ? "agencies"
+                : "clients"
         }
         itemLabel={
           addModalCsvType === "timesheet"

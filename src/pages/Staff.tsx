@@ -71,6 +71,8 @@ export const Staff = () => {
     new Set(),
   );
   const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
+  const [deleteStaffTarget, setDeleteStaffTarget] = useState<BulkStaff | null>(null);
+  const [deleteStaffLoading, setDeleteStaffLoading] = useState(false);
   const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   useEffect(() => {
@@ -208,6 +210,30 @@ export const Staff = () => {
     [appUser?.agencyId, companies, toast],
   );
 
+  const handleDeleteStaff = useCallback(async () => {
+    if (!deleteStaffTarget) return;
+    setDeleteStaffLoading(true);
+    try {
+      const callable = httpsCallable(functions, "removeStaffMember");
+      await callable({ staffId: deleteStaffTarget.id });
+      setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
+      setDeleteStaffTarget(null);
+      toast({
+        title: "Deleted",
+        description: `${getStaffName(deleteStaffTarget)} has been permanently deleted`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to delete staff member.",
+        variant: "error",
+      });
+    } finally {
+      setDeleteStaffLoading(false);
+    }
+  }, [deleteStaffTarget, toast]);
+
   const handleDeleteSuccess = async () => {
     setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
   };
@@ -285,6 +311,19 @@ export const Staff = () => {
                         <Pen className="h-3.5 w-3.5" />
                       </button>
                     )}
+                  </span>
+                )}
+                {appUser?.role === "super" && (
+                  <span className="ml-1 hidden sm:inline-flex">
+                    <ActionButton
+                      variant="delete"
+                      size="md"
+                      ariaLabel="Delete staff"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteStaffTarget(member);
+                      }}
+                    />
                   </span>
                 )}
               </>
@@ -548,6 +587,51 @@ export const Staff = () => {
               onClick={() => void handleAssignTags()}
             >
               {tagLoading ? "Saving..." : "Assign Tags"}
+            </Button>
+          </div>
+        </DialogContent>
+      </DialogRoot>
+
+      <DialogRoot
+        open={deleteStaffTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteStaffLoading) setDeleteStaffTarget(null);
+        }}
+      >
+        <DialogContent
+          closeDisabled={deleteStaffLoading}
+          onClose={() => {
+            if (!deleteStaffLoading) setDeleteStaffTarget(null);
+          }}
+        >
+          <DialogTitle className="text-base sm:text-lg font-bold">
+            Delete Staff Member
+          </DialogTitle>
+          <Muted className="mt-2">
+            Permanently delete{" "}
+            <strong>
+              {deleteStaffTarget ? getStaffName(deleteStaffTarget) : ""}
+            </strong>
+            ? This will also delete any associated user account.
+          </Muted>
+          <p className="mt-1 text-xs font-medium text-red-600">
+            This action cannot be undone.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button
+              type="button"
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteStaffLoading}
+              onClick={() => void handleDeleteStaff()}
+            >
+              {deleteStaffLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Deleting...
+                </span>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </div>
         </DialogContent>

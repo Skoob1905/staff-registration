@@ -3,8 +3,8 @@ import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { LoadingPage } from "../components/LoadingPage";
 import { Login } from "../pages/Login";
-import { Users } from "../pages/Users";
 import { Agencies } from "../pages/Agencies";
+import { Clients } from "../pages/Clients";
 import { AllTimesheets } from "../pages/AllTimesheets";
 import { AllInvoices } from "../pages/AllInvoices";
 import { Staff } from "../pages/Staff";
@@ -83,8 +83,8 @@ export const AppRouter = () => (
           <Route path="/dashboard" element={<DashboardSwitch />} />
 
           <Route element={<RoleGuard role="super" />}>
-            <Route path="/admin" element={<Users />} />
             <Route path="/agencies" element={<Agencies />} />
+            <Route path="/clients" element={<Clients />} />
           </Route>
 
           <Route path="/" element={<AppEntryRedirect />} />

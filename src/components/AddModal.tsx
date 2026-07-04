@@ -234,7 +234,7 @@ export const AddModal = ({
         }
       }
 
-      if (csvType === "agency") {
+      if (csvType === "agency" || csvType === "client") {
         if (!hasBusinessNameColumn(parsed.headers)) {
           toast({
             title: "Invalid client file",
@@ -353,10 +353,11 @@ export const AddModal = ({
         return;
       }
       if (ALGOLIA_INDEX_PREFIX === "dev_") {
-        const collectionName = csvType === "staff" ? "staff" : "agencies";
+        const collectionName =
+          csvType === "staff" ? "staff" : csvType === "agency" ? "agencies" : "clients";
         const maxRecords =
           csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
-        const label = csvType === "staff" ? "staff" : "clients";
+        const label = csvType === "staff" ? "staff" : csvType === "agency" ? "agencies" : "clients";
         const snap = await getCountFromServer(collection(db, collectionName));
         const existingCount = snap.data().count;
         if (existingCount + csvData.rows.length > maxRecords) {
@@ -369,7 +370,7 @@ export const AddModal = ({
         }
       }
 
-      const path = `${storagePath}/${appUser.agencyId}/${Date.now()}-${csvData.fileName}`;
+      const path = `${storagePath}/${Date.now()}-${csvData.fileName}`;
       const storageRef = ref(storage, path);
       const task = uploadBytesResumable(storageRef, csvData.rawFile);
       task.on("state_changed", (snapshot) => {

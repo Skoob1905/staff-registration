@@ -18,7 +18,13 @@ interface State<T> {
 
 type Action<T> =
   | { type: "loading" }
-  | { type: "success"; items: T[]; totalPages: number; totalResults: number; facetCounts?: Record<string, Record<string, number>> }
+  | {
+      type: "success";
+      items: T[];
+      totalPages: number;
+      totalResults: number;
+      facetCounts?: Record<string, Record<string, number>>;
+    }
   | { type: "error" };
 
 function createInitialState<T>(): State<T> {
@@ -37,14 +43,12 @@ interface UsePaginatedRecordsParams {
 
 export function usePaginatedRecords<T = Record<string, unknown>>({
   indexName,
-  agencyId,
   facetFilters,
   query = "",
   page = 0,
   hitsPerPage = 10,
   facets,
 }: UsePaginatedRecordsParams) {
-
   const [state, dispatch] = useReducer(
     (prev: State<T>, action: Action<T>): State<T> => {
       switch (action.type) {
@@ -67,11 +71,6 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!agencyId) {
-      dispatch({ type: "error" });
-      return;
-    }
-
     let cancelled = false;
     dispatch({ type: "loading" });
 
@@ -106,7 +105,9 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
           items: formattedHits,
           totalPages: response.nbPages ?? 0,
           totalResults: response.nbHits ?? 0,
-          facetCounts: response.facets as Record<string, Record<string, number>> | undefined,
+          facetCounts: response.facets as
+            | Record<string, Record<string, number>>
+            | undefined,
         });
       })
       .catch((err) => {
@@ -121,7 +122,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets]);
+  }, [indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets]);
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);

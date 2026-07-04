@@ -908,11 +908,9 @@ export const importAgencyCsv = onCall(async (request) => {
 
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
-    const clientsBatch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("agencies").doc();
-      const clientDocRef = db.collection("clients").doc();
       const meta = {
         uploadedInFile: importId,
         uploadedBy,
@@ -922,13 +920,8 @@ export const importAgencyCsv = onCall(async (request) => {
         ...record,
         metadata: meta,
       });
-      clientsBatch.set(clientDocRef, {
-        ...record,
-        metadata: meta,
-      });
     }
     await batch.commit();
-    await clientsBatch.commit();
     writtenCount += chunk.length;
   }
 
@@ -936,6 +929,127 @@ export const importAgencyCsv = onCall(async (request) => {
 
   await importRef.set({
     type: "agency",
+    agencyId: caller.agencyId ?? "",
+    fileName,
+    fileUrl: fileUrl || null,
+    recordCount: newRecords.length,
+    totalRecords,
+    importedByUid: callerUid,
+    importedByEmail: caller.email ?? null,
+    importedAt: FieldValue.serverTimestamp(),
+  });
+
+  return {
+    ok: true,
+    added: writtenCount,
+    duplicates: duplicateCount,
+    total: records.length,
+    importId,
+  };
+});
+
+export const importClientCsv = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+    email?: string;
+  };
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
+  }
+
+  const records = request.data?.records;
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "A non-empty records array is required.",
+    );
+  }
+
+  const fileName = String(request.data?.fileName || "unknown.csv");
+  const fileUrl = String(request.data?.fileUrl || "");
+
+  const existingNames = new Set<string>();
+
+  if (caller.agencyId) {
+    const clientsRef = db.collection("clients");
+    const [oldSnaps, newSnaps] = await Promise.all([
+      clientsRef.where("importedByAgencyId", "==", caller.agencyId).get(),
+      clientsRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
+    ]);
+
+    const docSeen = new Set<string>();
+    for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
+      if (docSeen.has(doc.id)) continue;
+      docSeen.add(doc.id);
+      const data = doc.data();
+      const name = getBusinessName(data).toLowerCase().trim();
+      if (name) existingNames.add(name);
+    }
+  }
+
+  const newRecords: Array<Record<string, unknown>> = [];
+  let duplicateCount = 0;
+
+  for (const record of records) {
+    if (typeof record !== "object" || record === null) continue;
+    const name = getBusinessName(record).toLowerCase().trim();
+    if (name && existingNames.has(name)) {
+      duplicateCount++;
+      continue;
+    }
+    newRecords.push(record);
+  }
+
+  if (newRecords.length === 0) {
+    return {
+      ok: true,
+      added: 0,
+      duplicates: duplicateCount,
+      total: records.length,
+    };
+  }
+
+  const importRef = db.collection("csv_imports").doc();
+  const importId = importRef.id;
+
+  const BATCH_LIMIT = 500;
+  let writtenCount = 0;
+
+  const uploadedBy = caller.agencyId ?? callerUid;
+
+  for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = newRecords.slice(i, i + BATCH_LIMIT);
+    for (const record of chunk) {
+      const docRef = db.collection("clients").doc();
+      const meta = {
+        uploadedInFile: importId,
+        uploadedBy,
+        importedAt: FieldValue.serverTimestamp(),
+      };
+      batch.set(docRef, {
+        ...record,
+        metadata: meta,
+      });
+    }
+    await batch.commit();
+    writtenCount += chunk.length;
+  }
+
+  const totalRecords = Number(request.data?.totalRecords) || records.length;
+
+  await importRef.set({
+    type: "client",
     agencyId: caller.agencyId ?? "",
     fileName,
     fileUrl: fileUrl || null,
@@ -1578,6 +1692,96 @@ export const removeAgencies = onCall(async (request) => {
   return { ok: true, deletedCount, importId };
 });
 
+export const removeClients = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+  };
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
+  }
+
+  const importId = String(request.data?.importId || "").trim();
+  if (!importId) {
+    throw new HttpsError("invalid-argument", "importId is required.");
+  }
+
+  const importRef = db.collection("csv_imports").doc(importId);
+  const importSnap = await importRef.get();
+  if (!importSnap.exists) {
+    throw new HttpsError("not-found", "Import record not found.");
+  }
+
+  const importData = importSnap.data() as {
+    fileUrl?: string | null;
+  };
+
+  if (importData.fileUrl) {
+    try {
+      const filePath = decodeURIComponent(
+        importData.fileUrl.split("/o/")[1]?.split("?")[0] ?? "",
+      );
+      if (filePath) {
+        await getStorage().bucket().file(filePath).delete();
+      }
+    } catch {
+      // file may not exist — proceed with record deletion
+    }
+  }
+
+  const clientSnaps = await db
+    .collection("clients")
+    .where("metadata.uploadedInFile", "==", importId)
+    .get();
+
+  const clientIds = clientSnaps.docs.map((d) => d.id);
+
+  const BATCH_LIMIT = 500;
+  let deletedCount = 0;
+
+  for (let i = 0; i < clientSnaps.docs.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = clientSnaps.docs.slice(i, i + BATCH_LIMIT);
+    for (const doc of chunk) {
+      batch.delete(doc.ref);
+      deletedCount++;
+    }
+    await batch.commit();
+  }
+
+  // Remove associated client logins
+  const adminAuth = getAuth();
+  for (const clientId of clientIds) {
+    const userSnaps = await db
+      .collection("users")
+      .where("agencyId", "==", clientId)
+      .where("role", "==", "client")
+      .get();
+    for (const userDoc of userSnaps.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
+  }
+
+  await importRef.delete();
+
+  return { ok: true, deletedCount, importId };
+});
+
 export const removeStaffImport = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -1652,6 +1856,27 @@ export const removeStaffImport = onCall(async (request) => {
       deletedCount++;
     }
     await batch.commit();
+  }
+
+  // Delete Auth users + users docs for staff members with email
+  const adminAuth = getAuth();
+  for (const snap of staffSnaps.docs) {
+    const data = snap.data() as { email?: string };
+    const email = data.email;
+    if (!email || !emailPattern.test(email)) continue;
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+    for (const userDoc of userDocs.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
   }
 
   for (const [agencyId, staffIds] of agencyUpdates) {
@@ -2395,12 +2620,80 @@ export const deleteStaffCv = onCall(async (request) => {
   return { ok: true };
 });
 
+export const removeStaffMember = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const staffId = String(request.data?.staffId || "").trim();
+  if (!staffId) {
+    throw new HttpsError("invalid-argument", "staffId is required.");
+  }
+
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff member not found.");
+  }
+
+  const staffData = staffSnap.data() as {
+    email?: string;
+    metadata?: { assignedToId?: string };
+  };
+
+  // Remove from agency assignedStaff if assigned
+  const assignedToId = staffData.metadata?.assignedToId;
+  if (assignedToId) {
+    await db
+      .collection("agencies")
+      .doc(assignedToId)
+      .update({
+        assignedStaff: FieldValue.arrayRemove(staffId),
+      });
+  }
+
+  // Delete Auth user + users doc by email
+  const email = staffData.email;
+  if (email && emailPattern.test(email)) {
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+
+    const adminAuth = getAuth();
+    for (const userDoc of userDocs.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
+  }
+
+  // Delete staff document
+  await staffRef.delete();
+
+  return { ok: true, staffId };
+});
+
 const getAlgoliaClient = () =>
   algoliasearch(ALGOLIA_APP_ID.value(), ALGOLIA_ADMIN_API_KEY.value());
 
 const algoliaIndex = (name: string) => `${ALGOLIA_INDEX_PREFIX.value()}${name}`;
 
-// ── Agencies → clients index ──
+// ── Agencies → agencies index ──
 export const syncAgencyToAlgolia = onDocumentWritten(
   { document: "agencies/{docId}", maxInstances: 10 },
   async (event) => {
@@ -2410,10 +2703,10 @@ export const syncAgencyToAlgolia = onDocumentWritten(
 
     if (!snap.after.exists) {
       await client.deleteObject({
-        indexName: algoliaIndex("clients"),
+        indexName: algoliaIndex("agencies"),
         objectID: event.params.docId,
       });
-      console.log(`Deleted agency ${event.params.docId} from clients index`);
+      console.log(`Deleted agency ${event.params.docId} from agencies index`);
       return;
     }
 
@@ -2422,10 +2715,10 @@ export const syncAgencyToAlgolia = onDocumentWritten(
     const sortableName = getBusinessName(data).toLowerCase().trim();
 
     await client.saveObject({
-      indexName: algoliaIndex("clients"),
+      indexName: algoliaIndex("agencies"),
       body: { objectID: event.params.docId, ...data, sortableName },
     });
-    console.log(`Saved agency ${event.params.docId} to clients index`);
+    console.log(`Saved agency ${event.params.docId} to agencies index`);
   },
 );
 
@@ -2545,6 +2838,7 @@ export const backfillAlgoliaIndices = onCall(
     const db = getFirestore();
     let totalStaff = 0;
     let totalAgencies = 0;
+    let totalClients = 0;
     let totalLogins = 0;
 
     // ── Staff ──
@@ -2568,7 +2862,7 @@ export const backfillAlgoliaIndices = onCall(
       totalStaff = staffObjects.length;
     }
 
-    // ── Agencies (clients index) ──
+    // ── Agencies (agencies index) ──
     const agencySnap = await db.collection("agencies").get();
     const agencyObjects: Array<Record<string, unknown>> = [];
     for (const doc of agencySnap.docs) {
@@ -2580,10 +2874,28 @@ export const backfillAlgoliaIndices = onCall(
     }
     if (agencyObjects.length > 0) {
       await client.saveObjects({
-        indexName: algoliaIndex("clients"),
+        indexName: algoliaIndex("agencies"),
         objects: agencyObjects,
       });
       totalAgencies = agencyObjects.length;
+    }
+
+    // ── Clients (clients index) ──
+    const clientSnap = await db.collection("clients").get();
+    const clientObjects: Array<Record<string, unknown>> = [];
+    for (const doc of clientSnap.docs) {
+      const data = doc.data();
+      const sortableName = getBusinessName(data ?? {})
+        .toLowerCase()
+        .trim();
+      clientObjects.push({ objectID: doc.id, ...data, sortableName });
+    }
+    if (clientObjects.length > 0) {
+      await client.saveObjects({
+        indexName: algoliaIndex("clients"),
+        objects: clientObjects,
+      });
+      totalClients = clientObjects.length;
     }
 
     // ── Users / logins (role=client) ──
@@ -2615,6 +2927,7 @@ export const backfillAlgoliaIndices = onCall(
       ok: true,
       staffBackfilled: totalStaff,
       agenciesBackfilled: totalAgencies,
+      clientsBackfilled: totalClients,
       loginsBackfilled: totalLogins,
     };
   },

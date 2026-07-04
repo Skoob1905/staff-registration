@@ -100,7 +100,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const isSuper = appUser?.role === "super";
 
   const fetchInvoices = useCallback(() => {
-    if (!appUser?.agencyId) return;
+    if (!appUser) return;
     setInvoicesLoading(true);
 
     const request = isAdmin || isSuper
@@ -124,7 +124,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [appUser, isAdmin, isSuper]);
 
   const fetchTimesheets = useCallback(() => {
-    if (!appUser?.agencyId) return;
+    if (!appUser) return;
     setTimesheetsLoading(true);
 
     const request = isAdmin || isSuper
@@ -149,11 +149,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   /* eslint-disable react-hooks/set-state-in-effect -- Data fetching on mount requires setState in effect */
   useEffect(() => {
-    if (appUser?.agencyId) {
+    if (appUser) {
       fetchInvoices();
       fetchTimesheets();
     }
-  }, [appUser?.agencyId, fetchInvoices, fetchTimesheets]);
+  }, [appUser, fetchInvoices, fetchTimesheets]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const { counts, invoicesByAgency, timesheetsByAgency } = useMemo(() => {

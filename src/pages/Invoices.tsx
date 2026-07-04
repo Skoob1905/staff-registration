@@ -8,7 +8,12 @@ import { useData } from "../context/DataProvider";
 
 export const Invoices = () => {
   const { appUser } = useAuth();
-  const { invoices, invoicesLoading: loading, markSeen, markDownloaded } = useData();
+  const {
+    invoices,
+    invoicesLoading: loading,
+    markSeen,
+    markDownloaded,
+  } = useData();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const myInvoices = useMemo(() => {
@@ -58,7 +63,9 @@ export const Invoices = () => {
                   documentInfo={
                     <span
                       className="text-lg sm:text-xl font-bold tracking-tight"
-                      style={{ color: isPaid ? "var(--accent)" : "var(--primary)" }}
+                      style={{
+                        color: isPaid ? "var(--accent)" : "var(--primary)",
+                      }}
                     >
                       <span className="text-xs sm:text-sm">£</span>
                       {amount}
@@ -79,8 +86,14 @@ export const Invoices = () => {
                       <Button
                         type="button"
                         onClick={() => {
-                          window.open(inv.fileUrl, "_blank", "noopener,noreferrer");
-                          markDownloaded("invoices", appUser?.agencyId ?? "", [inv.id]).catch(() => {});
+                          window.open(
+                            inv.fileUrl,
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                          markDownloaded("invoices", appUser?.agencyId ?? "", [
+                            inv.id,
+                          ]).catch(() => {});
                         }}
                       >
                         Download

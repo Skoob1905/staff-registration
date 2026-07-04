@@ -24,9 +24,9 @@ import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 
-export const Agencies = () => {
+export const Clients = () => {
   useEffect(() => {
-    document.title = "Agencies";
+    document.title = "Clients";
   }, []);
 
   const { appUser } = useAuth();
@@ -49,7 +49,7 @@ export const Agencies = () => {
     totalPages,
     totalResults,
   } = usePaginatedRecords({
-    indexName: "agencies_name_desc",
+    indexName: "clients_name_desc",
     agencyId: appUser?.agencyId ?? "",
     query: clientFilters.name,
     page,
@@ -163,7 +163,7 @@ export const Agencies = () => {
   return (
     <div className="mx-auto space-y-4">
       <PaginatedFilterSection
-        title="Agencies"
+        title="Clients"
         items={clients}
         loading={loading}
         totalResults={totalResults}
@@ -268,8 +268,8 @@ export const Agencies = () => {
       />
 
       <ImportHistory
-        type="agency"
-        cloudFunction="removeAgencies"
+        type="client"
+        cloudFunction="removeClients"
         getPreviewNames={(rows) =>
           rows.map(
             (r) =>

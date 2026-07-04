@@ -89,6 +89,21 @@ service firebase.storage {
       allow write: if isSignedIn();
     }
 
+    // CSV imports for agency CSV uploads
+    match /agencies/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    // CSV imports for client CSV uploads
+    match /clients/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    // CSV imports for staff CSV uploads
+    match /staff/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
     // Signed contracts uploaded by admin against a client
     match /signed_contracts/{clientId}/{allPaths=**} {
       allow read: if isSignedIn();
