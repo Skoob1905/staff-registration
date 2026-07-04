@@ -13,6 +13,7 @@ interface ClientsDropdownProps {
   autoFocus?: boolean;
   onBlur?: () => void;
   disableWithContract?: boolean;
+  indexName?: string;
 }
 
 export const ClientsDropdown = ({
@@ -25,6 +26,7 @@ export const ClientsDropdown = ({
   autoFocus,
   onBlur,
   disableWithContract,
+  indexName = "clients_name_desc",
 }: ClientsDropdownProps) => {
   const { appUser } = useAuth();
   const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
@@ -35,7 +37,7 @@ export const ClientsDropdown = ({
   );
 
   const { items: clients, loading } = usePaginatedRecords({
-    indexName: "clients_name_desc",
+    indexName,
     agencyId: isAdmin ? "all" : (appUser?.agencyId ?? ""),
     facetFilters: clientFacetFilters,
     hitsPerPage: 1000,

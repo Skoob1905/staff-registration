@@ -44,7 +44,7 @@ export const Staff = () => {
   const addTag = useAppStore((s) => s.addTag);
 
   const { items: companies } = usePaginatedRecords({
-    indexName: "clients_name_desc",
+    indexName: "agencies_name_desc",
     agencyId: appUser?.agencyId ?? "",
     facetFilters: undefined,
     hitsPerPage: 1000,
@@ -184,7 +184,6 @@ export const Staff = () => {
 
   const handleAssign = useCallback(
     async (staffId: string, assignedToId: string) => {
-      if (!appUser?.agencyId) return;
       setAssigningStaffId(staffId);
       try {
         const agency = companies.find((a) => a.id === assignedToId);
@@ -296,9 +295,10 @@ export const Staff = () => {
                           setActiveAssignMenu(null);
                         }}
                         className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                        placeholder="Select client..."
+                        placeholder="Assign agency"
                         autoFocus
                         onBlur={() => setActiveAssignMenu(null)}
+                        indexName="agencies_name_desc"
                       />
                     ) : assigningStaffId === member.id ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
@@ -359,7 +359,8 @@ export const Staff = () => {
                             if (value) handleAssign(member.id, value);
                           }}
                           className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                          placeholder="Select client..."
+                          placeholder="Assign agency"
+                          indexName="agencies_name_desc"
                         />
                       ) : null
                     }
