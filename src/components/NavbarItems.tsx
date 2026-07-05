@@ -14,16 +14,27 @@ const CLIENT_BADGE_MAP: Record<string, BadgeKey> = {
 };
 
 const SUPER_ROUTES = [
-  { label: "STAFF", to: "/staff" },
-  { label: "AGENCIES", to: "/agencies" },
   { label: "CLIENTS", to: "/clients" },
-  { label: "INVOICES", to: "/invoices" },
+  { label: "AGENCIES", to: "/agencies" },
+  { label: "STAFF", to: "/staff" },
   { label: "UPLOAD", to: "/upload" },
+  { label: "INVOICES", to: "/invoices" },
   { label: "PROFILE", to: "/profile" },
 ];
 
 const ADMIN_ROUTES = [
+  { label: "AGENCIES", to: "/agencies" },
   { label: "STAFF", to: "/staff" },
+  { label: "INVOICES", to: "/invoices" },
+  { label: "TIMESHEETS", to: "/timesheets" },
+  { label: "PROFILE", to: "/profile" },
+  { label: "SUPPORT", to: "/support" },
+];
+
+const CLIENT_ROUTES = [
+  { label: "STAFF", to: "/staff" },
+  { label: "UPLOAD", to: "/upload" },
+  { label: "TIMESHEETS", to: "/timesheets" },
   { label: "PROFILE", to: "/profile" },
   { label: "SUPPORT", to: "/support" },
 ];
@@ -32,15 +43,6 @@ const WORKER_ROUTES = [
   { label: "DASHBOARD", to: "/dashboard" },
   { label: "PROFILE", to: "/profile" },
   { label: "SUPPORT", to: "/support" },
-];
-
-const CLIENT_ROUTES = [
-  { label: "STAFF", to: "/staff" },
-  { label: "UPLOAD", to: "/upload" },
-  { label: "INVOICES", to: "/invoices" },
-  { label: "TIMESHEETS", to: "/timesheets" },
-  { label: "SUPPORT", to: "/support" },
-  { label: "PROFILE", to: "/profile" },
 ];
 
 function NavItem({

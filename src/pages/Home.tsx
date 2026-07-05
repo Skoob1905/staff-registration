@@ -1,372 +1,261 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { FileText } from "lucide-react";
 import { useAuth } from "../context/AuthProvider";
-import { getPayslipsForUser } from "../services/payslipService";
-import type { Payslip } from "../types/domain";
+import { useAppStore } from "../stores/appStore";
+import { db } from "../services/firebase";
 import { StaffListSection } from "../components/StaffListSection";
+import { AccordionItem } from "../components/ui";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { Pill } from "../components/Pill";
+import { Metadata } from "../components/Metadata";
+import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+import { getStaffName, findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { formatInvitedAt } from "../utils/date";
+import type { Agency, BulkStaff } from "../types/domain";
 
 export const Home = () => {
   useEffect(() => {
     document.title = "Home";
   }, []);
+
   const { appUser } = useAuth();
-  const [, setPayslips] = useState<Payslip[]>([]);
-  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
+  const tags = useAppStore((s) => s.tags);
+  const loadTags = useAppStore((s) => s.loadTags);
+  const { leftValue, rightValue, onLeftChange, onRightChange } =
+    useDualAccordionParams();
+
+  const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
+  const [assignedAgencies, setAssignedAgencies] = useState<Agency[]>([]);
 
   useEffect(() => {
     const run = async () => {
       if (!appUser) return;
-      const [slips] = await Promise.all([
-        getPayslipsForUser(appUser.email),
-      ]);
-      setPayslips(slips);
+
+      let ids: string[] = [];
+
+      if (appUser.role === "admin") {
+        const userSnap = await getDoc(doc(db, "users", appUser.uid));
+        if (!userSnap.exists()) return;
+        const userData = userSnap.data() as {
+          assignedAgencyIds?: string[];
+        };
+        ids = userData.assignedAgencyIds ?? [];
+        if (ids.length === 0 && appUser.agencyId) {
+          ids = [appUser.agencyId];
+        }
+      } else {
+        if (!appUser.email) return;
+        const clientQuery = query(
+          collection(db, "clients"),
+          where("email", "==", appUser.email.toLowerCase()),
+        );
+        const clientSnap = await getDocs(clientQuery);
+        if (clientSnap.empty) return;
+
+        const clientData = clientSnap.docs[0].data() as {
+          metadata?: { assignedAgencies?: string[] };
+        };
+        ids = clientData.metadata?.assignedAgencies ?? [];
+      }
+
+      setAssignedAgencyIds(ids);
+
+      const agencies: Agency[] = [];
+      for (const agencyId of ids) {
+        const snap = await getDoc(doc(db, "agencies", agencyId));
+        if (snap.exists()) {
+          const data = snap.data();
+          agencies.push({
+            id: snap.id,
+            name:
+              data.business_name ||
+              data["Business Name"] ||
+              data.name ||
+              findValueByNormalizedKey(
+                data,
+                "businessname",
+                "companyname",
+                "name",
+                "agencyname",
+                "company",
+              ) ||
+              snap.id,
+            slug: "",
+            assignedStaff: data.assignedStaff || [],
+          });
+        }
+      }
+      setAssignedAgencies(agencies);
     };
     void run();
   }, [appUser]);
 
+  useEffect(() => {
+    loadTags().catch(() => {});
+  }, [loadTags]);
+
+  const tagsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const tag of tags) {
+      map[tag.id] = tag.value;
+    }
+    return map;
+  }, [tags]);
+
+  const renderItem = useCallback(
+    (member: BulkStaff, idx: number) => {
+      const displayName = getStaffName(member);
+      return (
+        <AccordionItem
+          key={member.id}
+          value={member.id}
+          className="animate-cascade"
+          style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+          title={
+            <div className="flex min-w-0 items-center gap-2">
+              <AccordionTitle>{displayName}</AccordionTitle>
+              {member.metadata?.cv && member.metadata.cv.length > 0 && (
+                <Pill
+                  status="cv"
+                  icon={<FileText className="h-4 w-4" />}
+                  label=""
+                />
+              )}
+            </div>
+          }
+          actions={
+            member.metadata?.assignedToName ? (
+              <span className="shrink-0 text-xs text-[var(--muted-foreground)] truncate max-w-[200px]">
+                {member.metadata.assignedToName}
+              </span>
+            ) : null
+          }
+        >
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <Metadata
+              title="Tags"
+              className="animate-cascade"
+              style={{ animationDelay: "0ms" }}
+              value={
+                member.tags && member.tags.length > 0
+                  ? member.tags.map((id) => tagsMap[id] || id).join(", ")
+                  : "None"
+              }
+            />
+          </div>
+          {member.metadata?.cv && member.metadata.cv.length > 0 && (
+            <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+              {member.metadata.cv.map((entry, i) => (
+                <Metadata
+                  key={`${member.id}::cv::${entry.fileName}`}
+                  title="CV"
+                  className="flex items-center animate-cascade"
+                  style={{ animationDelay: `${(i + 1) * 12}ms` } as React.CSSProperties}
+                  value={
+                    <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                      <span className="text-[var(--muted-foreground)]">
+                        {entry.fileName}
+                      </span>
+                      <FileInteractionButtons
+                        fileUrl={entry.fileUrl}
+                        fileName={entry.fileName}
+                        interactionKey="cv"
+                        size="md"
+                      />
+                    </span>
+                  }
+                />
+              ))}
+            </div>
+          )}
+          {member.metadata?.documents &&
+            member.metadata.documents.length > 0 && (
+              <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+                {member.metadata.documents.map((entry: any, i: number) => (
+                  <Metadata
+                    key={`${member.id}::doc::${entry.fileName}`}
+                    title="Document"
+                    className="flex items-center animate-cascade"
+                    style={{ animationDelay: `${(i + 1) * 12}ms` } as React.CSSProperties}
+                    value={
+                      <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                        <span className="text-[var(--muted-foreground)]">
+                          {entry.fileName}
+                        </span>
+                        <FileInteractionButtons
+                          fileUrl={entry.fileUrl}
+                          fileName={entry.fileName}
+                          interactionKey="document"
+                          size="md"
+                        />
+                      </span>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          <div className="overflow-x-auto mt-2">
+            <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
+              {Object.entries(member)
+                .filter(
+                  ([key, value]) =>
+                    key !== "id" &&
+                    key !== "uid" &&
+                    key !== "metadata" &&
+                    key !== "agencyId" &&
+                    key !== "importedByAgencyId" &&
+                    key !== "tags" &&
+                    key !== "typeIds" &&
+                    key !== "sortableName" &&
+                    value !== "" &&
+                    value !== null &&
+                    value !== undefined,
+                )
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, value], i) => {
+                  const display =
+                    value instanceof Date
+                      ? formatInvitedAt(value)
+                      : String(value ?? "");
+                  return (
+                    <p
+                      key={key}
+                      className="whitespace-nowrap px-1 animate-cascade"
+                      style={
+                        {
+                          animationDelay: `${i * 12}ms`,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <span className="font-medium text-[var(--foreground)]">
+                        {key}
+                      </span>
+                      <span className="font-medium">: {display}</span>
+                    </p>
+                  );
+                })}
+            </div>
+          </div>
+        </AccordionItem>
+      );
+    },
+    [tagsMap],
+  );
+
   return (
     <div className="mx-auto space-y-4">
-      {/* <Card>
-        <div className="flex items-center gap-2">
-          <h2 className="text-base sm:text-lg font-bold">To Do</h2>
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${registrationStatus === "awaiting" ? "border-[color:rgba(245,158,11,0.28)] bg-[color:rgba(251,191,36,0.18)] text-amber-700" : "border-[color:rgba(16,185,129,0.28)] bg-[color:rgba(52,211,153,0.18)] text-emerald-700"}`}
-          >
-            {registrationStatus === "awaiting"
-              ? "Not Registered"
-              : "Registered"}
-          </span>
-          {appUser?.contractSigned === false && appUser?.contractSent ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color:rgba(251,191,36,0.18)] border border-[color:rgba(245,158,11,0.28)] px-3 py-1 text-xs font-semibold text-amber-700">
-              <FileText className="h-3.5 w-3.5" />
-              <span>Not Signed</span>
-            </span>
-          ) : appUser?.contractSigned === true ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color:rgba(52,211,153,0.18)] border border-[color:rgba(16,185,129,0.28)] px-3 py-1 text-xs font-semibold text-emerald-700">
-              <FileText className="h-3.5 w-3.5" />
-              <span>Signed</span>
-            </span>
-          ) : null}
-          {registrationStatus === "registered" && !appUser?.contractSent ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color:rgba(248,113,113,0.16)] border border-[color:rgba(239,68,68,0.26)] px-3 py-1 text-xs font-semibold text-red-600">
-              <FileText className="h-3.5 w-3.5" />
-              <span>Not Sent</span>
-            </span>
-          ) : null}
-        </div>
-        {appUser?.contractSigned === false && appUser?.contractSentBy ? (
-          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            Sent By: {appUser.contractSentBy} at{" "}
-            {formatInvitedAt(appUser.contractSent)}
-          </p>
-        ) : null}
-
-        {registrationStatus === "awaiting" ? (
-          <Button
-            type="button"
-            className="mt-3"
-            onClick={() => setShowRegistrationModal(true)}
-          >
-            Register Now
-          </Button>
-        ) : appUser?.contractSigned === false && appUser?.contractSentBy ? (
-          <Button
-            type="button"
-            className="mt-3"
-            disabled={openingSignModal}
-            onClick={async () => {
-              if (!appUser) return;
-              setOpeningSignModal(true);
-              try {
-                const freshContracts = await getPendingContracts(
-                  appUser.uid,
-                  appUser.agencyId,
-                );
-                setContracts(freshContracts);
-                const latest = await getLatestUnsignedContract(
-                  appUser.uid,
-                  appUser.agencyId,
-                );
-                if (!latest) {
-                  toast({
-                    title: "No contract found",
-                    description: "Please refresh and try again.",
-                    variant: "error",
-                  });
-                  return;
-                }
-                onOpenSignModal(latest);
-              } finally {
-                setOpeningSignModal(false);
-              }
-            }}
-          >
-            {openingSignModal ? "Opening..." : "Sign Contract"}
-          </Button>
-        ) : registrationStatus === "registered" &&
-          !latestUndownloadedPayslip ? (
-          <p className="mt-3 text-xs sm:text-sm text-[var(--muted-foreground)]">
-            Relax! There is nothing to do
-          </p>
-        ) : null}
-        {registrationStatus === "registered" && latestUndownloadedPayslip ? (
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.08)] px-3 py-2">
-            <p className="text-xs sm:text-sm text-[var(--foreground)]">
-              Download latest payslip
-            </p>
-            <Button
-              type="button"
-              className="bg-[var(--primary)] text-white"
-              onClick={() => void onDownloadPayslip(latestUndownloadedPayslip)}
-            >
-              Download
-            </Button>
-          </div>
-        ) : null}
-      </Card>
-
-      <Card>
-        <div id="contracts-section" />
-        <h2 className="text-base sm:text-lg font-bold">Contracts</h2>
-        <div className="mt-1.5 rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.08)] p-3 sm:mt-3">
-          <div className="space-y-1 text-xs sm:text-sm text-[var(--foreground)]">
-            {appUser?.contractSent ? (
-              <p>
-                <b>Sent By:</b> {appUser.contractSentBy ?? "Unknown"} at{" "}
-                {formatInvitedAt(appUser.contractSent)}
-              </p>
-            ) : null}
-            {contracts[0] || signedContracts[0] ? (
-              <div className="flex items-center gap-2">
-                <b>Contract:</b>{" "}
-                {contracts[0]?.fileName ?? signedContracts[0]?.fileName}
-                {contracts[0]?.fileUrl || signedContracts[0]?.fileUrl ? (
-                  <ActionButton
-                    variant="download"
-                    href={contracts[0]?.fileUrl ?? signedContracts[0]?.fileUrl}
-                    ariaLabel="Download contract"
-                  />
-                ) : null}
-              </div>
-            ) : null}
-            {appUser?.contractSignedAt ? (
-              <p>
-                <b>Signed At:</b> {formatInvitedAt(appUser.contractSignedAt)}
-              </p>
-            ) : appUser?.contractSigned === undefined ? (
-              <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                No contracts signed.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-base sm:text-lg font-bold">Payslips</h2>
-        {payslips.length ? (
-          <div className="mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] sm:mt-3">
-            <AccordionRoot type="single" collapsible>
-              {payslips.map((payslip) => (
-                <AccordionItem
-                  key={payslip.id}
-                  value={payslip.id}
-                  title={
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{payslip.fileName}</span>
-                      {!payslip.hasDownloaded && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                          New
-                        </span>
-                      )}
-                      <ActionButton
-                          variant="download"
-                          ariaLabel="Download payslip"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            void onDownloadPayslip(payslip);
-                          }}
-                        />
-                    </div>
-                  }
-                >
-                  <div className="space-y-1 text-xs sm:text-sm text-zinc-600">
-                    <p>
-                      <b>Sent By:</b> {payslip.sentBy ?? "Unknown"}
-                    </p>
-                    <p>
-                      <b>Sent At:</b> {formatInvitedAt(payslip.timestamp)}
-                    </p>
-                  </div>
-                </AccordionItem>
-              ))}
-            </AccordionRoot>
-          </div>
-        ) : (
-          <p className="mt-1.5 text-xs sm:text-sm text-zinc-500 sm:mt-3">No payslips available.</p>
-        )}
-      </Card> */}
-
-      {/* <DialogRoot
-        open={showRegistrationModal}
-        onOpenChange={setShowRegistrationModal}
-      >
-        <DialogContent onClose={() => setShowRegistrationModal(false)}>
-          <DialogTitle className="text-base sm:text-lg font-bold">
-            Complete Registration
-          </DialogTitle>
-          <p className="mt-1 text-xs sm:text-sm text-zinc-600">
-            Please provide your details to complete onboarding.
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-zinc-700">
-                First name
-              </label>
-              <input
-                value={formData.firstName}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    firstName: e.target.value,
-                  }))
-                }
-                onBlur={() =>
-                  setTouched((prev) => ({ ...prev, firstName: true }))
-                }
-                className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
-              />
-              {touched.firstName && "firstName" in formErrors ? (
-                <p className="mt-1 text-xs text-red-600">
-                  {formErrors.firstName}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-zinc-700">
-                Last name
-              </label>
-              <input
-                value={formData.lastName}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
-                }
-                onBlur={() =>
-                  setTouched((prev) => ({ ...prev, lastName: true }))
-                }
-                className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
-              />
-              {touched.lastName && "lastName" in formErrors ? (
-                <p className="mt-1 text-xs text-red-600">
-                  {formErrors.lastName}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <label className="text-xs sm:text-sm font-medium text-zinc-700">
-              Birthday
-            </label>
-            <input
-              type="date"
-              value={formData.birthday}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, birthday: e.target.value }))
-              }
-              onBlur={() => setTouched((prev) => ({ ...prev, birthday: true }))}
-              className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
-            />
-            {touched.birthday && "birthday" in formErrors ? (
-              <p className="mt-1 text-xs text-red-600">{formErrors.birthday}</p>
-            ) : null}
-          </div>
-
-          <div className="mt-3">
-            <label className="text-xs sm:text-sm font-medium text-zinc-700">Address</label>
-            <textarea
-              value={formData.address}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, address: e.target.value }))
-              }
-              onBlur={() => setTouched((prev) => ({ ...prev, address: true }))}
-              className="mt-1 min-h-24 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs sm:text-sm"
-            />
-            {touched.address && "address" in formErrors ? (
-              <p className="mt-1 text-xs text-red-600">{formErrors.address}</p>
-            ) : null}
-          </div>
-
-          <div className="mt-4">
-            <label className="inline-flex items-center gap-2 text-xs sm:text-sm text-zinc-700">
-              <input
-                type="checkbox"
-                checked={formData.honestyConfirmed}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    honestyConfirmed: e.target.checked,
-                  }))
-                }
-                onBlur={() =>
-                  setTouched((prev) => ({ ...prev, honestyConfirmed: true }))
-                }
-                className="h-4 w-4 rounded border border-[var(--border)]"
-              />
-              I have answered honestly
-            </label>
-            {touched.honestyConfirmed && "honestyConfirmed" in formErrors ? (
-              <p className="mt-1 text-xs text-red-600">
-                {formErrors.honestyConfirmed}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="mt-4 flex justify-end">
-            <Button
-              type="button"
-              disabled={!isRegistrationValid || registrationLoading}
-              onClick={() => void onRegisterNow()}
-            >
-              {registrationLoading ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Registering...
-                </span>
-              ) : (
-                "Register"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </DialogRoot> */}
-
       <StaffListSection
         view="client"
+        targetAgencyIds={assignedAgencyIds}
+        agencies={assignedAgencies}
+        renderItem={renderItem}
         leftAccordionValue={leftValue}
         onLeftAccordionChange={onLeftChange}
         rightAccordionValue={rightValue}
         onRightAccordionChange={onRightChange}
       />
-
-      {/* <SignModal
-        open={showSignModal}
-        contract={activeContract}
-        showDrawPad={showDrawPad}
-        signingLoading={signingLoading}
-        signaturePadRef={signaturePadRef}
-        onClose={() => {
-          setShowSignModal(false);
-          setActiveContract(null);
-          setShowDrawPad(false);
-        }}
-        onStartSign={() => setShowDrawPad(true)}
-        onClearSignature={() => signaturePadRef.current?.clear()}
-        onSubmitSignature={onApplySignature}
-      /> */}
     </div>
   );
 };

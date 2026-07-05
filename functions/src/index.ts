@@ -34,6 +34,7 @@ import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { sendLogins } from "./utils/sendLogins.js";
 
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
@@ -49,16 +50,6 @@ const normalizeEmail = (value: unknown): string =>
   String(value || "")
     .trim()
     .toLowerCase();
-
-const normalizeRecordKeys = (
-  record: Record<string, unknown>,
-): Record<string, unknown> => {
-  const normalized: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(record)) {
-    normalized[normalizeKey(key)] = value;
-  }
-  return normalized;
-};
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const namePattern = /^[A-Za-z' -]+$/;
@@ -897,6 +888,10 @@ export const importAgencyCsv = onCall(async (request) => {
       duplicateCount++;
       continue;
     }
+    const emailVal = findNormalizedValue(record, "email", "emailaddress");
+    if (emailVal) {
+      record["email"] = normalizeEmail(emailVal);
+    }
     newRecords.push(record);
   }
 
@@ -928,7 +923,7 @@ export const importAgencyCsv = onCall(async (request) => {
         importedAt: FieldValue.serverTimestamp(),
       };
       batch.set(docRef, {
-        ...normalizeRecordKeys(record),
+        ...record,
         metadata: meta,
       });
     }
@@ -950,12 +945,25 @@ export const importAgencyCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
+  const loginResults = await sendLogins({
+    records: newRecords,
+    role: "client",
+    callerUid,
+    invitedByAgencyId: caller.agencyId ?? callerUid,
+    agencyId: caller.agencyId ?? callerUid,
+    webApiKey: WEB_API_KEY.value(),
+    continueUrl: RESET_CONTINUE_URL.value(),
+  });
+
   return {
     ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    loginAccountsCreated: loginResults.created,
+    loginAccountsSkipped: loginResults.skipped,
+    loginAccountsFailed: loginResults.failed,
   };
 });
 
@@ -1018,6 +1026,10 @@ export const importClientCsv = onCall(async (request) => {
       duplicateCount++;
       continue;
     }
+    const emailVal = findNormalizedValue(record, "email", "emailaddress");
+    if (emailVal) {
+      record["email"] = normalizeEmail(emailVal);
+    }
     newRecords.push(record);
   }
 
@@ -1049,7 +1061,7 @@ export const importClientCsv = onCall(async (request) => {
         importedAt: FieldValue.serverTimestamp(),
       };
       batch.set(docRef, {
-        ...normalizeRecordKeys(record),
+        ...record,
         metadata: meta,
       });
     }
@@ -1071,12 +1083,25 @@ export const importClientCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
+  const loginResults = await sendLogins({
+    records: newRecords,
+    role: "admin",
+    callerUid,
+    invitedByAgencyId: caller.agencyId ?? callerUid,
+    agencyId: caller.agencyId ?? callerUid,
+    webApiKey: WEB_API_KEY.value(),
+    continueUrl: RESET_CONTINUE_URL.value(),
+  });
+
   return {
     ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    loginAccountsCreated: loginResults.created,
+    loginAccountsSkipped: loginResults.skipped,
+    loginAccountsFailed: loginResults.failed,
   };
 });
 
@@ -1149,7 +1174,6 @@ export const importStaffCsv = onCall(async (request) => {
       : "");
 
   const tagIds = request.data?.tagIds as string[] | undefined;
-  const autoLogin = Boolean(request.data?.autoLogin);
 
   const newRecords: Array<Record<string, unknown>> = [];
   let duplicateCount = 0;
@@ -1181,6 +1205,11 @@ export const importStaffCsv = onCall(async (request) => {
       record["Surname"] = surname ?? "";
     }
 
+    const emailVal = findNormalizedValue(record, "email", "emailaddress");
+    if (emailVal) {
+      record["email"] = normalizeEmail(emailVal);
+    }
+
     newRecords.push(record);
   }
 
@@ -1206,7 +1235,7 @@ export const importStaffCsv = onCall(async (request) => {
     for (const record of chunk) {
       const docRef = db.collection("staff").doc();
       batch.set(docRef, {
-        ...normalizeRecordKeys(record),
+        ...record,
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
         metadata: {
           role: "worker",
@@ -1252,90 +1281,15 @@ export const importStaffCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
-  let loginAccountsCreated = 0;
-  let loginAccountsSkipped = 0;
-  let loginAccountsFailed = 0;
-
-  if (autoLogin) {
-    const adminAuth = getAuth();
-    const continueUrl = RESET_CONTINUE_URL.value();
-
-    for (let i = 0; i < newRecords.length; i++) {
-      const record = newRecords[i] as Record<string, unknown>;
-      const rawEmail = findNormalizedValue(record, "email") ?? "";
-      const email = normalizeEmail(rawEmail);
-
-      if (!email || !emailPattern.test(email)) {
-        loginAccountsSkipped++;
-        continue;
-      }
-
-      try {
-        let user;
-        try {
-          user = await adminAuth.getUserByEmail(email);
-        } catch (err: unknown) {
-          const authErr = err as { code?: string };
-          if (authErr.code === "auth/user-not-found") {
-            user = await adminAuth.createUser({ email });
-          } else {
-            throw err;
-          }
-        }
-
-        const userDoc: Record<string, unknown> = {
-          uid: user.uid,
-          email,
-          role: "worker",
-          metadata: {
-            registered: true,
-            invitedByAgencyId: caller.agencyId ?? callerUid,
-            invitedByUid: callerUid,
-            invitedAt: FieldValue.serverTimestamp(),
-          },
-        };
-        if (assignedToId) {
-          userDoc.agencyId = assignedToId;
-        }
-        await db
-          .collection("users")
-          .doc(user.uid)
-          .set(userDoc, { merge: true });
-
-        const resp = await fetch(
-          `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              requestType: "PASSWORD_RESET",
-              email,
-              continueUrl,
-            }),
-          },
-        );
-
-        if (!resp.ok) {
-          console.warn("[importStaffCsv] sendOobCode failed", {
-            email,
-            status: resp.status,
-          });
-        }
-
-        loginAccountsCreated++;
-      } catch (err) {
-        console.error("[importStaffCsv] auto-login failed", {
-          email,
-          error: err,
-        });
-        loginAccountsFailed++;
-      }
-
-      if (i < newRecords.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-  }
+  const loginResults = await sendLogins({
+    records: newRecords,
+    role: "worker",
+    callerUid,
+    invitedByAgencyId: caller.agencyId ?? callerUid,
+    agencyId: assignedToId || undefined,
+    webApiKey: WEB_API_KEY.value(),
+    continueUrl: RESET_CONTINUE_URL.value(),
+  });
 
   return {
     ok: true,
@@ -1343,9 +1297,9 @@ export const importStaffCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    loginAccountsCreated,
-    loginAccountsSkipped,
-    loginAccountsFailed,
+    loginAccountsCreated: loginResults.created,
+    loginAccountsSkipped: loginResults.skipped,
+    loginAccountsFailed: loginResults.failed,
   };
 });
 
@@ -1664,8 +1618,6 @@ export const removeAgencies = onCall(async (request) => {
     .where("metadata.uploadedInFile", "==", importId)
     .get();
 
-  const agencyIds = agencySnaps.docs.map((d) => d.id);
-
   const BATCH_LIMIT = 500;
   let deletedCount = 0;
 
@@ -1679,15 +1631,17 @@ export const removeAgencies = onCall(async (request) => {
     await batch.commit();
   }
 
-  // Remove associated client logins
+  // Delete Auth users + users docs for imported agencies with email
   const adminAuth = getAuth();
-  for (const agencyId of agencyIds) {
-    const userSnaps = await db
+  for (const snap of agencySnaps.docs) {
+    const data = snap.data() as { email?: string };
+    const email = data.email;
+    if (!email || !emailPattern.test(email)) continue;
+    const userDocs = await db
       .collection("users")
-      .where("agencyId", "==", agencyId)
-      .where("role", "==", "client")
+      .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userSnaps.docs) {
+    for (const userDoc of userDocs.docs) {
       try {
         await adminAuth.deleteUser(userDoc.id);
       } catch (err: unknown) {
@@ -1740,6 +1694,25 @@ export const assignAgencyToClient = onCall(async (request) => {
       },
       { merge: true },
     );
+
+  // Sync assignedAgencyIds to the client's user doc so the Firestore
+  // security rules can grant read access to the assigned agencies.
+  const clientSnap = await db.collection("clients").doc(clientId).get();
+  const clientData = clientSnap.data() as { email?: string } | undefined;
+  if (clientData?.email) {
+    const userQuery = await db
+      .collection("users")
+      .where("email", "==", clientData.email.toLowerCase())
+      .where("role", "==", "admin")
+      .limit(1)
+      .get();
+    if (!userQuery.empty) {
+      await db
+        .collection("users")
+        .doc(userQuery.docs[0].id)
+        .update({ assignedAgencyIds });
+    }
+  }
 
   return { ok: true, clientId, assignedAgencyIds };
 });
@@ -1795,8 +1768,6 @@ export const removeClients = onCall(async (request) => {
     .where("metadata.uploadedInFile", "==", importId)
     .get();
 
-  const clientIds = clientSnaps.docs.map((d) => d.id);
-
   const BATCH_LIMIT = 500;
   let deletedCount = 0;
 
@@ -1810,15 +1781,17 @@ export const removeClients = onCall(async (request) => {
     await batch.commit();
   }
 
-  // Remove associated client logins
+  // Delete Auth users + users docs for imported clients with email
   const adminAuth = getAuth();
-  for (const clientId of clientIds) {
-    const userSnaps = await db
+  for (const snap of clientSnaps.docs) {
+    const data = snap.data() as { email?: string };
+    const email = data.email;
+    if (!email || !emailPattern.test(email)) continue;
+    const userDocs = await db
       .collection("users")
-      .where("agencyId", "==", clientId)
-      .where("role", "==", "client")
+      .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userSnaps.docs) {
+    for (const userDoc of userDocs.docs) {
       try {
         await adminAuth.deleteUser(userDoc.id);
       } catch (err: unknown) {

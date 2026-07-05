@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { LoadingPage } from "../components/LoadingPage";
 import { Login } from "../pages/Login";
 import { Agencies } from "../pages/Agencies";
+import { ClientAgencies } from "../pages/ClientAgencies";
 import { Clients } from "../pages/Clients";
 import { AllTimesheets } from "../pages/AllTimesheets";
 import { AllInvoices } from "../pages/AllInvoices";
@@ -35,8 +36,7 @@ const StaffPageSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
-  if (appUser.role === "super" || appUser.role === "admin")
-    return <Staff />;
+  if (appUser.role === "super") return <Staff />;
   return <Home />;
 };
 
@@ -67,6 +67,13 @@ const TimesheetsSwitch = () => {
   return <Timesheets />;
 };
 
+const AgenciesSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role === "super") return <Agencies />;
+  return <ClientAgencies />;
+};
+
 export const AppRouter = () => (
   <>
     <Routes>
@@ -83,9 +90,10 @@ export const AppRouter = () => (
           <Route path="/dashboard" element={<DashboardSwitch />} />
 
           <Route element={<RoleGuard role="super" />}>
-            <Route path="/agencies" element={<Agencies />} />
             <Route path="/clients" element={<Clients />} />
           </Route>
+
+          <Route path="/agencies" element={<AgenciesSwitch />} />
 
           <Route path="/" element={<AppEntryRedirect />} />
           <Route path="*" element={<AppEntryRedirect />} />

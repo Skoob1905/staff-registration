@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { FileSignature } from "lucide-react";
+import { Building2, Clock, FileSignature } from "lucide-react";
+import { AddModal } from "../components/AddModal";
+import { FileDrop } from "../components/FileDrop";
+import { PreviewModal } from "../components/PreviewModal";
+import { Section } from "../components/Section";
 import { ImportHistory } from "../components/ImportHistory";
 import {
   AccordionItem,
@@ -16,13 +20,40 @@ import { AccordionTitle } from "../components/AccordionTitle";
 import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import {
+  findValueByNormalizedKey,
+  hasBusinessNameColumn,
+} from "../utils/keyHeaderNormalisation";
 import { functions } from "../services/firebase";
 import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+
+const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+function parseCsvHeaders(text: string): string[] {
+  const firstLine = text.trim().split("\n")[0];
+  if (!firstLine) return [];
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < firstLine.length; i++) {
+    const char = firstLine[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
 
 export const Agencies = () => {
   useEffect(() => {
@@ -41,6 +72,65 @@ export const Agencies = () => {
   const [clientFilters, setClientFilters] = useFilterParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalFile, setAddModalFile] = useState<File | null>(null);
+  const [addModalCsvType, setAddModalCsvType] = useState<
+    "agency" | "timesheet"
+  >("agency");
+
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewMode, setPreviewMode] = useState<
+    "invoice" | "contract" | "payslip" | "document"
+  >("invoice");
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const handleFileSelect = async (file: File, typeId: string) => {
+    if (typeId === "agencies") {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Agency CSV must be 2MB or less.",
+          variant: "error",
+        });
+        return;
+      }
+      const text = await file.text();
+      const headers = parseCsvHeaders(text);
+      if (!hasBusinessNameColumn(headers)) {
+        toast({
+          title: "Invalid Agency Upload",
+          description:
+            "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
+          variant: "error",
+        });
+        return;
+      }
+      setAddModalFile(file);
+      setAddModalCsvType("agency");
+      setShowAddModal(true);
+    } else if (typeId === "timesheets") {
+      if (!file.name.toLowerCase().endsWith(".csv")) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a CSV file.",
+          variant: "error",
+        });
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Timesheet must be 2MB or less.",
+          variant: "error",
+        });
+        return;
+      }
+      setAddModalFile(file);
+      setAddModalCsvType("timesheet");
+      setShowAddModal(true);
+    }
+  };
 
   const {
     items: clients,
@@ -291,6 +381,44 @@ export const Agencies = () => {
           )
         }
         onDeleteSuccess={handleDeleteSuccess}
+      />
+
+      <AddModal
+        open={showAddModal}
+        onOpenChange={(open) => {
+          setShowAddModal(open);
+          if (!open) setAddModalFile(null);
+        }}
+        cloudFunction={
+          addModalCsvType === "timesheet"
+            ? "recordTimesheetUpload"
+            : "importAgencyCsv"
+        }
+        storagePath={
+          addModalCsvType === "timesheet" ? "timesheet_imports" : "agencies"
+        }
+        itemLabel={addModalCsvType === "timesheet" ? "timesheet" : "agency"}
+        itemLabelPlural={
+          addModalCsvType === "timesheet" ? "timesheets" : "agencies"
+        }
+        csvType={addModalCsvType}
+        duplicateKey={
+          addModalCsvType === "timesheet" ? "fileName" : "companyName"
+        }
+        initialFile={addModalFile}
+        onSuccess={async () => {
+          setTimeout(() => refresh(), 2000);
+        }}
+      />
+
+      <PreviewModal
+        open={showPreviewModal}
+        file={previewFile}
+        mode={previewMode}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setPreviewFile(null);
+        }}
       />
 
       <DialogRoot

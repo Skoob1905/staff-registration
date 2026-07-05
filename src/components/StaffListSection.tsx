@@ -33,6 +33,7 @@ import type {
 interface StaffListSectionProps {
   view: "admin" | "client";
   targetAgencyId?: string;
+  targetAgencyIds?: string[];
   action?: ReactNode;
   refreshTrigger?: number;
   renderItem?: (item: BulkStaff, index: number) => ReactNode;
@@ -47,6 +48,7 @@ interface StaffListSectionProps {
 export const StaffListSection = ({
   view,
   targetAgencyId,
+  targetAgencyIds,
   action,
   refreshTrigger,
   renderItem,
@@ -65,6 +67,11 @@ export const StaffListSection = ({
   const [pageSize, setPageSize] = useState(10);
   const isClient = view === "client";
   const assignedToId = targetAgencyId || appUser?.agencyId || "";
+  const clientAgencyIds = useMemo(() => {
+    if (targetAgencyIds?.length) return targetAgencyIds;
+    if (assignedToId) return [assignedToId];
+    return [];
+  }, [targetAgencyIds, assignedToId]);
   const staffKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "metadata.assignedToId" }),
     [],
@@ -80,11 +87,11 @@ export const StaffListSection = ({
 
   const staffFacetFilters = useMemo(() => {
     const ffs = buildFacetFilters(filters, staffKeyMap);
-    if (isClient && assignedToId) {
-      ffs.push([`${staffKeyMap.agency}:${assignedToId}`]);
+    if (isClient && clientAgencyIds.length > 0) {
+      ffs.push(clientAgencyIds.map((id) => `${staffKeyMap.agency}:${id}`));
     }
     return ffs;
-  }, [isClient, assignedToId, filters, staffKeyMap]);
+  }, [isClient, clientAgencyIds, filters, staffKeyMap]);
 
   const facets = useMemo(
     () => buildFacetRequestFields(staffKeyMap),
@@ -260,7 +267,8 @@ export const StaffListSection = ({
       tags={filterTagsMap}
       tagCounts={facetCounts?.tags}
       agencies={filterAgencies}
-      enableAgencyFilter={!isClient}
+      enableAgencyFilter={Boolean(!isClient || (agencies && agencies.length > 0))}
+      enableTagFilter
       emptyMessage={
         isClient ? "You've not been assigned any staff yet" : undefined
       }

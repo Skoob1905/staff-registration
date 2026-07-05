@@ -51,12 +51,17 @@ service cloud.firestore {
       );
     }
 
+    function clientHasAgency(agencyId) {
+      let ids = userDoc().data.assignedAgencyIds;
+      return isClient() && ids is list && agencyId in ids;
+    }
+
     // Agencies
     match /agencies/{agencyId} {
       allow read: if isSignedIn() && (
         isSuper() ||
         adminHasAgency(agencyId) ||
-        (isClient() || isWorker()) && agencyId == userAgencyId()
+        (isClient() || isWorker()) && (agencyId == userAgencyId() || clientHasAgency(agencyId))
       );
       allow write: if isSuper();
     }
@@ -161,7 +166,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isSuper() ||
         adminHasAgency(resource.data.metadata.uploadedBy) ||
-        (isClient() || isWorker()) && resource.data.metadata.uploadedBy == userAgencyId()
+        (isClient() || isWorker()) && resource.data.metadata.uploadedBy == userAgencyId() ||
+        isClient() && resource.data.email == request.auth.token.email
       );
       allow write: if isSuper();
     }

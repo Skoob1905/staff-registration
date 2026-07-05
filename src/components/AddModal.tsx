@@ -155,7 +155,6 @@ export const AddModal = ({
   >();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [autoLogin, setAutoLogin] = useState(false);
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
@@ -415,7 +414,6 @@ export const AddModal = ({
             }
           : {}),
         ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
-        ...(autoLogin ? { autoLogin: true } : {}),
       });
       setProcessing(false);
 
@@ -423,6 +421,9 @@ export const AddModal = ({
         added: number;
         duplicates: number;
         importId?: string;
+        loginAccountsCreated?: number;
+        loginAccountsSkipped?: number;
+        loginAccountsFailed?: number;
       };
 
       if (data.importId && recordsToSend.length > 0) {
@@ -448,10 +449,14 @@ export const AddModal = ({
         data.duplicates > 0
           ? ` with ${data.duplicates} duplicate${data.duplicates === 1 ? "" : "s"}`
           : "";
+      const loginMsg =
+        data.loginAccountsCreated !== undefined
+          ? `, ${data.loginAccountsCreated} login${data.loginAccountsCreated === 1 ? "" : "s"} sent`
+          : "";
 
       toast({
         title: "File uploaded",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}.`,
+        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}${loginMsg}.`,
         replaceToast: true,
       });
       setUploadProgress(0);
@@ -650,18 +655,6 @@ export const AddModal = ({
                     >
                       {hasAssignment ? "Edit" : "Auto-Assign"}
                     </Button>
-                  )}
-                  {csvType === "staff" && (
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={autoLogin}
-                        onChange={(e) => setAutoLogin(e.target.checked)}
-                        disabled={loading}
-                        className="rounded shrink-0"
-                      />
-                      <span>Auto Login</span>
-                    </label>
                   )}
                   <Button
                     type="button"

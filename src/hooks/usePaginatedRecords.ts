@@ -35,6 +35,7 @@ interface UsePaginatedRecordsParams {
   indexName: string;
   agencyId: string;
   facetFilters?: string[][];
+  filters?: string;
   query?: string;
   page?: number;
   hitsPerPage?: number;
@@ -44,6 +45,7 @@ interface UsePaginatedRecordsParams {
 export function usePaginatedRecords<T = Record<string, unknown>>({
   indexName,
   facetFilters,
+  filters,
   query = "",
   page = 0,
   hitsPerPage = 10,
@@ -81,6 +83,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
           query,
           page,
           hitsPerPage,
+          filters: filters || undefined,
           facetFilters: facetFilters ?? [],
           facets,
         },
@@ -122,7 +125,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets]);
+  }, [indexName, page, hitsPerPage, refreshKey, query, filters, facetFilters, facets]);
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);

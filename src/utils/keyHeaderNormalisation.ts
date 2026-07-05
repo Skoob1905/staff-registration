@@ -89,20 +89,18 @@ export function findValueByNormalizedKey(
 }
 
 export function getStaffName(staff: BulkStaff): string {
-  const hasName = staff.Forename || staff.Surname;
-  if (hasName) {
-    return [staff.Title, staff.Forename, staff.Surname]
-      .filter(Boolean)
-      .join(" ");
+  const raw = staff as unknown as Record<string, unknown>;
+
+  const forename = findValueByNormalizedKey(raw, "forename", "firstname");
+  const surname = findValueByNormalizedKey(raw, "surname", "lastname");
+  const title = findValueByNormalizedKey(raw, "title");
+
+  if (forename || surname) {
+    return [title, forename, surname].filter(Boolean).join(" ");
   }
 
-  if (staff.FullName) {
-    return [staff.Title, staff.FullName].filter(Boolean).join(" ");
-  }
-
-  const raw = staff as unknown as Record<string, string>;
-  const nk = findValueByNormalizedKey(raw, "fullname");
-  if (nk) return nk;
+  const fullname = findValueByNormalizedKey(raw, "fullname");
+  if (fullname) return fullname;
 
   return staff.email || "";
 }
