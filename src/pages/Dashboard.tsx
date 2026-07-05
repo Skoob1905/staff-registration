@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../services/firebase";
+import { getStaffByEmail } from "../services/firestore";
 import { Section } from "../components/Section";
 import { Pill } from "../components/Pill";
 import { InformationCard } from "../components/InformationCard";
@@ -37,14 +36,9 @@ export const Dashboard = () => {
       }
 
       try {
-        const staffSnaps = await getDocs(
-          query(
-            collection(db, "staff"),
-            where("email", "==", appUser.email?.toLowerCase()),
-          ),
-        );
-        if (!staffSnaps.empty) {
-          const data = staffSnaps.docs[0].data() as {
+        const staffRecords = await getStaffByEmail(appUser.email ?? "");
+        if (staffRecords.length > 0) {
+          const data = staffRecords[0] as {
             metadata?: { documents?: StaffDocumentEntry[] };
           };
           setDocuments(data.metadata?.documents ?? []);

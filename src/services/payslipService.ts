@@ -1,13 +1,6 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { db, functions } from "./firebase";
+import { getStaffByEmail, getPayslip } from "./firestore";
+import { functions } from "./firebase";
 import type { Payslip } from "../types/domain";
 
 export const uploadPayslipToStaff = async (
@@ -45,25 +38,23 @@ export const uploadPayslip = async (
 };
 
 export const getPayslipsForUser = async (email: string): Promise<Payslip[]> => {
-  const staffSnaps = await getDocs(
-    query(collection(db, "staff"), where("email", "==", email.toLowerCase())),
-  );
+  const staffRecords = await getStaffByEmail(email);
 
-  if (staffSnaps.empty) return [];
+  if (staffRecords.length === 0) return [];
 
-  const data = staffSnaps.docs[0].data() as {
+  const data = staffRecords[0] as {
     metadata?: { payslipsSent?: string[] };
   };
   const payslipIds = data?.metadata?.payslipsSent ?? [];
   if (!payslipIds.length) return [];
 
   const payslipDocs = await Promise.all(
-    payslipIds.map((id) => getDoc(doc(db, "payslips", id))),
+    payslipIds.map((id) => getPayslip(id)),
   );
 
   return payslipDocs
-    .filter((d) => d.exists())
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<Payslip, "id">) }))
+    .filter((d): d is Record<string, unknown> => d !== null)
+    .map((d) => ({ id: d.id as string, ...d } as Payslip))
     .sort((a, b) => {
       const toMs = (ts: unknown) =>
         (ts as { toDate: () => Date } | null)?.toDate?.()?.getTime() ?? 0;

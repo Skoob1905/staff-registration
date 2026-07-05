@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  doc,
-  getDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
 import { FileSignature, Users } from "lucide-react";
+import { getUser, getClientByEmail } from "../services/firestore";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { Metadata } from "../components/Metadata";
 import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
-import { db } from "../services/firebase";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
@@ -95,15 +87,12 @@ export const ClientAgencies = () => {
         let ids: string[] = [];
 
         if (appUser.role === "admin") {
-          const userSnap = await getDoc(doc(db, "users", appUser.uid));
+          const userData = await getUser(appUser.uid);
           if (cancelled) return;
-          if (!userSnap.exists()) {
+          if (!userData) {
             setAssignedAgencyIds([]);
           } else {
-            const userData = userSnap.data() as {
-              assignedAgencyIds?: string[];
-            };
-            ids = userData.assignedAgencyIds ?? [];
+            ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
             if (ids.length === 0 && appUser.agencyId) {
               ids = [appUser.agencyId];
             }
@@ -120,24 +109,17 @@ export const ClientAgencies = () => {
             setReady(true);
             return;
           }
-          const clientQuery = query(
-            collection(db, "clients"),
-            where("email", "==", email),
-          );
-          const clientSnap = await getDocs(clientQuery);
+          const clientData = await getClientByEmail(email);
           if (cancelled) return;
 
-          if (clientSnap.empty) {
+          if (!clientData) {
             console.log(
               "[ClientAgencies] no client doc found for email:",
               email,
             );
             setAssignedAgencyIds([]);
           } else {
-            const clientData = clientSnap.docs[0].data() as {
-              metadata?: { assignedAgencies?: string[] };
-            };
-            ids = clientData.metadata?.assignedAgencies ?? [];
+            ids = (clientData as { metadata?: { assignedAgencies?: string[] } }).metadata?.assignedAgencies ?? [];
             console.log(
               "[ClientAgencies] client doc found, assignedAgencies:",
               ids,

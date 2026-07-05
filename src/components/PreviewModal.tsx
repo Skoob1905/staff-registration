@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { getAllStaff } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
   Button,
@@ -15,7 +15,7 @@ import { useToast } from "../context/ToastProvider";
 import { uploadInvoice } from "../services/invoiceService";
 import { uploadClientContract } from "../services/contractService";
 import { uploadPayslip } from "../services/payslipService";
-import { db, functions } from "../services/firebase";
+import { functions } from "../services/firebase";
 import type { BulkStaff } from "../types/domain";
 import { H1 } from "../config/typography";
 
@@ -48,11 +48,9 @@ export const PreviewModal = ({
   useEffect(() => {
     const fetchStaff = async () => {
       try {
-        const snaps = await getDocs(collection(db, "staff"));
-        setStaffList(
-          snaps.docs.map((d) => ({ ...d.data(), id: d.id }) as BulkStaff),
-        );
-        console.log({ snaps });
+        const staff = await getAllStaff();
+        setStaffList(staff as BulkStaff[]);
+        console.log({ staff });
       } catch (err) {
         console.error("Failed to fetch staff for dropdown", err);
       }

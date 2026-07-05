@@ -1,13 +1,13 @@
 import {
-  collection,
-  addDoc, getDocs,
-  query,
+  getUnsignedContractsByUser,
+  getSignedContractsByAgency,
+  getSignedContractsByUser,
+  createUnsignedContract,
   serverTimestamp,
-  where,
-} from "firebase/firestore";
+} from "./firestore";
 import { getDownloadURL, ref, uploadBytesResumable, type UploadTask } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
-import { db, storage, functions } from "./firebase";
+import { storage, functions } from "./firebase";
 import type { SignedContract, UnsignedContract } from "../types/domain";
 
 const monitorUpload = (task: UploadTask, onProgress?: (pct: number) => void): Promise<void> =>
@@ -38,7 +38,7 @@ export const uploadUnsignedContract = async (
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
 
-  await addDoc(collection(db, "unsigned_contracts"), {
+  await createUnsignedContract({
     targetUserId,
     agencyId,
     fileName: file.name,
@@ -86,15 +86,8 @@ export const uploadClientContract = async (
 };
 
 export const getUnsignedContractInfo = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
-  const q = query(
-    collection(db, "unsigned_contracts"),
-    where("targetUserId", "==", userId),
-    where("agencyId", "==", agencyId),
-    where("status", "==", "pending"),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }))
+  const docs = await getUnsignedContractsByUser(userId, agencyId, "pending");
+  return (docs as unknown as UnsignedContract[])
     .sort((a, b) => {
       const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
       const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
@@ -103,15 +96,8 @@ export const getUnsignedContractInfo = async (userId: string, agencyId: string):
 };
 
 export const getPendingContracts = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
-  const q = query(
-    collection(db, "unsigned_contracts"),
-    where("targetUserId", "==", userId),
-    where("agencyId", "==", agencyId),
-    where("status", "==", "pending"),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }))
+  const docs = await getUnsignedContractsByUser(userId, agencyId, "pending");
+  return (docs as unknown as UnsignedContract[])
     .sort((a, b) => {
       const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
       const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
@@ -128,14 +114,8 @@ export const getLatestUnsignedContract = async (
 };
 
 export const getContractsForUser = async (userId: string, agencyId: string): Promise<UnsignedContract[]> => {
-  const q = query(
-    collection(db, "unsigned_contracts"),
-    where("targetUserId", "==", userId),
-    where("agencyId", "==", agencyId),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<UnsignedContract, "id">) }))
+  const docs = await getUnsignedContractsByUser(userId, agencyId);
+  return (docs as unknown as UnsignedContract[])
     .sort((a, b) => {
       const aMs = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
       const bMs = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
@@ -144,13 +124,8 @@ export const getContractsForUser = async (userId: string, agencyId: string): Pro
 };
 
 export const getSignedContractsForAdmin = async (agencyId: string): Promise<SignedContract[]> => {
-  const q = query(
-    collection(db, "signed_contracts"),
-    where("agencyId", "==", agencyId),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<SignedContract, "id">) }))
+  const docs = await getSignedContractsByAgency(agencyId);
+  return (docs as unknown as SignedContract[])
     .sort((a, b) => {
       const aMs = a.signedAt instanceof Date ? a.signedAt.getTime() : 0;
       const bMs = b.signedAt instanceof Date ? b.signedAt.getTime() : 0;
@@ -162,14 +137,8 @@ export const getSignedContractsForUser = async (
   userId: string,
   agencyId: string,
 ): Promise<SignedContract[]> => {
-  const q = query(
-    collection(db, "signed_contracts"),
-    where("userId", "==", userId),
-    where("agencyId", "==", agencyId),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs
-    .map((d) => ({ id: d.id, ...(d.data() as Omit<SignedContract, "id">) }))
+  const docs = await getSignedContractsByUser(userId, agencyId);
+  return (docs as unknown as SignedContract[])
     .sort((a, b) => {
       const aMs = a.signedAt instanceof Date ? a.signedAt.getTime() : 0;
       const bMs = b.signedAt instanceof Date ? b.signedAt.getTime() : 0;

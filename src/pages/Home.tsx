@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { FileText } from "lucide-react";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
-import { db } from "../services/firebase";
+import { getUser, getClientByEmail, getAgency } from "../services/firestore";
 import { StaffListSection } from "../components/StaffListSection";
 import { AccordionItem } from "../components/ui";
 import { AccordionTitle } from "../components/AccordionTitle";
@@ -36,43 +35,31 @@ export const Home = () => {
       let ids: string[] = [];
 
       if (appUser.role === "admin") {
-        const userSnap = await getDoc(doc(db, "users", appUser.uid));
-        if (!userSnap.exists()) return;
-        const userData = userSnap.data() as {
-          assignedAgencyIds?: string[];
-        };
-        ids = userData.assignedAgencyIds ?? [];
+        const userData = await getUser(appUser.uid);
+        if (!userData) return;
+        ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
         if (ids.length === 0 && appUser.agencyId) {
           ids = [appUser.agencyId];
         }
       } else {
         if (!appUser.email) return;
-        const clientQuery = query(
-          collection(db, "clients"),
-          where("email", "==", appUser.email.toLowerCase()),
-        );
-        const clientSnap = await getDocs(clientQuery);
-        if (clientSnap.empty) return;
-
-        const clientData = clientSnap.docs[0].data() as {
-          metadata?: { assignedAgencies?: string[] };
-        };
-        ids = clientData.metadata?.assignedAgencies ?? [];
+        const clientData = await getClientByEmail(appUser.email);
+        if (!clientData) return;
+        ids = ((clientData as { metadata?: { assignedAgencies?: string[] } }).metadata?.assignedAgencies ?? []);
       }
 
       setAssignedAgencyIds(ids);
 
       const agencies: Agency[] = [];
       for (const agencyId of ids) {
-        const snap = await getDoc(doc(db, "agencies", agencyId));
-        if (snap.exists()) {
-          const data = snap.data();
+        const data = await getAgency(agencyId);
+        if (data) {
           agencies.push({
-            id: snap.id,
+            id: agencyId,
             name:
-              data.business_name ||
-              data["Business Name"] ||
-              data.name ||
+              (data.business_name as string) ||
+              (data["Business Name"] as string) ||
+              (data.name as string) ||
               findValueByNormalizedKey(
                 data,
                 "businessname",
@@ -81,9 +68,9 @@ export const Home = () => {
                 "agencyname",
                 "company",
               ) ||
-              snap.id,
+              agencyId,
             slug: "",
-            assignedStaff: data.assignedStaff || [],
+            assignedStaff: (data.assignedStaff as string[]) || [],
           });
         }
       }

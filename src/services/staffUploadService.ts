@@ -1,19 +1,18 @@
 import {
-  addDoc,
-  collection,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
-import {
-  getDownloadURL,
   ref,
   uploadBytesResumable,
+  getDownloadURL,
   type UploadTask,
 } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { storage } from "./firebase";
+import {
+  createStaffUpload,
+  getStaffUploadsByAgency,
+  getAllAgencies as getAgencies,
+  getStaffByAgency,
+  getAllUploadHistory,
+  serverTimestamp,
+} from "./firestore";
 import type {
   Agency,
   BulkStaff,
@@ -53,7 +52,7 @@ export const uploadStaffDocument = async (
   await monitorUpload(task, onProgress);
   const fileUrl = await getDownloadURL(storageRef);
 
-  await addDoc(collection(db, "staff_uploads"), {
+  await createStaffUpload({
     userId,
     agencyId,
     fileName: file.name,
@@ -66,24 +65,13 @@ export const uploadStaffDocument = async (
 export const getStaffUploadsForAgency = async (
   agencyId: string,
 ): Promise<StaffUpload[]> => {
-  const q = query(
-    collection(db, "staff_uploads"),
-    where("agencyId", "==", agencyId),
-    orderBy("uploadedAt", "desc"),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<StaffUpload, "id">),
-  }));
+  const docs = await getStaffUploadsByAgency(agencyId);
+  return docs as unknown as StaffUpload[];
 };
 
 export const getAllAgencies = async (): Promise<Agency[]> => {
-  const snaps = await getDocs(collection(db, "agencies"));
-  return snaps.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<Agency, "id">),
-  }));
+  const docs = await getAgencies();
+  return docs as unknown as Agency[];
 };
 
 export interface CsvStaffRow {
@@ -207,23 +195,11 @@ export const uploadCsvToStorage = async (
 export const getBulkStaffForAgency = async (
   agencyId: string,
 ): Promise<BulkStaff[]> => {
-  const q = query(
-    collection(db, "staff"),
-    where("agencyId", "==", agencyId),
-    orderBy("assignedAt", "desc"),
-  );
-  const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<BulkStaff, "id">),
-  }));
+  const docs = await getStaffByAgency(agencyId);
+  return docs as unknown as BulkStaff[];
 };
 
 export const getUploadHistory = async (): Promise<BulkUploadRecord[]> => {
-  const q = query(collection(db, "uploads"), orderBy("uploadedAt", "desc"));
-  const snaps = await getDocs(q);
-  return snaps.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<BulkUploadRecord, "id">),
-  }));
+  const docs = await getAllUploadHistory();
+  return docs as unknown as BulkUploadRecord[];
 };

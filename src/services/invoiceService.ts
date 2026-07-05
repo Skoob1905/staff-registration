@@ -1,6 +1,6 @@
 import { httpsCallable } from "firebase/functions";
-import { doc, getDoc } from "firebase/firestore";
-import { db, functions } from "./firebase";
+import { getAgency, getAllAgencies } from "./firestore";
+import { functions } from "./firebase";
 
 export interface InvoiceEntry {
   id: string;
@@ -93,12 +93,10 @@ export const deleteInvoice = async (
 export const getInvoicesForAgency = async (
   agencyId: string,
 ): Promise<InvoiceEntry[]> => {
-  const snap = await getDoc(doc(db, "agencies", agencyId));
-  if (!snap.exists()) return [];
-  const data = snap.data() as {
-    metadata?: { invoices?: InvoiceEntry[] };
-  };
-  const invoices = data.metadata?.invoices ?? [];
+  const data = await getAgency(agencyId);
+  if (!data) return [];
+  const metadata = data.metadata as { invoices?: InvoiceEntry[] } | undefined;
+  const invoices = metadata?.invoices ?? [];
   return invoices.sort(
     (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
   );
@@ -107,16 +105,14 @@ export const getInvoicesForAgency = async (
 export const getAllInvoices = async (): Promise<
   Array<{ agencyId: string; agencyName: string; invoices: InvoiceEntry[] }>
 > => {
-  const { collection, getDocs } = await import("firebase/firestore");
-  const snaps = await getDocs(collection(db, "agencies"));
+  const snaps = await getAllAgencies();
   const results: Array<{
     agencyId: string;
     agencyName: string;
     invoices: InvoiceEntry[];
   }> = [];
 
-  for (const snap of snaps.docs) {
-    const data = snap.data() as Record<string, unknown>;
+  for (const data of snaps as Record<string, unknown>[]) {
     const invoices = ((data.metadata as Record<string, unknown>)?.invoices ?? []) as InvoiceEntry[];
     if (invoices.length > 0) {
       const name: string =
@@ -127,7 +123,7 @@ export const getAllInvoices = async (): Promise<
         (data.agencyName as string) ||
         "Unknown Agency";
       results.push({
-        agencyId: snap.id,
+        agencyId: (data.id as string),
         agencyName: name,
         invoices: invoices.sort(
           (a, b) =>

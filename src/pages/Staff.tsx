@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
+import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import { FileText, Loader2, Pen } from "lucide-react";
 import { ClientsDropdown } from "../components/ClientsDropdown";
@@ -22,7 +22,7 @@ import {
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { useAppStore } from "../stores/appStore";
-import { db, functions } from "../services/firebase";
+import { functions } from "../services/firebase";
 import { getCompanyName } from "../utils/company";
 import {
   getStaffName,
@@ -134,18 +134,10 @@ export const Staff = () => {
 
       const ops: Promise<unknown>[] = [];
       if (tagsToAdd.length > 0) {
-        ops.push(
-          updateDoc(doc(db, "staff", staffId), {
-            tags: arrayUnion(...tagsToAdd),
-          }),
-        );
+        ops.push(addStaffTags(staffId, tagsToAdd));
       }
       if (tagsToRemove.length > 0) {
-        ops.push(
-          updateDoc(doc(db, "staff", staffId), {
-            tags: arrayRemove(...tagsToRemove),
-          }),
-        );
+        ops.push(removeStaffTags(staffId, tagsToRemove));
       }
       if (tagInput.trim()) {
         const callable = httpsCallable(functions, "addStaffTag");

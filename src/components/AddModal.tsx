@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { collection, getCountFromServer } from "firebase/firestore";
+import { countCollection } from "../services/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
 import { Body, BodyMedium, Caption, Muted } from "../config/typography";
@@ -10,7 +10,7 @@ import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { db, functions, storage } from "../services/firebase";
+import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
 import {
@@ -357,8 +357,7 @@ export const AddModal = ({
         const maxRecords =
           csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
         const label = csvType === "staff" ? "staff" : csvType === "agency" ? "agencies" : "clients";
-        const snap = await getCountFromServer(collection(db, collectionName));
-        const existingCount = snap.data().count;
+        const existingCount = await countCollection(collectionName);
         if (existingCount + csvData.rows.length > maxRecords) {
           toast({
             title: "Too Many Records",
