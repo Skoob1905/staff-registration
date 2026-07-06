@@ -9,7 +9,8 @@ import { Metadata } from "../components/Metadata";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
-import { RenderInfo } from "../components/RenderInfo";
+import { RecordData } from "../components/RecordData";
+import { cleanRecordData } from "../utils/cleanRecordData";
 import { StaffListSection } from "../components/StaffListSection";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
@@ -478,34 +479,7 @@ export const Staff = () => {
                   )}
                 </div>
               )}
-            <div className="overflow-x-auto">
-              <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-                {Object.entries(member)
-                  .filter(
-                    ([key, value]) =>
-                      key !== "id" &&
-                      key !== "uid" &&
-                      key !== "metadata" &&
-                      key !== "agencyId" &&
-                      key !== "importedByAgencyId" &&
-                      key !== "tags" &&
-                      key !== "typeIds" &&
-                      key !== "sortableName" &&
-                      value !== "" &&
-                      value !== null &&
-                      value !== undefined,
-                  )
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([key, value], idx) => (
-                    <RenderInfo
-                      key={key}
-                      label={key}
-                      value={String(value ?? "")}
-                      delay={idx * 12}
-                    />
-                  ))}
-              </div>
-            </div>
+            <RecordData data={cleanRecordData(member)} />
             <ActionButtonContainer
               handleDelete={() => setDeleteStaffTarget(member)}
               handleUnassign={() => setUnassignTarget(member)}

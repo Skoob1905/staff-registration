@@ -11,7 +11,8 @@ import { DeleteClientModal } from "../components/modals/DeleteClientModal";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
-import { RenderInfo } from "../components/RenderInfo";
+import { RecordData } from "../components/RecordData";
+import { cleanRecordData } from "../utils/cleanRecordData";
 import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
@@ -115,34 +116,6 @@ export const Clients = () => {
       ) ||
       "Unknown"
     );
-  };
-
-  const getDisplayFields = (
-    client: Record<string, unknown>,
-  ): Array<{ label: string; value: string }> => {
-    const skipFields = new Set([
-      "id",
-      "objectID",
-      "metadata",
-      "uploadedInFile",
-      "importedByUid",
-      "importedByAgencyId",
-      "importedAt",
-      "business_name",
-      "sortableName",
-    ]);
-    const result: Array<{ label: string; value: string }> = [];
-    for (const [key, value] of Object.entries(client)) {
-      if (skipFields.has(key)) continue;
-      if (
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-      ) {
-        result.push({ label: key, value: String(value) });
-      }
-    }
-    return result;
   };
 
   const handleDeleteSuccess = async () => {
@@ -302,18 +275,7 @@ export const Clients = () => {
                   />
                 </div>
               )}
-              <div className="overflow-x-auto">
-                <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-                  {getDisplayFields(client).map((field, idx) => (
-                    <RenderInfo
-                      key={field.label}
-                      label={field.label}
-                      value={field.value}
-                      delay={idx * 12}
-                    />
-                  ))}
-                </div>
-              </div>
+              <RecordData data={cleanRecordData(client)} />
               <ActionButtonContainer
                 handleAgencies={() => setAssignAgenciesTarget(client)}
                 handleDelete={() => setConfirmDeleteClient(client)}
