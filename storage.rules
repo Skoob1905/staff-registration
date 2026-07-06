@@ -139,6 +139,12 @@ service firebase.storage {
       allow read, write: if isSuper();
     }
 
+    // Invoices uploaded for clients
+    match /invoices/{clientId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSuper();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -167,7 +167,7 @@ service cloud.firestore {
         isSuper() ||
         adminHasAgency(resource.data.metadata.uploadedBy) ||
         (isClient() || isWorker()) && resource.data.metadata.uploadedBy == userAgencyId() ||
-        isClient() && resource.data.email == request.auth.token.email
+        resource.data.email == request.auth.token.email
       );
       allow write: if isSuper();
     }

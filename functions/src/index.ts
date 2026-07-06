@@ -2358,15 +2358,16 @@ export const seenItems = onCall(async (request) => {
 
   const db = getFirestore();
 
-  const fieldPath =
-    type === "invoices" ? "metadata.invoices" : "metadata.timesheets";
-  const idKey = type === "invoices" ? "id" : "fileName";
+  const isInvoices = type === "invoices";
+  const fieldPath = isInvoices ? "metadata.invoices" : "metadata.timesheets";
+  const idKey = isInvoices ? "id" : "fileName";
+  const collection = isInvoices ? "clients" : "agencies";
 
   const idSet = new Set(ids);
-  const snap = await db.collection("agencies").doc(agencyId).get();
+  const snap = await db.collection(collection).doc(agencyId).get();
 
   if (!snap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+    throw new HttpsError("not-found", "Document not found.");
   }
 
   const data = snap.data() as Record<string, unknown> | undefined;
@@ -2381,7 +2382,7 @@ export const seenItems = onCall(async (request) => {
   });
 
   await db
-    .collection("agencies")
+    .collection(collection)
     .doc(agencyId)
     .update({ [fieldPath]: updated });
 
@@ -2414,14 +2415,15 @@ export const setDownloaded = onCall(async (request) => {
   }
 
   const db = getFirestore();
-  const fieldPath =
-    type === "invoices" ? "metadata.invoices" : "metadata.timesheets";
-  const idKey = type === "invoices" ? "id" : "fileName";
+  const isInvoices = type === "invoices";
+  const fieldPath = isInvoices ? "metadata.invoices" : "metadata.timesheets";
+  const idKey = isInvoices ? "id" : "fileName";
+  const collection = isInvoices ? "clients" : "agencies";
   const idSet = new Set(ids);
 
-  const snap = await db.collection("agencies").doc(agencyId).get();
+  const snap = await db.collection(collection).doc(agencyId).get();
   if (!snap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+    throw new HttpsError("not-found", "Document not found.");
   }
 
   const data = snap.data() as Record<string, unknown> | undefined;
@@ -2436,7 +2438,7 @@ export const setDownloaded = onCall(async (request) => {
   });
 
   await db
-    .collection("agencies")
+    .collection(collection)
     .doc(agencyId)
     .update({ [fieldPath]: updated });
 
@@ -3118,14 +3120,17 @@ export const uploadInvoice = onCall(async (request) => {
     email?: string;
     role?: string;
   };
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
 
-  const agencySnap = await db.collection("agencies").doc(agencyId).get();
-  if (agencySnap.exists) {
-    const agencyData = agencySnap.data() as {
+  const clientSnap = await db.collection("clients").doc(agencyId).get();
+  if (clientSnap.exists) {
+    const clientData = clientSnap.data() as {
       metadata?: { invoices?: Array<{ fileName?: string }> };
     };
-    const existing = agencyData.metadata?.invoices ?? [];
+    const existing = clientData.metadata?.invoices ?? [];
     if (existing.some((inv) => inv.fileName === fileName)) {
       throw new HttpsError(
         "already-exists",
@@ -3172,11 +3177,12 @@ export const uploadInvoice = onCall(async (request) => {
   };
 
   await db
-    .collection("agencies")
+    .collection("clients")
     .doc(agencyId)
-    .update({
-      "metadata.invoices": FieldValue.arrayUnion(entry),
-    });
+    .set(
+      { metadata: { invoices: FieldValue.arrayUnion(entry) } },
+      { merge: true },
+    );
 
   return { ok: true, url: fileUrl };
 });
@@ -3207,13 +3213,13 @@ export const markInvoicePaid = onCall(async (request) => {
     );
   }
 
-  const agencyRef = db.collection("agencies").doc(agencyId);
-  const agencySnap = await agencyRef.get();
-  if (!agencySnap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+  const clientRef = db.collection("clients").doc(agencyId);
+  const clientSnap = await clientRef.get();
+  if (!clientSnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
   }
 
-  const data = agencySnap.data() as {
+  const data = clientSnap.data() as {
     metadata?: { invoices?: Array<Record<string, unknown>> };
   };
   const current = data.metadata?.invoices ?? [];
@@ -3230,7 +3236,7 @@ export const markInvoicePaid = onCall(async (request) => {
     return inv;
   });
 
-  await agencyRef.update({
+  await clientRef.update({
     "metadata.invoices": updated,
   });
 
@@ -3263,13 +3269,13 @@ export const deleteInvoice = onCall(async (request) => {
     );
   }
 
-  const agencyRef = db.collection("agencies").doc(agencyId);
-  const agencySnap = await agencyRef.get();
-  if (!agencySnap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+  const clientRef = db.collection("clients").doc(agencyId);
+  const clientSnap = await clientRef.get();
+  if (!clientSnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
   }
 
-  const data = agencySnap.data() as {
+  const data = clientSnap.data() as {
     metadata?: { invoices?: Array<Record<string, unknown>> };
   };
   const current = data.metadata?.invoices ?? [];
@@ -3297,7 +3303,7 @@ export const deleteInvoice = onCall(async (request) => {
       (inv.fileName as string) !== invoiceId,
   );
 
-  await agencyRef.update({
+  await clientRef.update({
     "metadata.invoices": updated,
   });
 

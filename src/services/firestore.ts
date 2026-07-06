@@ -143,6 +143,16 @@ export async function getClientByEmail(email: string): Promise<Record<string, un
   return snaps.empty ? null : { id: snaps.docs[0].id, ...snaps.docs[0].data() };
 }
 
+export async function getClient(id: string): Promise<Record<string, unknown> | null> {
+  const snap = await getDoc(doc(db, "clients", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function getAllClients(): Promise<Record<string, unknown>[]> {
+  const snaps = await getDocs(collection(db, "clients"));
+  return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // ── Contracts ──
 
 export async function getUnsignedContractsByUser(

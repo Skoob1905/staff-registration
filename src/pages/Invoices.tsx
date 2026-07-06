@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { Section } from "../components/Section";
 import { InformationCard } from "../components/InformationCard";
 import { Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { useData } from "../context/DataProvider";
+import { getClientByEmail } from "../services/firestore";
 
 export const Invoices = () => {
   const { appUser } = useAuth();
@@ -15,20 +16,27 @@ export const Invoices = () => {
     markDownloaded,
   } = useData();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!appUser?.email) return;
+    getClientByEmail(appUser.email).then((doc) => {
+      if (doc?.id) setClientId(doc.id as string);
+    });
+  }, [appUser?.email]);
 
   const myInvoices = useMemo(() => {
     return invoices.flatMap((a) => a.invoices);
   }, [invoices]);
 
   useEffect(() => {
-    if (!loading && appUser?.agencyId && myInvoices.length > 0) {
+    if (!loading && clientId && myInvoices.length > 0) {
       const unseenIds = myInvoices
         .filter((inv) => inv.hasSeen === false)
         .map((inv) => inv.id);
-
       if (unseenIds.length > 0) {
         timerRef.current = setTimeout(() => {
-          markSeen("invoices", appUser.agencyId!, unseenIds).catch(() => {});
+          markSeen("invoices", clientId, unseenIds).catch(() => {});
         }, 3000);
       }
     }
@@ -36,7 +44,7 @@ export const Invoices = () => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [loading, appUser?.agencyId, myInvoices, markSeen]);
+  }, [loading, clientId, myInvoices, markSeen]);
 
   return (
     <div className="space-y-4">
@@ -91,7 +99,7 @@ export const Invoices = () => {
                             "_blank",
                             "noopener,noreferrer",
                           );
-                          markDownloaded("invoices", appUser?.agencyId ?? "", [
+                          markDownloaded("invoices", clientId || inv.agencyId, [
                             inv.id,
                           ]).catch(() => {});
                         }}

@@ -10,8 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "./AuthProvider";
-import { getAllInvoices, getInvoicesForAgency, markItemsDownloaded, markItemsSeen, type InvoiceEntry } from "../services/invoiceService";
+import { getAllInvoices, getInvoicesForClient, markItemsDownloaded, markItemsSeen, type InvoiceEntry } from "../services/invoiceService";
 import { getAllTimesheets, getTimesheetsForAgency, type AgencyTimesheets } from "../utils/timesheets";
+import { getClientByEmail } from "../services/firestore";
 
 interface AgencyInvoices {
   agencyId: string;
@@ -103,25 +104,54 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     if (!appUser) return;
     setInvoicesLoading(true);
 
-    const request = isAdmin || isSuper
-      ? getAllInvoices()
-      : getInvoicesForAgency(appUser.agencyId).then((items) => [{
-          agencyId: appUser.agencyId,
-          agencyName: "",
-          invoices: items,
-        }]);
-
-    request
-      .then((data) => {
-        console.log("[DataProvider] invoices:", data.length, data);
-        setInvoices(data);
-      })
-      .catch((err) => {
-        console.error("[DataProvider] invoices failed:", err);
-        setInvoices([]);
-      })
-      .finally(() => setInvoicesLoading(false));
-  }, [appUser, isAdmin, isSuper]);
+    if (isSuper) {
+      console.log("[DataProvider] fetchInvoices: super, calling getAllInvoices()");
+      getAllInvoices()
+        .then((data) => {
+          console.log("[DataProvider] getAllInvoices returned:", data.length, "agencies", data);
+          setInvoices(data);
+        })
+        .catch((err) => {
+          console.error("[DataProvider] getAllInvoices failed:", err);
+          setInvoices([]);
+        })
+        .finally(() => setInvoicesLoading(false));
+    } else {
+      console.log("[DataProvider] fetchInvoices: non-super, email:", appUser.email);
+      getClientByEmail(appUser.email ?? "")
+        .then((clientDoc) => {
+          console.log("[DataProvider] getClientByEmail result:", clientDoc
+            ? { id: clientDoc.id, email: clientDoc.email, hasInvoices: !!(clientDoc.metadata as Record<string, unknown>)?.invoices }
+            : null);
+          if (!clientDoc) {
+            console.log("[DataProvider] no client doc found for email, returning empty");
+            setInvoices([]);
+            return;
+          }
+          const clientId = clientDoc.id as string;
+          const clientName = (clientDoc.business_name as string) ||
+            (clientDoc.Company_Name as string) ||
+            (clientDoc.company_name as string) ||
+            (clientDoc.name as string) ||
+            (clientDoc.agencyName as string) ||
+            "";
+          console.log("[DataProvider] clientId:", clientId, "clientName:", clientName);
+          return getInvoicesForClient(clientId).then((items) => {
+            console.log("[DataProvider] getInvoicesForClient returned:", items.length, "invoices", items);
+            setInvoices([{
+              agencyId: clientId,
+              agencyName: clientName,
+              invoices: items,
+            }]);
+          });
+        })
+        .catch((err) => {
+          console.error("[DataProvider] fetchInvoices failed:", err);
+          setInvoices([]);
+        })
+        .finally(() => setInvoicesLoading(false));
+    }
+  }, [appUser, isSuper]);
 
   const fetchTimesheets = useCallback(() => {
     if (!appUser) return;

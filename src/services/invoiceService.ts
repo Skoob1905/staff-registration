@@ -1,6 +1,7 @@
 import { httpsCallable } from "firebase/functions";
-import { getAgency, getAllAgencies } from "./firestore";
+import { getClient, getAllClients } from "./firestore";
 import { functions } from "./firebase";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 
 export interface InvoiceEntry {
   id: string;
@@ -90,10 +91,10 @@ export const deleteInvoice = async (
   await fn({ agencyId, invoiceId });
 };
 
-export const getInvoicesForAgency = async (
-  agencyId: string,
+export const getInvoicesForClient = async (
+  clientId: string,
 ): Promise<InvoiceEntry[]> => {
-  const data = await getAgency(agencyId);
+  const data = await getClient(clientId);
   if (!data) return [];
   const metadata = data.metadata as { invoices?: InvoiceEntry[] } | undefined;
   const invoices = metadata?.invoices ?? [];
@@ -105,7 +106,7 @@ export const getInvoicesForAgency = async (
 export const getAllInvoices = async (): Promise<
   Array<{ agencyId: string; agencyName: string; invoices: InvoiceEntry[] }>
 > => {
-  const snaps = await getAllAgencies();
+  const snaps = await getAllClients();
   const results: Array<{
     agencyId: string;
     agencyName: string;
@@ -116,11 +117,19 @@ export const getAllInvoices = async (): Promise<
     const invoices = ((data.metadata as Record<string, unknown>)?.invoices ?? []) as InvoiceEntry[];
     if (invoices.length > 0) {
       const name: string =
-        (data.name as string) ||
         (data.business_name as string) ||
         (data.Company_Name as string) ||
         (data.company_name as string) ||
+        (data.name as string) ||
         (data.agencyName as string) ||
+        findValueByNormalizedKey(
+          data as Record<string, unknown>,
+          "businessname",
+          "name",
+          "agencyname",
+          "organisation",
+          "company",
+        ) ||
         "Unknown Agency";
       results.push({
         agencyId: (data.id as string),

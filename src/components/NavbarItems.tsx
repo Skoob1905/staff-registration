@@ -8,9 +8,12 @@ const SUPER_BADGE_MAP: Record<string, BadgeKey> = {
   TIMESHEETS: "timesheets",
 };
 
+const ADMIN_BADGE_MAP: Record<string, BadgeKey> = {
+  INVOICES: "invoices",
+};
+
 const CLIENT_BADGE_MAP: Record<string, BadgeKey> = {
   STAFF: "staff",
-  INVOICES: "invoices",
 };
 
 const SUPER_ROUTES = [
@@ -91,9 +94,11 @@ export function NavbarItems({
   const badgeMap =
     role === "super"
       ? SUPER_BADGE_MAP
-      : role === "client"
-        ? CLIENT_BADGE_MAP
-        : {};
+      : role === "admin"
+        ? ADMIN_BADGE_MAP
+        : role === "client"
+          ? CLIENT_BADGE_MAP
+          : {};
 
   return routes.map((route) => (
     <NavItem
