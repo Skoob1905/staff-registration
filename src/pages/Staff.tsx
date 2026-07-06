@@ -9,6 +9,7 @@ import { Metadata } from "../components/Metadata";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
+import { AssignTags } from "../components/modals/AssignTags";
 import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
 import { StaffListSection } from "../components/StaffListSection";
@@ -535,79 +536,20 @@ export const Staff = () => {
         </DialogContent>
       </DialogRoot>
 
-      <DialogRoot
+      <AssignTags
         open={tagTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setTagTarget(null);
-            setTagInput("");
-          }
+        onClose={() => {
+          setTagTarget(null);
+          setTagInput("");
         }}
-      >
-        <DialogContent
-          onClose={() => {
-            setTagTarget(null);
-            setTagInput("");
-          }}
-        >
-          <DialogTitle className="text-base sm:text-lg font-bold">
-            Assign Tags
-          </DialogTitle>
-          <Muted className="mt-1">
-            Assigned tags will be visible to the client.
-          </Muted>
-          {Object.keys(tagsMap).length > 0 && (
-            <div className="mt-4">
-              <label className="text-sm sm:text-base font-semibold text-[var(--foreground)]">
-                Existing tags
-              </label>
-              <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
-                {Object.entries(tagsMap).map(([id, value]) => (
-                  <label
-                    key={id}
-                    className="flex cursor-pointer items-center gap-2 text-xs sm:text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedAssignTagIds.has(id)}
-                      onChange={() => {
-                        const next = new Set(selectedAssignTagIds);
-                        if (next.has(id)) next.delete(id);
-                        else next.add(id);
-                        setSelectedAssignTagIds(next);
-                      }}
-                      className="rounded shrink-0"
-                    />
-                    <span className="truncate">{value}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="mt-4">
-            <label className="text-sm sm:text-base font-semibold text-[var(--foreground)]">
-              {Object.keys(tagsMap).length > 0
-                ? "Or create a new tag"
-                : "New tag"}
-            </label>
-            <Input
-              placeholder="Enter tag name..."
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button
-              type="button"
-              disabled={tagLoading}
-              onClick={() => void handleAssignTags()}
-            >
-              {tagLoading ? "Saving..." : "Assign Tags"}
-            </Button>
-          </div>
-        </DialogContent>
-      </DialogRoot>
+        tagsMap={tagsMap}
+        selectedIds={selectedAssignTagIds}
+        onSelectionChange={setSelectedAssignTagIds}
+        tagInput={tagInput}
+        onTagInputChange={setTagInput}
+        onSave={handleAssignTags}
+        saving={tagLoading}
+      />
 
       <DialogRoot
         open={deleteStaffTarget !== null}

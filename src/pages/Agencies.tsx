@@ -6,11 +6,8 @@ import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
 import { Section } from "../components/Section";
 import { ImportHistory } from "../components/ImportHistory";
-import {
-  AccordionItem,
-  DownloadButton,
-} from "../components/ui";
-import { DeleteClientModal } from "../components/modals/DeleteClientModal";
+import { AccordionItem, DownloadButton } from "../components/ui";
+import { DeleteClientModal } from "../components/modals/DeleteClient";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
@@ -373,7 +370,9 @@ export const Agencies = () => {
         onClose={() => setConfirmDeleteClient(null)}
         onDelete={onDeleteContract}
         deleting={deletingContract}
-        clientName={confirmDeleteClient ? getPrimaryLabel(confirmDeleteClient) : ""}
+        clientName={
+          confirmDeleteClient ? getPrimaryLabel(confirmDeleteClient) : ""
+        }
       />
     </div>
   );
