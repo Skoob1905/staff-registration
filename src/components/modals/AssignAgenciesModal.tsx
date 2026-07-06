@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
-import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
+import { Button, DialogContent, DialogRoot, DialogTitle } from "../ui";
 
-interface AgencyCheckboxDialogProps {
+interface AssignAgenciesModalProps {
   open: boolean;
   onClose: () => void;
   items: Array<{ id: string; name: string }>;
@@ -11,7 +11,7 @@ interface AgencyCheckboxDialogProps {
   saving: boolean;
 }
 
-export const AgencyCheckboxDialog = ({
+export const AssignAgenciesModal = ({
   open,
   onClose,
   items,
@@ -19,7 +19,7 @@ export const AgencyCheckboxDialog = ({
   onSelectionChange,
   onSave,
   saving,
-}: AgencyCheckboxDialogProps) => (
+}: AssignAgenciesModalProps) => (
   <DialogRoot open={open} onOpenChange={(open) => !open && onClose()}>
     <DialogContent onClose={onClose}>
       <DialogTitle className="text-base sm:text-lg font-bold">
@@ -27,9 +27,6 @@ export const AgencyCheckboxDialog = ({
       </DialogTitle>
       {items.length > 0 && (
         <div className="mt-4">
-          <label className="text-sm sm:text-base font-semibold text-[var(--foreground)]">
-            Agencies
-          </label>
           <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
             {items.map((item) => (
               <label
@@ -54,11 +51,7 @@ export const AgencyCheckboxDialog = ({
         </div>
       )}
       <div className="mt-4 flex justify-end gap-2">
-        <Button
-          type="button"
-          disabled={saving}
-          onClick={onSave}
-        >
+        <Button type="button" disabled={saving} onClick={onSave}>
           {saving ? (
             <span className="inline-flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />

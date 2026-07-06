@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { FileSignature, Pen } from "lucide-react";
-import { AgencyCheckboxDialog } from "../components/AgencyCheckboxDialog";
+import { FileSignature } from "lucide-react";
+import { AssignAgenciesModal } from "../components/modals/AssignAgenciesModal";
 import { ImportHistory } from "../components/ImportHistory";
 import {
   AccordionItem,
-  Button,
-  DeleteButton,
-  DialogContent,
-  DialogRoot,
-  DialogTitle,
   DownloadButton,
 } from "../components/ui";
+import { DeleteClientModal } from "../components/modals/DeleteClientModal";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
+import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
@@ -302,15 +299,6 @@ export const Clients = () => {
                         : "None"
                     }
                   />
-                  {appUser?.role === "super" && (
-                    <button
-                      type="button"
-                      onClick={() => setAssignAgenciesTarget(client)}
-                      className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
-                    >
-                      <Pen className="h-3.5 w-3.5" />
-                    </button>
-                  )}
                 </div>
               )}
               <div className="overflow-x-auto">
@@ -333,14 +321,10 @@ export const Clients = () => {
                   ))}
                 </div>
               </div>
-              {scName && scUrl && (
-                <DeleteButton
-                  className="mt-2 animate-cascade"
-                  style={{ animationDelay: "12ms" }}
-                  disabled={deletingContract}
-                  onClick={() => setConfirmDeleteClient(client)}
-                />
-              )}
+              <ActionButtonContainer
+                handleAgencies={() => setAssignAgenciesTarget(client)}
+                handleDelete={() => setConfirmDeleteClient(client)}
+              />
             </AccordionItem>
           );
         }}
@@ -387,46 +371,15 @@ export const Clients = () => {
         onDeleteSuccess={handleDeleteSuccess}
       />
 
-      <DialogRoot
+      <DeleteClientModal
         open={confirmDeleteClient !== null}
-        onOpenChange={(open) => {
-          if (!open && !deletingContract) setConfirmDeleteClient(null);
-        }}
-      >
-        <DialogContent
-          closeDisabled={deletingContract}
-          onClose={() => {
-            if (!deletingContract) setConfirmDeleteClient(null);
-          }}
-        >
-          <DialogTitle className="text-base sm:text-lg font-bold">
-            Confirm Delete
-          </DialogTitle>
-          <p className="mt-2 text-xs sm:text-sm text-zinc-600">
-            This will permanently delete the signed contract from storage. You
-            will need to re-upload it.
-          </p>
-          <div className="mt-4 flex justify-end">
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700"
-              disabled={deletingContract}
-              onClick={() => void onDeleteContract()}
-            >
-              {deletingContract ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Deleting...
-                </span>
-              ) : (
-                "Confirm"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </DialogRoot>
+        onClose={() => setConfirmDeleteClient(null)}
+        onDelete={onDeleteContract}
+        deleting={deletingContract}
+        clientName={confirmDeleteClient ? getPrimaryLabel(confirmDeleteClient) : ""}
+      />
 
-      <AgencyCheckboxDialog
+      <AssignAgenciesModal
         open={assignAgenciesTarget !== null}
         onClose={() => setAssignAgenciesTarget(null)}
         items={agencyItems}

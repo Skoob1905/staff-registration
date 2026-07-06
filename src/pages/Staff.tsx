@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
-import { FileText, Loader2, Pen } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { ClientsDropdown } from "../components/ClientsDropdown";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { ImportHistory } from "../components/ImportHistory";
 import { Metadata } from "../components/Metadata";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
+import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { StaffListSection } from "../components/StaffListSection";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
@@ -71,10 +72,15 @@ export const Staff = () => {
     new Set(),
   );
   const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
-  const [deleteStaffTarget, setDeleteStaffTarget] = useState<BulkStaff | null>(null);
+  const [deleteStaffTarget, setDeleteStaffTarget] = useState<BulkStaff | null>(
+    null,
+  );
   const [deleteStaffLoading, setDeleteStaffLoading] = useState(false);
-  const [deletingDocumentKey, setDeletingDocumentKey] = useState<string | null>(null);
-  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
+  const [deletingDocumentKey, setDeletingDocumentKey] = useState<string | null>(
+    null,
+  );
+  const { leftValue, rightValue, onLeftChange, onRightChange } =
+    useDualAccordionParams();
 
   useEffect(() => {
     if (tagTarget) {
@@ -95,7 +101,10 @@ export const Staff = () => {
         setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
         toast({ title: "Document deleted" });
       } catch {
-        toast({ title: "Failed to delete document", variant: "error" as const });
+        toast({
+          title: "Failed to delete document",
+          variant: "error" as const,
+        });
       } finally {
         setDeletingDocumentKey(null);
       }
@@ -269,28 +278,20 @@ export const Staff = () => {
               <div className="flex min-w-0 items-center gap-2">
                 <AccordionTitle>{getStaffName(member)}</AccordionTitle>
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                  <Pill status="cv" icon={<FileText className="h-4 w-4" />} label="" />
+                  <Pill
+                    status="cv"
+                    icon={<FileText className="h-4 w-4" />}
+                    label=""
+                  />
                 )}
               </div>
             }
             actions={
               <>
                 {member.metadata?.assignedToName ? (
-                  <span className="group inline-flex shrink-0 items-center text-xs sm:text-sm text-[var(--muted-foreground)]">
-                    <span className="truncate max-w-[200px] transition-all duration-200 group-hover:mr-1">
+                  <span className="inline-flex shrink-0 items-center text-xs sm:text-sm text-[var(--muted-foreground)]">
+                    <span className="truncate max-w-[200px]">
                       {member.metadata.assignedToName}
-                    </span>
-                    <span className="hidden overflow-hidden w-0 transition-all duration-200 group-hover:w-6 sm:inline-flex">
-                      <ActionButton
-                        variant="delete"
-                        size="md"
-                        ariaLabel="Unassign staff"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUnassignTarget(member);
-                        }}
-                        className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                      />
                     </span>
                   </span>
                 ) : (
@@ -314,94 +315,61 @@ export const Staff = () => {
                       />
                     ) : assigningStaffId === member.id ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setActiveAssignMenu(member.id)}
-                        className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
-                      >
-                        <Pen className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </span>
-                )}
-                {appUser?.role === "super" && (
-                  <span className="ml-1 hidden sm:inline-flex">
-                    <ActionButton
-                      variant="delete"
-                      size="md"
-                      ariaLabel="Delete staff"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteStaffTarget(member);
-                      }}
-                    />
+                    ) : null}
                   </span>
                 )}
               </>
             }
           >
-              <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="sm:hidden">
-                  <Metadata
-                    title="Assigned to"
-                    className="animate-cascade"
-                    style={{ animationDelay: "0ms" }}
-                    value={
-                      member.metadata?.assignedToName ? (
-                        <>
-                          {member.metadata.assignedToName}
-                          <ActionButton
-                            variant="delete"
-                            size="md"
-                            ariaLabel="Unassign staff"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setUnassignTarget(member);
-                            }}
-                            className="ml-1.5 align-middle"
-                          />
-                        </>
-                      ) : appUser?.role === "super" ? (
-                        <ClientsDropdown
-                          disabled={assigningStaffId === member.id}
-                          value=""
-                          onChange={(value) => {
-                            if (value) handleAssign(member.id, value);
+            <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="sm:hidden">
+                <Metadata
+                  title="Assigned to"
+                  className="animate-cascade"
+                  style={{ animationDelay: "0ms" }}
+                  value={
+                    member.metadata?.assignedToName ? (
+                      <>
+                        {member.metadata.assignedToName}
+                        <ActionButton
+                          variant="delete"
+                          size="md"
+                          ariaLabel="Unassign staff"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUnassignTarget(member);
                           }}
-                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                          placeholder="Assign agency"
-                          indexName="agencies_name_desc"
+                          className="ml-1.5 align-middle"
                         />
-                      ) : null
-                    }
-                  />
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <Metadata
-                    title="Tags"
-                    className="animate-cascade"
-                    style={{ animationDelay: "0ms" }}
-                    value={
-                      member.tags && member.tags.length > 0
-                        ? member.tags.map((id) => tagsMap[id] || id).join(", ")
-                        : "None"
-                    }
-                  />
-                  {appUser?.role === "super" && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTagTarget(member);
-                      }}
-                      className="h-6 w-6 shrink-0 rounded-full inline-flex items-center justify-center text-[var(--muted-foreground)] transition hover:bg-[color:rgba(0,95,87,0.06)] hover:text-[var(--primary)]"
-                    >
-                      <Pen className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
+                      </>
+                    ) : appUser?.role === "super" ? (
+                      <ClientsDropdown
+                        disabled={assigningStaffId === member.id}
+                        value=""
+                        onChange={(value) => {
+                          if (value) handleAssign(member.id, value);
+                        }}
+                        className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                        placeholder="Assign agency"
+                        indexName="agencies_name_desc"
+                      />
+                    ) : null
+                  }
+                />
               </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Metadata
+                  title="Tags"
+                  className="animate-cascade"
+                  style={{ animationDelay: "0ms" }}
+                  value={
+                    member.tags && member.tags.length > 0
+                      ? member.tags.map((id) => tagsMap[id] || id).join(", ")
+                      : "None"
+                  }
+                />
+              </div>
+            </div>
             {member.metadata?.cv && member.metadata.cv.length > 0 && (
               <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
                 {member.metadata.cv.map((entry, idx) => {
@@ -412,7 +380,11 @@ export const Staff = () => {
                       key={cvKey}
                       title="CV"
                       className="flex items-center animate-cascade"
-                      style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
+                      style={
+                        {
+                          animationDelay: `${(idx + 1) * 12}ms`,
+                        } as React.CSSProperties
+                      }
                       value={
                         <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                           <span className="text-[var(--muted-foreground)]">
@@ -423,7 +395,7 @@ export const Staff = () => {
                             fileName={entry.fileName}
                             name={getStaffName(member)}
                             interactionKey="cv"
-                size="md"
+                            size="md"
                             onDelete={
                               isDeleting
                                 ? undefined
@@ -447,83 +419,107 @@ export const Staff = () => {
                 })}
               </div>
             )}
-            {member.metadata?.documents && member.metadata.documents.length > 0 && (
-              <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                {member.metadata.documents.map((entry: Record<string, unknown>, idx: number) => {
-                  const docKey = `${member.id}::${entry.fileName}`;
-                  const isDeleting = deletingDocumentKey === docKey;
-                  return (
-                    <Metadata
-                      key={docKey}
-                      title="Document"
-                      className="flex items-center animate-cascade"
-                      style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
-                      value={
-                        <span className="inline-flex flex-wrap items-center gap-2 align-middle">
-                          <span className="text-[var(--muted-foreground)]">
-                            {entry.fileName as string}
-                          </span>
-                          <FileInteractionButtons
-                            fileUrl={entry.fileUrl as string}
-                            fileName={entry.fileName as string}
-                            name={getStaffName(member)}
-                            interactionKey="document"
-                            size="md"
-                            onDelete={
-                              isDeleting
-                                ? undefined
-                                : () =>
-                                    handleDeleteDocument(member.id, entry.fileName as string)
-                            }
-                          />
-                          {entry.uploadedAt && (
-                            <span className="text-zinc-400">
-                              ({new Date(entry.uploadedAt as string).toLocaleDateString()}
-                              )
+            {member.metadata?.documents &&
+              member.metadata.documents.length > 0 && (
+                <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+                  {member.metadata.documents.map(
+                    (entry: Record<string, unknown>, idx: number) => {
+                      const docKey = `${member.id}::${entry.fileName}`;
+                      const isDeleting = deletingDocumentKey === docKey;
+                      return (
+                        <Metadata
+                          key={docKey}
+                          title="Document"
+                          className="flex items-center animate-cascade"
+                          style={
+                            {
+                              animationDelay: `${(idx + 1) * 12}ms`,
+                            } as React.CSSProperties
+                          }
+                          value={
+                            <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                              <span className="text-[var(--muted-foreground)]">
+                                {entry.fileName as string}
+                              </span>
+                              <FileInteractionButtons
+                                fileUrl={entry.fileUrl as string}
+                                fileName={entry.fileName as string}
+                                name={getStaffName(member)}
+                                interactionKey="document"
+                                size="md"
+                                onDelete={
+                                  isDeleting
+                                    ? undefined
+                                    : () =>
+                                        handleDeleteDocument(
+                                          member.id,
+                                          entry.fileName as string,
+                                        )
+                                }
+                              />
+                              {entry.uploadedAt && (
+                                <span className="text-zinc-400">
+                                  (
+                                  {new Date(
+                                    entry.uploadedAt as string,
+                                  ).toLocaleDateString()}
+                                  )
+                                </span>
+                              )}
+                              {isDeleting && (
+                                <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
+                              )}
                             </span>
-                          )}
-                          {isDeleting && (
-                            <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
-                          )}
-                        </span>
-                      }
-                    />
-                  );
-                })}
-              </div>
-            )}
+                          }
+                        />
+                      );
+                    },
+                  )}
+                </div>
+              )}
             <div className="overflow-x-auto">
               <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-              {Object.entries(member)
-                .filter(
-                  ([key, value]) =>
-                    key !== "id" &&
-                    key !== "uid" &&
-                    key !== "metadata" &&
-                    key !== "agencyId" &&
-                    key !== "importedByAgencyId" &&
-                    key !== "tags" &&
-                    key !== "typeIds" &&
-                    key !== "sortableName" &&
-                    value !== "" &&
-                    value !== null &&
-                    value !== undefined,
-                )
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([key, value], idx) => (
-                  <p
-                    key={key}
-                    className="whitespace-nowrap px-1 animate-cascade"
-                    style={{ animationDelay: `${idx * 12}ms` } as React.CSSProperties}
-                  >
-                    <span className="font-medium text-[var(--foreground)]">
-                      {key}
-                    </span>
-                    <span className="font-medium">: {String(value ?? "")}</span>
-                  </p>
-                ))}
+                {Object.entries(member)
+                  .filter(
+                    ([key, value]) =>
+                      key !== "id" &&
+                      key !== "uid" &&
+                      key !== "metadata" &&
+                      key !== "agencyId" &&
+                      key !== "importedByAgencyId" &&
+                      key !== "tags" &&
+                      key !== "typeIds" &&
+                      key !== "sortableName" &&
+                      value !== "" &&
+                      value !== null &&
+                      value !== undefined,
+                  )
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([key, value], idx) => (
+                    <p
+                      key={key}
+                      className="whitespace-nowrap px-1 animate-cascade"
+                      style={
+                        {
+                          animationDelay: `${idx * 12}ms`,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <span className="font-medium text-[var(--foreground)]">
+                        {key}
+                      </span>
+                      <span className="font-medium">
+                        : {String(value ?? "")}
+                      </span>
+                    </p>
+                  ))}
+              </div>
             </div>
-            </div>
+            <ActionButtonContainer
+              handleDelete={() => setDeleteStaffTarget(member)}
+              handleUnassign={() => setUnassignTarget(member)}
+              handleTags={() => setTagTarget(member)}
+            />
           </AccordionItem>
         )}
       />
@@ -694,12 +690,12 @@ export const Staff = () => {
       </DialogRoot>
 
       {appUser?.role === "super" && (
-      <ImportHistory
-        type="staff"
-        cloudFunction="removeStaffImport"
-        getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
-        onDeleteSuccess={handleDeleteSuccess}
-      />
+        <ImportHistory
+          type="staff"
+          cloudFunction="removeStaffImport"
+          getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
+          onDeleteSuccess={handleDeleteSuccess}
+        />
       )}
     </div>
   );
