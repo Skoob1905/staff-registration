@@ -29,14 +29,16 @@ const ADMIN_ROUTES = [
   { label: "AGENCIES", to: "/agencies" },
   { label: "STAFF", to: "/staff" },
   { label: "INVOICES", to: "/invoices" },
-  { label: "TIMESHEETS", to: "/timesheets" },
+  // hide for the tiem being
+  // { label: "TIMESHEETS", to: "/timesheets" },
   { label: "PROFILE", to: "/profile" },
   { label: "SUPPORT", to: "/support" },
 ];
 
 const CLIENT_ROUTES = [
   { label: "STAFF", to: "/staff" },
-  { label: "UPLOAD", to: "/upload" },
+  // hide for the tiem being
+  // { label: "UPLOAD", to: "/upload" },
   { label: "TIMESHEETS", to: "/timesheets" },
   { label: "PROFILE", to: "/profile" },
   { label: "SUPPORT", to: "/support" },
