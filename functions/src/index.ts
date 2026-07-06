@@ -36,6 +36,9 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { sendLogins } from "./utils/sendLogins.js";
 
+// API Keys for external users using the API
+export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
+
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
@@ -2226,6 +2229,12 @@ export const recordTimesheetUpload = onCall(async (request) => {
   }
 
   const { clientId, fileName, fileBase64, contentType } = request.data;
+  console.log("[recordTimesheetUpload] received data:", {
+    clientId,
+    fileName,
+    fileBase64Len: fileBase64?.length,
+    hasContentType: !!contentType,
+  });
   if (!clientId || !fileName || !fileBase64) {
     throw new HttpsError(
       "invalid-argument",
@@ -2240,17 +2249,19 @@ export const recordTimesheetUpload = onCall(async (request) => {
     throw new HttpsError("not-found", "User profile not found.");
   }
 
-  const callerData = callerSnap.data() as {
-    email?: string;
-    agencyId?: string;
-    role?: string;
-  };
-  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+  const callerData = callerSnap.data() as Record<string, unknown>;
+  const callerEmail = (callerData.EMAIL ?? callerData.email ?? "") as string;
+  const callerRole = (callerData.ROLE ?? callerData.role ?? "") as string;
+  console.log("[recordTimesheetUpload] caller data:", {
+    callerRole,
+    callerEmail,
+  });
+  const uploadedBy = (request.auth.token?.email ?? callerEmail) || "unknown";
 
-  if (callerData.role === "client" && callerData.agencyId !== clientId) {
+  if (callerRole !== "client") {
     throw new HttpsError(
       "permission-denied",
-      "Cannot upload timesheet for another client.",
+      "Only clients can upload timesheets.",
     );
   }
 
@@ -2466,8 +2477,8 @@ export const deleteTimesheet = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin" && callerData.role !== "super") {
-    throw new HttpsError("permission-denied", "Admin or Super only.");
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super admin only.");
   }
 
   const storagePath = `timesheets/${clientId}/${fileName}`;
