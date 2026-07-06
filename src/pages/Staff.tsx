@@ -9,6 +9,7 @@ import { Metadata } from "../components/Metadata";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
+import { RenderInfo } from "../components/RenderInfo";
 import { StaffListSection } from "../components/StaffListSection";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
@@ -496,22 +497,12 @@ export const Staff = () => {
                   )
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([key, value], idx) => (
-                    <p
+                    <RenderInfo
                       key={key}
-                      className="whitespace-nowrap px-1 animate-cascade"
-                      style={
-                        {
-                          animationDelay: `${idx * 12}ms`,
-                        } as React.CSSProperties
-                      }
-                    >
-                      <span className="font-medium text-[var(--foreground)]">
-                        {key}
-                      </span>
-                      <span className="font-medium">
-                        : {String(value ?? "")}
-                      </span>
-                    </p>
+                      label={key}
+                      value={String(value ?? "")}
+                      delay={idx * 12}
+                    />
                   ))}
               </div>
             </div>

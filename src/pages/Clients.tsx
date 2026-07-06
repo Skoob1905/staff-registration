@@ -11,6 +11,7 @@ import { DeleteClientModal } from "../components/modals/DeleteClientModal";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
+import { RenderInfo } from "../components/RenderInfo";
 import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
@@ -304,20 +305,12 @@ export const Clients = () => {
               <div className="overflow-x-auto">
                 <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
                   {getDisplayFields(client).map((field, idx) => (
-                    <p
+                    <RenderInfo
                       key={field.label}
-                      className="whitespace-nowrap px-1 animate-cascade"
-                      style={
-                        {
-                          animationDelay: `${idx * 12}ms`,
-                        } as React.CSSProperties
-                      }
-                    >
-                      <span className="font-medium text-[var(--foreground)]">
-                        {field.label}
-                      </span>
-                      : {field.value}
-                    </p>
+                      label={field.label}
+                      value={field.value}
+                      delay={idx * 12}
+                    />
                   ))}
                 </div>
               </div>
