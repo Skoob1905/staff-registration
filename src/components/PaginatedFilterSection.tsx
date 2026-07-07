@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Filter } from "lucide-react";
+import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "./ui";
 import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
@@ -43,6 +43,7 @@ interface PaginatedFilterSectionProps<T> {
   onLeftAccordionChange?: (value: string) => void;
   rightAccordionValue?: string;
   onRightAccordionChange?: (value: string) => void;
+  initialLoading?: boolean;
 }
 
 export const PaginatedFilterSection = <T,>({
@@ -81,6 +82,7 @@ export const PaginatedFilterSection = <T,>({
     onLeftAccordionChange,
     rightAccordionValue,
     onRightAccordionChange,
+    initialLoading,
   }: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -120,8 +122,10 @@ export const PaginatedFilterSection = <T,>({
   return (
     <>
       <Section title={title} count={totalResults} action={renderHeaderAction()}>
-        {loading && items.length === 0 ? (
-          <Muted>Loading...</Muted>
+        {initialLoading || (loading && items.length === 0) ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+          </div>
         ) : items.length === 0 ? (
           <Muted>
             {activeFilterCount > 0

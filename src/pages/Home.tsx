@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText } from "lucide-react";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
-import { getUser, getClientByEmail, getAgency } from "../services/firestore";
+import { getUser, getAgency, getAgencyByEmail } from "../services/firestore";
 import { StaffListSection } from "../components/StaffListSection";
 import { AccordionItem } from "../components/ui";
 import { AccordionTitle } from "../components/AccordionTitle";
@@ -10,74 +10,86 @@ import { Pill } from "../components/Pill";
 import { Metadata } from "../components/Metadata";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
-import { getStaffName, findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import {
+  getStaffName,
+  findValueByNormalizedKey,
+} from "../utils/keyHeaderNormalisation";
 import { formatInvitedAt } from "../utils/date";
-import type { Agency, BulkStaff } from "../types/domain";
+import type { BulkStaff } from "../types/domain";
+
+function getAgencyName(
+  agencyDoc: Record<string, unknown>,
+  fallbackId: string,
+): string {
+  return typeof agencyDoc.business_name === "string"
+    ? agencyDoc.business_name
+    : typeof agencyDoc["Business Name"] === "string"
+      ? agencyDoc["Business Name"]
+      : typeof agencyDoc.name === "string"
+        ? agencyDoc.name
+        : findValueByNormalizedKey(
+            agencyDoc,
+            "businessname",
+            "companyname",
+            "name",
+            "agencyname",
+            "company",
+          ) || fallbackId;
+}
 
 export const Home = () => {
   useEffect(() => {
     document.title = "Home";
   }, []);
 
-  const { appUser } = useAuth();
+  const { appUser, agency } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
 
-  const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
-  const [assignedAgencies, setAssignedAgencies] = useState<Agency[]>([]);
+  const [agencyNames, setAgencyNames] = useState<string[]>([]);
+  const [agencyNamesLoaded, setAgencyNamesLoaded] = useState(false);
 
   useEffect(() => {
     const run = async () => {
       if (!appUser) return;
 
-      let ids: string[] = [];
-
-      if (appUser.role === "admin") {
-        const userData = await getUser(appUser.uid);
-        if (!userData) return;
-        ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
-        if (ids.length === 0 && appUser.agencyId) {
-          ids = [appUser.agencyId];
+      try {
+        if (appUser.role === "admin") {
+          const userData = await getUser(appUser.uid);
+          if (!userData) return;
+          const ids =
+            (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ??
+            [];
+          if (ids.length === 0 && appUser.agencyId) {
+            ids.push(appUser.agencyId);
+          }
+          const names: string[] = [];
+          for (const id of ids) {
+            const data = await getAgency(id);
+            if (data) {
+              names.push(getAgencyName(data, id));
+            }
+          }
+          setAgencyNames(names);
+        } else {
+          try {
+            const agencies = await getAgencyByEmail(appUser.email ?? "");
+            if (agencies.length > 0) {
+              const name = getAgencyName(agencies[0], String(agencies[0].id));
+              setAgencyNames(name ? [name] : []);
+            }
+          } catch (err) {
+            console.error("[Home] failed to fetch agency by email:", err);
+          }
         }
-      } else {
-        if (!appUser.email) return;
-        const clientData = await getClientByEmail(appUser.email);
-        if (!clientData) return;
-        ids = ((clientData as { metadata?: { assignedAgencies?: string[] } }).metadata?.assignedAgencies ?? []);
+      } finally {
+        setAgencyNamesLoaded(true);
       }
-
-      setAssignedAgencyIds(ids);
-
-      const agencies: Agency[] = [];
-      for (const agencyId of ids) {
-        const data = await getAgency(agencyId);
-        if (data) {
-          agencies.push({
-            id: agencyId,
-            name:
-              (data.business_name as string) ||
-              (data["Business Name"] as string) ||
-              (data.name as string) ||
-              findValueByNormalizedKey(
-                data,
-                "businessname",
-                "companyname",
-                "name",
-                "agencyname",
-                "company",
-              ) ||
-              agencyId,
-            slug: "",
-            assignedStaff: ((data.metadata as Record<string, unknown> | undefined)?.assignedStaff as string[]) || [],
-          });
-        }
-      }
-      setAssignedAgencies(agencies);
     };
     void run();
-  }, [appUser]);
+  }, [appUser, agency]);
 
   useEffect(() => {
     loadTags().catch(() => {});
@@ -90,6 +102,11 @@ export const Home = () => {
     }
     return map;
   }, [tags]);
+
+  const targetAgencyNames = useMemo(() => {
+    if (agencyNames.length === 0) return undefined;
+    return agencyNames;
+  }, [agencyNames]);
 
   const renderItem = useCallback(
     (member: BulkStaff, idx: number) => {
@@ -139,7 +156,11 @@ export const Home = () => {
                   key={`${member.id}::cv::${entry.fileName}`}
                   title="CV"
                   className="flex items-center animate-cascade"
-                  style={{ animationDelay: `${(i + 1) * 12}ms` } as React.CSSProperties}
+                  style={
+                    {
+                      animationDelay: `${(i + 1) * 12}ms`,
+                    } as React.CSSProperties
+                  }
                   value={
                     <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                       <span className="text-[var(--muted-foreground)]">
@@ -165,7 +186,11 @@ export const Home = () => {
                     key={`${member.id}::doc::${entry.fileName}`}
                     title="Document"
                     className="flex items-center animate-cascade"
-                    style={{ animationDelay: `${(i + 1) * 12}ms` } as React.CSSProperties}
+                    style={
+                      {
+                        animationDelay: `${(i + 1) * 12}ms`,
+                      } as React.CSSProperties
+                    }
                     value={
                       <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                         <span className="text-[var(--muted-foreground)]">
@@ -234,8 +259,8 @@ export const Home = () => {
   return (
     <div className="mx-auto space-y-4">
       <StaffListSection
-        targetAgencyIds={assignedAgencyIds}
-        agencies={assignedAgencies}
+        targetAgencyNames={targetAgencyNames}
+        namesLoading={!agencyNamesLoaded}
         renderItem={renderItem}
         leftAccordionValue={leftValue}
         onLeftAccordionChange={onLeftChange}

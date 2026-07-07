@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const profile = await getUserProfile(user.uid, { fromServer });
 
     let agencyProfile = null;
-    if (profile?.agencyId) {
+    if (profile?.agencyId && profile.role !== "client") {
       agencyProfile = await getAgencyProfile(profile.agencyId);
     }
 

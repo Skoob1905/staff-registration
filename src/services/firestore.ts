@@ -20,13 +20,14 @@ import { db } from "./firebase";
 export { serverTimestamp };
 
 // ── Users ──
-
 export async function getUser(
   uid: string,
   opts?: { fromServer?: boolean },
 ): Promise<Record<string, unknown> | null> {
   const ref = doc(db, "users", uid);
-  const snap = opts?.fromServer ? await getDocFromServer(ref) : await getDoc(ref);
+  const snap = opts?.fromServer
+    ? await getDocFromServer(ref)
+    : await getDoc(ref);
   return snap.exists() ? { uid: snap.id, ...snap.data() } : null;
 }
 
@@ -71,7 +72,9 @@ export async function getUserByEmailAndAgency(
 
 // ── Agencies ──
 
-export async function getAgency(id: string): Promise<Record<string, unknown> | null> {
+export async function getAgency(
+  id: string,
+): Promise<Record<string, unknown> | null> {
   const snap = await getDoc(doc(db, "agencies", id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
@@ -92,14 +95,26 @@ export async function getAgenciesByImportingAgency(
   return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+export async function getAgencyByEmail(
+  email: string,
+): Promise<Record<string, unknown>[]> {
+  const q = query(collection(db, "agencies"), where("email", "==", email));
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // ── Staff ──
 
-export async function getStaff(id: string): Promise<Record<string, unknown> | null> {
+export async function getStaff(
+  id: string,
+): Promise<Record<string, unknown> | null> {
   const snap = await getDoc(doc(db, "staff", id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-export async function getStaffByEmail(email: string): Promise<Record<string, unknown>[]> {
+export async function getStaffByEmail(
+  email: string,
+): Promise<Record<string, unknown>[]> {
   const q = query(
     collection(db, "staff"),
     where("email", "==", email.toLowerCase()),
@@ -113,7 +128,9 @@ export async function getAllStaff(): Promise<Record<string, unknown>[]> {
   return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function getStaffByAgency(agencyId: string): Promise<Record<string, unknown>[]> {
+export async function getStaffByAgency(
+  agencyId: string,
+): Promise<Record<string, unknown>[]> {
   const q = query(
     collection(db, "staff"),
     where("agencyId", "==", agencyId),
@@ -123,17 +140,25 @@ export async function getStaffByAgency(agencyId: string): Promise<Record<string,
   return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function addStaffTags(staffId: string, tags: string[]): Promise<void> {
+export async function addStaffTags(
+  staffId: string,
+  tags: string[],
+): Promise<void> {
   await updateDoc(doc(db, "staff", staffId), { tags: arrayUnion(...tags) });
 }
 
-export async function removeStaffTags(staffId: string, tags: string[]): Promise<void> {
+export async function removeStaffTags(
+  staffId: string,
+  tags: string[],
+): Promise<void> {
   await updateDoc(doc(db, "staff", staffId), { tags: arrayRemove(...tags) });
 }
 
 // ── Clients ──
 
-export async function getClientByEmail(email: string): Promise<Record<string, unknown> | null> {
+export async function getClientByEmail(
+  email: string,
+): Promise<Record<string, unknown> | null> {
   const q = query(
     collection(db, "clients"),
     where("email", "==", email.toLowerCase()),
@@ -143,7 +168,9 @@ export async function getClientByEmail(email: string): Promise<Record<string, un
   return snaps.empty ? null : { id: snaps.docs[0].id, ...snaps.docs[0].data() };
 }
 
-export async function getClient(id: string): Promise<Record<string, unknown> | null> {
+export async function getClient(
+  id: string,
+): Promise<Record<string, unknown> | null> {
   const snap = await getDoc(doc(db, "clients", id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
@@ -205,7 +232,9 @@ export async function createUnsignedContract(
 
 // ── Payslips ──
 
-export async function getPayslip(id: string): Promise<Record<string, unknown> | null> {
+export async function getPayslip(
+  id: string,
+): Promise<Record<string, unknown> | null> {
   const snap = await getDoc(doc(db, "payslips", id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
@@ -273,7 +302,9 @@ export async function createStaffUpload(
 
 // ── Upload History ──
 
-export async function getAllUploadHistory(): Promise<Record<string, unknown>[]> {
+export async function getAllUploadHistory(): Promise<
+  Record<string, unknown>[]
+> {
   const q = query(collection(db, "uploads"), orderBy("uploadedAt", "desc"));
   const snaps = await getDocs(q);
   return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
