@@ -37,10 +37,12 @@ export const PreviewModal = ({
   const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
   const isContract = mode === "contract";
   const isDocument = mode === "document";
-  const isInvoice = mode === "invoice";
 
-  const [documentType, setDocumentType] = useState<"document" | "payslip">("document");
+  const [documentType, setDocumentType] = useState<
+    "document" | "payslip" | "cv"
+  >("document");
   const isPayslip = isDocument && documentType === "payslip";
+  const isCv = isDocument && documentType === "cv";
   const isStaffUpload = isDocument;
 
   const [staffList, setStaffList] = useState<BulkStaff[]>([]);
@@ -143,7 +145,27 @@ export const PreviewModal = ({
           staffList.find((s) => s.id === selectedStaffId)?.agencyId ??
           appUser?.agencyId ??
           "";
-        if (isPayslip) {
+        if (isCv) {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              resolve(result.split(",")[1]);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const callable = httpsCallable(functions, "uploadStaffCvs");
+          await callable({
+            cvs: [
+              {
+                staffId: selectedStaffId,
+                fileName: file.name,
+                fileBase64: base64,
+              },
+            ],
+          });
+        } else if (isPayslip) {
           await uploadPayslip(file, selectedStaffId, agencyId);
         } else {
           const base64 = await new Promise<string>((resolve, reject) => {
@@ -156,7 +178,11 @@ export const PreviewModal = ({
             reader.readAsDataURL(file);
           });
           const callable = httpsCallable(functions, "uploadStaffDocument");
-          await callable({ staffId: selectedStaffId, fileName: file.name, fileBase64: base64 });
+          await callable({
+            staffId: selectedStaffId,
+            fileName: file.name,
+            fileBase64: base64,
+          });
         }
       } else if (isContract) {
         await uploadClientContract(file, targetClientId);
@@ -174,9 +200,11 @@ export const PreviewModal = ({
       toast({
         title: "Upload Complete",
         description: isDocument
-          ? isPayslip
-            ? "Payslip has been uploaded"
-            : "Document has been uploaded"
+          ? isCv
+            ? "CV has been uploaded"
+            : isPayslip
+              ? "Payslip has been uploaded"
+              : "Document has been uploaded"
           : isContract
             ? `Contract has been uploaded for ${targetClientName || targetClientId}`
             : `Invoice has been sent to ${targetClientName || targetClientId}`,
@@ -196,9 +224,11 @@ export const PreviewModal = ({
         toast({
           title: "Upload failed",
           description: isDocument
-            ? isPayslip
-              ? "The payslip could not be uploaded. Please try again."
-              : "The document could not be uploaded. Please try again."
+            ? isCv
+              ? "The CV could not be uploaded. Please try again."
+              : isPayslip
+                ? "The payslip could not be uploaded. Please try again."
+                : "The document could not be uploaded. Please try again."
             : isContract
               ? "The contract could not be uploaded. Please try again."
               : "The invoice could not be uploaded. Please try again.",
@@ -252,9 +282,11 @@ export const PreviewModal = ({
           <div className="mt-4 space-y-2">
             <p className="text-sm text-zinc-600">
               {isDocument
-                ? isPayslip
-                  ? "Uploading payslip..."
-                  : "Uploading document..."
+                ? isCv
+                  ? "Uploading CV..."
+                  : isPayslip
+                    ? "Uploading payslip..."
+                    : "Uploading document..."
                 : isContract
                   ? "Uploading contract..."
                   : "Uploading invoice..."}
@@ -269,11 +301,14 @@ export const PreviewModal = ({
                   <Label>Type</Label>
                   <select
                     value={documentType}
-                    onChange={(e) => setDocumentType(e.target.value as "document" | "payslip")}
+                    onChange={(e) =>
+                      setDocumentType(e.target.value as "document" | "payslip")
+                    }
                     className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
                   >
                     <option value="document">Document</option>
                     <option value="payslip">Payslip</option>
+                    <option value="cv">CV</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -343,9 +378,11 @@ export const PreviewModal = ({
 
             <Button type="button" disabled={!canSubmit} onClick={handleUpload}>
               {isDocument
-                ? isPayslip
-                  ? "Upload Payslip"
-                  : "Upload Document"
+                ? isCv
+                  ? "Upload CV"
+                  : isPayslip
+                    ? "Upload Payslip"
+                    : "Upload Document"
                 : isContract
                   ? "Upload Contract"
                   : "Upload Invoice"}
