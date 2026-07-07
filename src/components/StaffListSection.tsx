@@ -19,7 +19,8 @@ import { Metadata } from "./Metadata";
 import { Pill } from "./Pill";
 import { AccordionTitle } from "./AccordionTitle";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
+import { Section } from "./Section";
 import type {
   Agency,
   BulkStaff,
@@ -264,15 +265,25 @@ export const StaffListSection = ({
     [tagsMap],
   );
 
+  const sectionTitle =
+    isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff";
+
+  if (namesLoading) {
+    return (
+      <Section title={sectionTitle}>
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+        </div>
+      </Section>
+    );
+  }
+
   return (
     <PaginatedFilterSection
-      title={
-        isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff"
-      }
+      title={sectionTitle}
       filterKeys={staffKeyMap}
       items={items}
       loading={loading}
-      initialLoading={namesLoading}
       page={page}
       totalPages={totalPages}
       totalResults={totalResults}

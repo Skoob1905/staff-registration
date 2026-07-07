@@ -43,7 +43,6 @@ interface PaginatedFilterSectionProps<T> {
   onLeftAccordionChange?: (value: string) => void;
   rightAccordionValue?: string;
   onRightAccordionChange?: (value: string) => void;
-  initialLoading?: boolean;
 }
 
 export const PaginatedFilterSection = <T,>({
@@ -82,7 +81,6 @@ export const PaginatedFilterSection = <T,>({
     onLeftAccordionChange,
     rightAccordionValue,
     onRightAccordionChange,
-    initialLoading,
   }: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -122,7 +120,7 @@ export const PaginatedFilterSection = <T,>({
   return (
     <>
       <Section title={title} count={totalResults} action={renderHeaderAction()}>
-        {initialLoading || (loading && items.length === 0) ? (
+        {loading && items.length === 0 ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
           </div>

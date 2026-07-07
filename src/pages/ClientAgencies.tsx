@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileSignature } from "lucide-react";
+import { FileSignature, Loader2 } from "lucide-react";
 import { getUser, getClientByEmail } from "../services/firestore";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
@@ -187,13 +187,13 @@ export const ClientAgencies = () => {
     [setFilters],
   );
 
-  if (!ready) {
+  if (!ready || (agencies.length === 0 && loading)) {
     return (
       <div className="mx-auto space-y-4">
         <Section title="Agencies">
-          <p className="py-4 text-center text-xs sm:text-sm text-zinc-500">
-            Loading agencies...
-          </p>
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+          </div>
         </Section>
       </div>
     );
