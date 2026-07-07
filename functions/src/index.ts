@@ -35,7 +35,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { sendLogins } from "./utils/sendLogins.js";
-import { getStaffRef } from "./utils/getStaffRef";
+import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
@@ -896,6 +896,7 @@ export const importAgencyCsv = onCall(async (request) => {
     if (emailVal) {
       record["email"] = normalizeEmail(emailVal);
     }
+    record["ref"] = getAgencyRef(record) || "";
     newRecords.push(record);
   }
 
@@ -1034,6 +1035,7 @@ export const importClientCsv = onCall(async (request) => {
     if (emailVal) {
       record["email"] = normalizeEmail(emailVal);
     }
+    record["ref"] = getClientRef(record) || "";
     newRecords.push(record);
   }
 
@@ -1213,6 +1215,8 @@ export const importStaffCsv = onCall(async (request) => {
     if (emailVal) {
       record["email"] = normalizeEmail(emailVal);
     }
+
+    record["ref"] = getStaffRef(record) || "";
 
     newRecords.push(record);
   }

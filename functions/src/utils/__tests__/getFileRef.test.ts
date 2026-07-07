@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getStaffRef } from "../getStaffRef.js";
+import { getStaffRef } from "../getFileRef.js";
 
 describe("getStaffRef", () => {
   it("extracts from 'Ref'", () => {
