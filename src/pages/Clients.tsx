@@ -6,6 +6,7 @@ import { ImportHistory } from "../components/ImportHistory";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { DeleteClientModal } from "../components/modals/DeleteClient";
 import { Pill } from "../components/Pill";
+import { AgencyPill } from "../components/Pills/AgencyPill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { RecordData } from "../components/RecordData";
@@ -222,6 +223,7 @@ export const Clients = () => {
                   <AccordionTitle className="leading-none">
                     {getPrimaryLabel(client)}
                   </AccordionTitle>
+                  <AgencyPill record={client} />
                   {scName && (
                     <Pill
                       status="signed"
