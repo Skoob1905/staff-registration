@@ -23,7 +23,7 @@ export const Timesheets = () => {
       if (unseenIds.length > 0) {
         timerRef.current = setTimeout(() => {
           markSeen("timesheets", appUser.agencyId!, unseenIds).catch(() => {});
-        }, 3000);
+        }, 1500);
       }
     }
 

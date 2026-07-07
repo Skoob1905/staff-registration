@@ -74,7 +74,7 @@ export const AllTimesheets = () => {
         if (unseenIds.length > 0) {
           markSeen("timesheets", agencyId, unseenIds).catch(() => {});
         }
-      }, 3000);
+      }, 1500);
     }
   }, [openValues, agencies, markSeen]);
 

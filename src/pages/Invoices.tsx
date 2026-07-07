@@ -37,7 +37,7 @@ export const Invoices = () => {
       if (unseenIds.length > 0) {
         timerRef.current = setTimeout(() => {
           markSeen("invoices", clientId, unseenIds).catch(() => {});
-        }, 3000);
+        }, 1500);
       }
     }
 
