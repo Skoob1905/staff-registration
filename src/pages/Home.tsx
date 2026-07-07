@@ -234,7 +234,6 @@ export const Home = () => {
   return (
     <div className="mx-auto space-y-4">
       <StaffListSection
-        view="client"
         targetAgencyIds={assignedAgencyIds}
         agencies={assignedAgencies}
         renderItem={renderItem}

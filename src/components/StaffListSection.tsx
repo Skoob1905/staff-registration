@@ -18,10 +18,7 @@ import { FileInteractionButtons } from "./FileInteractionButtons";
 import { Metadata } from "./Metadata";
 import { Pill } from "./Pill";
 import { AccordionTitle } from "./AccordionTitle";
-import {
-  buildFacetFilters,
-  buildFacetRequestFields,
-} from "../utils/loginsFilter";
+import { buildFacetRequestFields } from "../utils/loginsFilter";
 import { FileText } from "lucide-react";
 import type {
   Agency,
@@ -31,7 +28,6 @@ import type {
 } from "../types/domain";
 
 interface StaffListSectionProps {
-  view: "admin" | "client";
   targetAgencyId?: string;
   targetAgencyIds?: string[];
   action?: ReactNode;
@@ -46,7 +42,6 @@ interface StaffListSectionProps {
 }
 
 export const StaffListSection = ({
-  view,
   targetAgencyId,
   targetAgencyIds,
   action,
@@ -59,23 +54,34 @@ export const StaffListSection = ({
   rightAccordionValue,
   onRightAccordionChange,
 }: StaffListSectionProps) => {
-  const { appUser } = useAuth();
+  const { appUser, role } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const isClient = view === "client";
-  const assignedToId = targetAgencyId || appUser?.agencyId || "";
+  const isClient = role === "client";
+  const agencyId = targetAgencyId || appUser?.agencyId || "";
   const clientAgencyIds = useMemo(() => {
     if (targetAgencyIds?.length) return targetAgencyIds;
-    if (assignedToId) return [assignedToId];
+    if (agencyId) return [agencyId];
     return [];
-  }, [targetAgencyIds, assignedToId]);
+  }, [targetAgencyIds, agencyId]);
+
   const staffKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "metadata.assignedToId" }),
     [],
   );
+
+  const agenciesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (agencies) {
+      for (const a of agencies) {
+        map[a.id] = a.name;
+      }
+    }
+    return map;
+  }, [agencies]);
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -86,12 +92,27 @@ export const StaffListSection = ({
   }, [tags]);
 
   const staffFacetFilters = useMemo(() => {
-    const ffs = buildFacetFilters(filters, staffKeyMap);
-    if (isClient && clientAgencyIds.length > 0) {
-      ffs.push(clientAgencyIds.map((id) => `${staffKeyMap.agency}:${id}`));
+    const ffs: string[][] = [];
+
+    for (const id of filters.tagIds) {
+      ffs.push([`${staffKeyMap.tag}:${id}`]);
     }
+
+    if (filters.agencyIds.length > 0) {
+      const ids = filters.agencyIds.filter((id) => !!id);
+      if (ids.length > 0) {
+        ffs.push(ids.map((id) => `${staffKeyMap.agency}:${id}`));
+      }
+    }
+
+    if (clientAgencyIds.length > 0) {
+      ffs.push(
+        clientAgencyIds.map((id) => `${staffKeyMap.agency}:${id}`),
+      );
+    }
+
     return ffs;
-  }, [isClient, clientAgencyIds, filters, staffKeyMap]);
+  }, [filters, staffKeyMap, clientAgencyIds]);
 
   const facets = useMemo(
     () => buildFacetRequestFields(staffKeyMap),
@@ -179,7 +200,11 @@ export const StaffListSection = ({
                   key={`${member.id}::${entry.fileName}`}
                   title="CV"
                   className="flex items-center animate-cascade"
-                  style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
+                  style={
+                    {
+                      animationDelay: `${(idx + 1) * 12}ms`,
+                    } as React.CSSProperties
+                  }
                   value={
                     <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                       <span className="text-[var(--muted-foreground)]">
@@ -247,7 +272,9 @@ export const StaffListSection = ({
 
   return (
     <PaginatedFilterSection
-      title={isClient ? "Assigned Staff" : "Staff"}
+      title={
+        isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff"
+      }
       filterKeys={staffKeyMap}
       items={items}
       loading={loading}
@@ -267,7 +294,9 @@ export const StaffListSection = ({
       tags={filterTagsMap}
       tagCounts={facetCounts?.tags}
       agencies={filterAgencies}
-      enableAgencyFilter={Boolean(!isClient || (agencies && agencies.length > 0))}
+      enableAgencyFilter={Boolean(
+        !isClient || (agencies && agencies.length > 0),
+      )}
       enableTagFilter
       emptyMessage={
         isClient ? "You've not been assigned any staff yet" : undefined

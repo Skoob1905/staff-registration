@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
-import type { Agency, AppUser } from "../types/domain";
+import type { Agency, AppUser, UserRole } from "../types/domain";
 import { initAuthPersistence, onAuthUserChanged } from "../services/authService";
 import { getAgencyProfile, getUserProfile } from "../services/userService";
 import { useToast } from "./ToastProvider";
@@ -12,6 +12,7 @@ interface AuthContextValue {
   firebaseUser: User | null;
   appUser: AppUser | null;
   agency: Agency | null;
+  role: UserRole | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
 }
@@ -89,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  const value = useMemo(() => ({ firebaseUser, appUser, agency, loading, refreshProfile }), [firebaseUser, appUser, agency, loading]);
+  const value = useMemo(() => ({ firebaseUser, appUser, agency, role: appUser?.role ?? null, loading, refreshProfile }), [firebaseUser, appUser, agency, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

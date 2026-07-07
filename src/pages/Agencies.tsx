@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { Building2, Clock, FileSignature } from "lucide-react";
+import { FileSignature } from "lucide-react";
 import { AddModal } from "../components/AddModal";
-import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
-import { Section } from "../components/Section";
 import { ImportHistory } from "../components/ImportHistory";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { DeleteClientModal } from "../components/modals/DeleteClient";
 import { Pill } from "../components/Pill";
+import { AssignedStaff } from "../components/Pills/AssignedStaff";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { RecordData } from "../components/RecordData";
@@ -27,7 +26,6 @@ import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 
-const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 function parseCsvHeaders(text: string): string[] {
@@ -80,53 +78,6 @@ export const Agencies = () => {
     "invoice" | "contract" | "payslip" | "document"
   >("invoice");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-
-  const handleFileSelect = async (file: File, typeId: string) => {
-    if (typeId === "agencies") {
-      if (file.size > MAX_FILE_SIZE) {
-        toast({
-          title: "File too large",
-          description: "Agency CSV must be 2MB or less.",
-          variant: "error",
-        });
-        return;
-      }
-      const text = await file.text();
-      const headers = parseCsvHeaders(text);
-      if (!hasBusinessNameColumn(headers)) {
-        toast({
-          title: "Invalid Agency Upload",
-          description:
-            "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
-          variant: "error",
-        });
-        return;
-      }
-      setAddModalFile(file);
-      setAddModalCsvType("agency");
-      setShowAddModal(true);
-    } else if (typeId === "timesheets") {
-      if (!file.name.toLowerCase().endsWith(".csv")) {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload a CSV file.",
-          variant: "error",
-        });
-        return;
-      }
-      if (file.size > MAX_FILE_SIZE) {
-        toast({
-          title: "File too large",
-          description: "Timesheet must be 2MB or less.",
-          variant: "error",
-        });
-        return;
-      }
-      setAddModalFile(file);
-      setAddModalCsvType("timesheet");
-      setShowAddModal(true);
-    }
-  };
 
   const {
     items: clients,
@@ -250,6 +201,7 @@ export const Agencies = () => {
                       label=""
                     />
                   )}
+                  <AssignedStaff record={client} />
                 </div>
               }
             >

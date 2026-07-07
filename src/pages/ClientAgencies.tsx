@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileSignature, Users } from "lucide-react";
+import { FileSignature } from "lucide-react";
 import { getUser, getClientByEmail } from "../services/firestore";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
+import { AssignedStaff } from "../components/Pills/AssignedStaff";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { Metadata } from "../components/Metadata";
 import { Section } from "../components/Section";
@@ -92,7 +93,9 @@ export const ClientAgencies = () => {
           if (!userData) {
             setAssignedAgencyIds([]);
           } else {
-            ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
+            ids =
+              (userData as { assignedAgencyIds?: string[] })
+                .assignedAgencyIds ?? [];
             if (ids.length === 0 && appUser.agencyId) {
               ids = [appUser.agencyId];
             }
@@ -119,7 +122,9 @@ export const ClientAgencies = () => {
             );
             setAssignedAgencyIds([]);
           } else {
-            ids = (clientData as { metadata?: { assignedAgencies?: string[] } }).metadata?.assignedAgencies ?? [];
+            ids =
+              (clientData as { metadata?: { assignedAgencies?: string[] } })
+                .metadata?.assignedAgencies ?? [];
             console.log(
               "[ClientAgencies] client doc found, assignedAgencies:",
               ids,
@@ -226,34 +231,21 @@ export const ClientAgencies = () => {
                 style={
                   { animationDelay: `${idx * 5}ms` } as React.CSSProperties
                 }
-                title={(() => {
-                  const staffArr = record.assignedStaff as
-                    | unknown[]
-                    | undefined;
-                  const count = Array.isArray(staffArr) ? staffArr.length : 0;
-                  return (
-                    <div className="flex min-w-0 w-full items-center gap-2">
-                      <AccordionTitle className="leading-none">
-                        {getPrimaryLabel(record)}
-                      </AccordionTitle>
-                      {scName && (
-                        <Pill
-                          status="signed"
-                          icon={<FileSignature className="h-4 w-4" />}
-                          label=""
-                        />
-                      )}
-                      {count > 0 && (
-                        <Pill
-                          status="info"
-                          icon={<Users className="h-3.5 w-3.5" />}
-                          count={count}
-                          label=""
-                        />
-                      )}
-                    </div>
-                  );
-                })()}
+                title={
+                  <div className="flex min-w-0 w-full items-center gap-2">
+                    <AccordionTitle className="leading-none">
+                      {getPrimaryLabel(record)}
+                    </AccordionTitle>
+                    {scName && (
+                      <Pill
+                        status="signed"
+                        icon={<FileSignature className="h-4 w-4" />}
+                        label=""
+                      />
+                    )}
+                    <AssignedStaff record={record} />
+                  </div>
+                }
               >
                 {scName && scUrl && (
                   <div className="mb-2 flex items-center gap-2">

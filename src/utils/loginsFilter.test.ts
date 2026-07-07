@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildFacetFilters, buildFacetRequestFields } from "./loginsFilter";
 
-const staffKeyMap = { tag: "tags", agency: "metadata.assignedToId" };
+const staffKeyMap = { tag: "tags", agency: "metadata.assignedToRef" };
 const loginsKeyMap = { tag: "tags", agency: "assignedTo" };
 
 describe("buildFacetFilters", () => {
@@ -48,7 +48,7 @@ describe("buildFacetFilters", () => {
       tagIds: [],
     };
     expect(buildFacetFilters(filters, staffKeyMap)).toEqual([
-      ["metadata.assignedToId:a1"],
+      ["metadata.assignedToRef:a1"],
     ]);
   });
 
@@ -62,7 +62,7 @@ describe("buildFacetFilters", () => {
     const result = buildFacetFilters(filters, staffKeyMap);
     expect(result).toEqual([
       ["tags:t1"],
-      ["metadata.assignedToId:a1"],
+      ["metadata.assignedToRef:a1"],
     ]);
   });
 
@@ -105,7 +105,7 @@ describe("buildFacetFilters", () => {
       tagIds: [],
     };
     expect(buildFacetFilters(filters, staffKeyMap)).toEqual([
-      ["metadata.assignedToId:a1", "metadata.assignedToId:a2"],
+      ["metadata.assignedToRef:a1", "metadata.assignedToRef:a2"],
     ]);
   });
 });
@@ -114,7 +114,7 @@ describe("buildFacetRequestFields", () => {
   it("returns tag and agency from staff keyMap", () => {
     expect(buildFacetRequestFields(staffKeyMap)).toEqual([
       "tags",
-      "metadata.assignedToId",
+      "metadata.assignedToRef",
     ]);
   });
 

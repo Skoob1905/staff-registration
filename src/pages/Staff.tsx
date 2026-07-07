@@ -3,6 +3,7 @@ import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import { FileText, Loader2 } from "lucide-react";
 import { ClientsDropdown } from "../components/ClientsDropdown";
+import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { ImportHistory } from "../components/ImportHistory";
 import { Metadata } from "../components/Metadata";
@@ -10,6 +11,7 @@ import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { AssignTags } from "../components/modals/AssignTags";
+import { AssignStaff } from "../components/modals/AssignStaff";
 import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
 import { StaffListSection } from "../components/StaffListSection";
@@ -27,7 +29,6 @@ import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { useAppStore } from "../stores/appStore";
 import { functions } from "../services/firebase";
-import { getCompanyName } from "../utils/company";
 import {
   getStaffName,
   getStaffNameFromRawRecord,
@@ -65,8 +66,8 @@ export const Staff = () => {
   }, [tags]);
 
   const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
+  const [assignStaffTarget, setAssignStaffTarget] = useState<BulkStaff | null>(null);
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
-  const [activeAssignMenu, setActiveAssignMenu] = useState<string | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
   const [tagTarget, setTagTarget] = useState<BulkStaff | null>(null);
   const [tagInput, setTagInput] = useState("");
@@ -183,7 +184,11 @@ export const Staff = () => {
   }, [tagTarget, selectedAssignTagIds, tagInput, addTag, toast]);
 
   const handleUnassign = useCallback(async () => {
-    if (!unassignTarget || !appUser?.agencyId) return;
+    if (!unassignTarget) return;
+    console.log("[Staff] handleUnassign called with:", {
+      staffId: unassignTarget.id,
+      assignedToName: unassignTarget.metadata?.assignedToName,
+    });
     setUnassignLoading(true);
     try {
       const callable = httpsCallable(functions, "unassignStaffFromAgency");
@@ -204,20 +209,31 @@ export const Staff = () => {
     } finally {
       setUnassignLoading(false);
     }
-  }, [unassignTarget, appUser?.agencyId, toast]);
+  }, [unassignTarget, toast]);
 
   const handleAssign = useCallback(
-    async (staffId: string, assignedToId: string) => {
+    async (
+      staffId: string,
+      agencyId: string,
+      agencyName?: string,
+      staffName?: string,
+    ) => {
+      if (!agencyId) return;
+      console.log("[Staff] handleAssign called with:", {
+        staffId,
+        agencyId,
+        agencyName,
+        staffName,
+      });
       setAssigningStaffId(staffId);
       try {
-        const agency = companies.find((a) => a.id === assignedToId);
-        const assignedToName = agency ? getCompanyName(agency) : assignedToId;
         const callable = httpsCallable(functions, "assignStaffToAgency");
-        await callable({ staffId, assignedToId, assignedToName });
+        await callable({ staffId, agencyId });
         setTimeout(() => setStaffRefreshTrigger((n) => n + 1), 2000);
+
         toast({
           title: "Assigned",
-          description: `Staff member has been assigned to ${assignedToName}`,
+          description: `${staffName || staffId} has been assigned to ${agencyName || agencyId}`,
           variant: "success",
         });
       } catch {
@@ -230,7 +246,7 @@ export const Staff = () => {
         setAssigningStaffId(null);
       }
     },
-    [appUser?.agencyId, companies, toast],
+    [appUser?.agencyId, toast],
   );
 
   const handleDeleteStaff = useCallback(async () => {
@@ -264,7 +280,6 @@ export const Staff = () => {
   return (
     <div className="mx-auto space-y-4">
       <StaffListSection
-        view="admin"
         refreshTrigger={staffRefreshTrigger}
         agencies={companies as unknown as Agency[]}
         leftAccordionValue={leftValue}
@@ -297,30 +312,7 @@ export const Staff = () => {
                       {member.metadata.assignedToName}
                     </span>
                   </span>
-                ) : (
-                  <span
-                    className="hidden sm:inline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {activeAssignMenu === member.id ? (
-                      <ClientsDropdown
-                        disabled={assigningStaffId === member.id}
-                        value=""
-                        onChange={(value) => {
-                          if (value) handleAssign(member.id, value);
-                          setActiveAssignMenu(null);
-                        }}
-                        className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                        placeholder="Assign agency"
-                        autoFocus
-                        onBlur={() => setActiveAssignMenu(null)}
-                        indexName="agencies_name_desc"
-                      />
-                    ) : assigningStaffId === member.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--muted-foreground)]" />
-                    ) : null}
-                  </span>
-                )}
+                ) : null}
               </>
             }
           >
@@ -346,15 +338,20 @@ export const Staff = () => {
                         />
                       </>
                     ) : appUser?.role === "super" ? (
-                      <ClientsDropdown
+                      <AgenciesDropdown
                         disabled={assigningStaffId === member.id}
                         value=""
-                        onChange={(value) => {
-                          if (value) handleAssign(member.id, value);
+                        onChange={(value, name) => {
+                          if (value)
+                            handleAssign(
+                              member.id,
+                              value,
+                              name,
+                              getStaffName(member),
+                            );
                         }}
                         className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
                         placeholder="Assign agency"
-                        indexName="agencies_name_desc"
                       />
                     ) : null
                   }
@@ -481,9 +478,20 @@ export const Staff = () => {
                 </div>
               )}
             <RecordData data={cleanRecordData(member)} />
-            <ActionButtonContainer
+             <ActionButtonContainer
               handleDelete={() => setDeleteStaffTarget(member)}
-              handleUnassign={() => setUnassignTarget(member)}
+              handleUnassign={
+                member.metadata?.assignedToName
+                  ? () => {
+                      setUnassignTarget(member);
+                    }
+                  : undefined
+              }
+              handleAssign={
+                !member.metadata?.assignedToName
+                  ? () => setAssignStaffTarget(member)
+                  : undefined
+              }
               handleTags={() => setTagTarget(member)}
             />
           </AccordionItem>
@@ -595,6 +603,22 @@ export const Staff = () => {
           </div>
         </DialogContent>
       </DialogRoot>
+
+      <AssignStaff
+        open={assignStaffTarget !== null}
+        onClose={() => setAssignStaffTarget(null)}
+        onAssign={(agencyId, agencyName) => {
+          if (assignStaffTarget)
+            handleAssign(
+              assignStaffTarget.id,
+              agencyId,
+              agencyName,
+              getStaffName(assignStaffTarget),
+            );
+          setAssignStaffTarget(null);
+        }}
+        saving={assigningStaffId !== null}
+      />
 
       {appUser?.role === "super" && (
         <ImportHistory

@@ -1,5 +1,6 @@
 import { useAuth } from "../context/AuthProvider";
 import { AgenciesButton } from "./ui/AgenciesButton";
+import { AssignButton } from "./ui/AssignButton";
 import { DeleteButton } from "./ui/DeleteButton";
 import { TagsButton } from "./ui/TagsButton";
 import { UnassignButton } from "./ui/UnassignButton";
@@ -9,6 +10,7 @@ interface ActionButtonContainerProps {
   handleUnassign?: () => void;
   handleTags?: () => void;
   handleAgencies?: () => void;
+  handleAssign?: () => void;
 }
 
 export const ActionButtonContainer = ({
@@ -16,10 +18,11 @@ export const ActionButtonContainer = ({
   handleUnassign,
   handleTags,
   handleAgencies,
+  handleAssign,
 }: ActionButtonContainerProps) => {
-  const { appUser } = useAuth();
+  const { role } = useAuth();
 
-  if (appUser?.role !== "super") return null;
+  if (role !== "super") return null;
 
   return (
     <div
@@ -30,6 +33,7 @@ export const ActionButtonContainer = ({
         {handleAgencies && <AgenciesButton onClick={handleAgencies} />}
         {handleTags && <TagsButton onClick={handleTags} />}
         {handleUnassign && <UnassignButton onClick={handleUnassign} />}
+        {handleAssign && <AssignButton onClick={handleAssign} />}
         {handleDelete && <DeleteButton onClick={handleDelete} />}
       </div>
     </div>

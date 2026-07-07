@@ -10,7 +10,7 @@
 import { setGlobalOptions } from "firebase-functions";
 
 // import { onRequest } from "firebase-functions/https";
-// import * as logger from "firebase-functions/logger";
+import * as logger from "firebase-functions/logger";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -1322,15 +1322,25 @@ export const assignStaffToAgency = onCall(async (request) => {
   }
 
   const staffId = String(request.data?.staffId || "").trim();
-  const assignedToId = String(request.data?.assignedToId || "").trim();
-  const assignedToName = String(request.data?.assignedToName || "").trim();
+  const agencyId = String(request.data?.agencyId || "").trim();
 
-  if (!staffId || !assignedToId || !assignedToName) {
+  logger.info("assignStaffToAgency called", { staffId, agencyId, callerUid });
+
+  if (!staffId || !agencyId) {
     throw new HttpsError(
       "invalid-argument",
-      "staffId, assignedToId, and assignedToName are required.",
+      "staffId and agencyId are required.",
     );
   }
+
+  const agencySnap = await db.collection("agencies").doc(agencyId).get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const agencyData = agencySnap.data()!;
+
+  const assignedToName = getBusinessName(agencyData);
 
   await db
     .collection("staff")
@@ -1338,9 +1348,8 @@ export const assignStaffToAgency = onCall(async (request) => {
     .set(
       {
         metadata: {
-          assignedToId,
+          assignedToId: agencyId,
           assignedToName,
-          assignedBy: caller.email ?? callerUid,
           assignedAt: FieldValue.serverTimestamp(),
         },
       },
@@ -1349,12 +1358,12 @@ export const assignStaffToAgency = onCall(async (request) => {
 
   await db
     .collection("agencies")
-    .doc(assignedToId)
+    .doc(agencyId)
     .update({
       assignedStaff: FieldValue.arrayUnion(staffId),
     });
 
-  return { ok: true, staffId, assignedToId };
+  return { ok: true, staffId, agencyId };
 });
 
 export const deleteUserContract = onCall(async (request) => {
@@ -2003,14 +2012,22 @@ export const unassignStaffFromAgency = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "staffId is required.");
   }
 
+  logger.info("unassignStaffFromAgency called", { staffId, callerUid });
+
   const staffSnap = await db.collection("staff").doc(staffId).get();
   if (!staffSnap.exists) {
     throw new HttpsError("not-found", "Staff member not found.");
   }
 
   const staffData = staffSnap.data();
-  const assignedToId = staffData?.metadata?.assignedToId;
-  if (!assignedToId) {
+  const agencyId = staffData?.metadata?.assignedToId;
+  logger.info("unassignStaffFromAgency staff data", {
+    staffId,
+    agencyId,
+    hasMetadata: !!staffData?.metadata,
+    metadataKeys: staffData?.metadata ? Object.keys(staffData.metadata) : [],
+  });
+  if (!agencyId) {
     throw new HttpsError("failed-precondition", "Staff not assigned.");
   }
 
@@ -2022,7 +2039,6 @@ export const unassignStaffFromAgency = onCall(async (request) => {
         metadata: {
           assignedToId: FieldValue.delete(),
           assignedToName: FieldValue.delete(),
-          assignedBy: FieldValue.delete(),
           assignedAt: FieldValue.delete(),
         },
       },
@@ -2031,12 +2047,12 @@ export const unassignStaffFromAgency = onCall(async (request) => {
 
   await db
     .collection("agencies")
-    .doc(assignedToId)
+    .doc(agencyId)
     .update({
       assignedStaff: FieldValue.arrayRemove(staffId),
     });
 
-  return { ok: true, staffId, assignedToId };
+  return { ok: true, staffId, agencyId };
 });
 
 export const addStaffTag = onCall(async (request) => {
