@@ -6,7 +6,8 @@ interface AssignedStaffProps {
 }
 
 export const AssignedStaff = ({ record }: AssignedStaffProps) => {
-  const staffArr = record.assignedStaff as unknown[] | undefined;
+  const meta = record.metadata as Record<string, unknown> | undefined;
+  const staffArr = meta?.assignedStaff as unknown[] | undefined;
   const count = Array.isArray(staffArr) ? staffArr.length : 0;
 
   if (count === 0) return null;

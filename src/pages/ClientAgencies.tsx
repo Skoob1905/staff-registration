@@ -49,7 +49,6 @@ function getDisplayFields(
     "importedAt",
     "business_name",
     "sortableName",
-    "assignedStaff",
     "slug",
     "email",
   ]);

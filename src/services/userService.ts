@@ -48,7 +48,7 @@ export const getAgencyProfile = async (
     id: agencyId,
     name,
     slug: (data.slug as string) || "",
-    assignedStaff: (data.assignedStaff as string[]) || [],
+    assignedStaff: ((data.metadata as Record<string, unknown> | undefined)?.assignedStaff as string[]) || [],
   };
 };
 

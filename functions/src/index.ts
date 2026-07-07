@@ -35,6 +35,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { sendLogins } from "./utils/sendLogins.js";
+import { getStaffRef } from "./utils/getStaffRef";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
@@ -1255,7 +1256,8 @@ export const importStaffCsv = onCall(async (request) => {
             : {}),
         },
       });
-      newStaffIds.push(docRef.id);
+      const staffRef = getStaffRef(record);
+      if (staffRef) newStaffIds.push(staffRef);
     }
     await batch.commit();
     writtenCount += chunk.length;
@@ -1266,7 +1268,8 @@ export const importStaffCsv = onCall(async (request) => {
       .collection("agencies")
       .doc(assignedToId)
       .update({
-        assignedStaff: FieldValue.arrayUnion(...newStaffIds),
+        assignedStaff: FieldValue.delete(),
+        "metadata.assignedStaff": FieldValue.arrayUnion(...newStaffIds),
       });
   }
 
@@ -1342,6 +1345,18 @@ export const assignStaffToAgency = onCall(async (request) => {
 
   const assignedToName = getBusinessName(agencyData);
 
+  const staffSnap = await db.collection("staff").doc(staffId).get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff member not found.");
+  }
+  const refValue = getStaffRef(staffSnap.data()!);
+  if (!refValue) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Staff record has no reference value.",
+    );
+  }
+
   await db
     .collection("staff")
     .doc(staffId)
@@ -1360,7 +1375,8 @@ export const assignStaffToAgency = onCall(async (request) => {
     .collection("agencies")
     .doc(agencyId)
     .update({
-      assignedStaff: FieldValue.arrayUnion(staffId),
+      assignedStaff: FieldValue.delete(),
+      "metadata.assignedStaff": FieldValue.arrayUnion(refValue),
     });
 
   return { ok: true, staffId, agencyId };
@@ -1877,7 +1893,8 @@ export const removeStaffImport = onCall(async (request) => {
     const assignedToId = data.metadata?.assignedToId;
     if (assignedToId) {
       const ids = agencyUpdates.get(assignedToId) || [];
-      ids.push(snap.id);
+      const refValue = getStaffRef(data);
+      if (refValue) ids.push(refValue);
       agencyUpdates.set(assignedToId, ids);
     }
   }
@@ -1921,7 +1938,7 @@ export const removeStaffImport = onCall(async (request) => {
       .collection("agencies")
       .doc(agencyId)
       .update({
-        assignedStaff: FieldValue.arrayRemove(...staffIds),
+        "metadata.assignedStaff": FieldValue.arrayRemove(...staffIds),
       });
   }
 
@@ -2031,6 +2048,14 @@ export const unassignStaffFromAgency = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "Staff not assigned.");
   }
 
+  const refValue = getStaffRef(staffData);
+  if (!refValue) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Staff record has no reference value.",
+    );
+  }
+
   await db
     .collection("staff")
     .doc(staffId)
@@ -2049,7 +2074,7 @@ export const unassignStaffFromAgency = onCall(async (request) => {
     .collection("agencies")
     .doc(agencyId)
     .update({
-      assignedStaff: FieldValue.arrayRemove(staffId),
+      "metadata.assignedStaff": FieldValue.arrayRemove(refValue),
     });
 
   return { ok: true, staffId, agencyId };
@@ -2830,12 +2855,15 @@ export const removeStaffMember = onCall(async (request) => {
   // Remove from agency assignedStaff if assigned
   const assignedToId = staffData.metadata?.assignedToId;
   if (assignedToId) {
-    await db
-      .collection("agencies")
-      .doc(assignedToId)
-      .update({
-        assignedStaff: FieldValue.arrayRemove(staffId),
-      });
+    const refValue = getStaffRef(staffData);
+    if (refValue) {
+      await db
+        .collection("agencies")
+        .doc(assignedToId)
+        .update({
+          "metadata.assignedStaff": FieldValue.arrayRemove(refValue),
+        });
+    }
   }
 
   // Delete Auth user + users doc by email

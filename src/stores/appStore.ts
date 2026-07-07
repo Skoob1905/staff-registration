@@ -97,7 +97,7 @@ export const useAppStore = create<AppState>()(
           });
           return;
         }
-        const staffIds = (agencyData.assignedStaff as string[]) || [];
+        const staffIds = ((agencyData.metadata as Record<string, unknown> | undefined)?.assignedStaff as string[]) || [];
         const staffPromises = staffIds.map((id) =>
           getStaff(id),
         );

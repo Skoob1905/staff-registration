@@ -70,7 +70,7 @@ export const Home = () => {
               ) ||
               agencyId,
             slug: "",
-            assignedStaff: (data.assignedStaff as string[]) || [],
+            assignedStaff: ((data.metadata as Record<string, unknown> | undefined)?.assignedStaff as string[]) || [],
           });
         }
       }
