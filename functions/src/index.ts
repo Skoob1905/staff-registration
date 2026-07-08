@@ -950,15 +950,30 @@ export const importAgencyCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
-  const loginResults = await sendLogins({
-    records: newRecords,
-    role: "client",
-    callerUid,
-    invitedByAgencyId: caller.agencyId ?? callerUid,
-    agencyId: caller.agencyId ?? callerUid,
-    webApiKey: WEB_API_KEY.value(),
-    continueUrl: RESET_CONTINUE_URL.value(),
-  });
+  const createLogins = request.data?.createLogins !== false;
+
+  if (createLogins) {
+    const loginResults = await sendLogins({
+      records: newRecords,
+      role: "client",
+      callerUid,
+      invitedByAgencyId: caller.agencyId ?? callerUid,
+      agencyId: caller.agencyId ?? callerUid,
+      webApiKey: WEB_API_KEY.value(),
+      continueUrl: RESET_CONTINUE_URL.value(),
+    });
+
+    return {
+      ok: true,
+      added: writtenCount,
+      duplicates: duplicateCount,
+      total: records.length,
+      importId,
+      loginAccountsCreated: loginResults.created,
+      loginAccountsSkipped: loginResults.skipped,
+      loginAccountsFailed: loginResults.failed,
+    };
+  }
 
   return {
     ok: true,
@@ -966,9 +981,6 @@ export const importAgencyCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    loginAccountsCreated: loginResults.created,
-    loginAccountsSkipped: loginResults.skipped,
-    loginAccountsFailed: loginResults.failed,
   };
 });
 
@@ -1089,15 +1101,30 @@ export const importClientCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
-  const loginResults = await sendLogins({
-    records: newRecords,
-    role: "admin",
-    callerUid,
-    invitedByAgencyId: caller.agencyId ?? callerUid,
-    agencyId: caller.agencyId ?? callerUid,
-    webApiKey: WEB_API_KEY.value(),
-    continueUrl: RESET_CONTINUE_URL.value(),
-  });
+  const createLogins = request.data?.createLogins !== false;
+
+  if (createLogins) {
+    const loginResults = await sendLogins({
+      records: newRecords,
+      role: "admin",
+      callerUid,
+      invitedByAgencyId: caller.agencyId ?? callerUid,
+      agencyId: caller.agencyId ?? callerUid,
+      webApiKey: WEB_API_KEY.value(),
+      continueUrl: RESET_CONTINUE_URL.value(),
+    });
+
+    return {
+      ok: true,
+      added: writtenCount,
+      duplicates: duplicateCount,
+      total: records.length,
+      importId,
+      loginAccountsCreated: loginResults.created,
+      loginAccountsSkipped: loginResults.skipped,
+      loginAccountsFailed: loginResults.failed,
+    };
+  }
 
   return {
     ok: true,
@@ -1105,9 +1132,6 @@ export const importClientCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    loginAccountsCreated: loginResults.created,
-    loginAccountsSkipped: loginResults.skipped,
-    loginAccountsFailed: loginResults.failed,
   };
 });
 
@@ -1291,15 +1315,30 @@ export const importStaffCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
-  const loginResults = await sendLogins({
-    records: newRecords,
-    role: "worker",
-    callerUid,
-    invitedByAgencyId: caller.agencyId ?? callerUid,
-    agencyId: assignedToId || undefined,
-    webApiKey: WEB_API_KEY.value(),
-    continueUrl: RESET_CONTINUE_URL.value(),
-  });
+  const createLogins = request.data?.createLogins !== false;
+
+  if (createLogins) {
+    const loginResults = await sendLogins({
+      records: newRecords,
+      role: "worker",
+      callerUid,
+      invitedByAgencyId: caller.agencyId ?? callerUid,
+      agencyId: assignedToId || undefined,
+      webApiKey: WEB_API_KEY.value(),
+      continueUrl: RESET_CONTINUE_URL.value(),
+    });
+
+    return {
+      ok: true,
+      added: writtenCount,
+      duplicates: duplicateCount,
+      total: records.length,
+      importId,
+      loginAccountsCreated: loginResults.created,
+      loginAccountsSkipped: loginResults.skipped,
+      loginAccountsFailed: loginResults.failed,
+    };
+  }
 
   return {
     ok: true,
@@ -1307,9 +1346,6 @@ export const importStaffCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    loginAccountsCreated: loginResults.created,
-    loginAccountsSkipped: loginResults.skipped,
-    loginAccountsFailed: loginResults.failed,
   };
 });
 

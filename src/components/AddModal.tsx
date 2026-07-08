@@ -413,6 +413,7 @@ export const AddModal = ({
             }
           : {}),
         ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
+        createLogins: !import.meta.env.DEV,
       });
       setProcessing(false);
 
