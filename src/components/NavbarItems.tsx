@@ -39,7 +39,7 @@ const CLIENT_ROUTES = [
   { label: "STAFF", to: "/staff" },
   // hide for the tiem being
   // { label: "UPLOAD", to: "/upload" },
-  { label: "TIMESHEETS", to: "/timesheets" },
+  // { label: "TIMESHEETS", to: "/timesheets" },
   { label: "PROFILE", to: "/profile" },
   { label: "SUPPORT", to: "/support" },
 ];
