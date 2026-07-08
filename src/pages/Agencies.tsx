@@ -15,39 +15,13 @@ import { cleanRecordData } from "../utils/cleanRecordData";
 import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import {
-  findValueByNormalizedKey,
-  hasBusinessNameColumn,
-} from "../utils/keyHeaderNormalisation";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { functions } from "../services/firebase";
 import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024;
-
-function parseCsvHeaders(text: string): string[] {
-  const firstLine = text.trim().split("\n")[0];
-  if (!firstLine) return [];
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < firstLine.length; i++) {
-    const char = firstLine[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  result.push(current.trim());
-  return result;
-}
 
 export const Agencies = () => {
   useEffect(() => {
@@ -69,14 +43,8 @@ export const Agencies = () => {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
-  const [addModalCsvType, setAddModalCsvType] = useState<
-    "agency" | "timesheet"
-  >("agency");
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewMode, setPreviewMode] = useState<
-    "invoice" | "contract" | "payslip" | "document"
-  >("invoice");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const {
@@ -285,22 +253,12 @@ export const Agencies = () => {
           setShowAddModal(open);
           if (!open) setAddModalFile(null);
         }}
-        cloudFunction={
-          addModalCsvType === "timesheet"
-            ? "recordTimesheetUpload"
-            : "importAgencyCsv"
-        }
-        storagePath={
-          addModalCsvType === "timesheet" ? "timesheet_imports" : "agencies"
-        }
-        itemLabel={addModalCsvType === "timesheet" ? "timesheet" : "agency"}
-        itemLabelPlural={
-          addModalCsvType === "timesheet" ? "timesheets" : "agencies"
-        }
-        csvType={addModalCsvType}
-        duplicateKey={
-          addModalCsvType === "timesheet" ? "fileName" : "companyName"
-        }
+        cloudFunction="importAgencyCsv"
+        storagePath="agencies"
+        itemLabel="agency"
+        itemLabelPlural="agencies"
+        csvType="agency"
+        duplicateKey="companyName"
         initialFile={addModalFile}
         onSuccess={async () => {
           setTimeout(() => refresh(), 2000);
@@ -310,7 +268,7 @@ export const Agencies = () => {
       <PreviewModal
         open={showPreviewModal}
         file={previewFile}
-        mode={previewMode}
+        mode="invoice"
         onClose={() => {
           setShowPreviewModal(false);
           setPreviewFile(null);

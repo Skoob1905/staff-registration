@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import { FileText, Loader2 } from "lucide-react";
-import { ClientsDropdown } from "../components/ClientsDropdown";
 import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { ImportHistory } from "../components/ImportHistory";
@@ -23,7 +22,6 @@ import {
   DialogContent,
   DialogRoot,
   DialogTitle,
-  Input,
 } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
@@ -419,10 +417,10 @@ export const Staff = () => {
                 })}
               </div>
             )}
-            {member.metadata?.documents &&
-              member.metadata.documents.length > 0 && (
+            {Boolean((member.metadata as Record<string, unknown>)?.documents) &&
+              ((member.metadata as Record<string, unknown>)?.documents as any[])?.length > 0 && (
                 <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                  {member.metadata.documents.map(
+                  {((member.metadata as Record<string, unknown>)?.documents as any[])?.map(
                     (entry: Record<string, unknown>, idx: number) => {
                       const docKey = `${member.id}::${entry.fileName}`;
                       const isDeleting = deletingDocumentKey === docKey;
@@ -457,7 +455,7 @@ export const Staff = () => {
                                         )
                                 }
                               />
-                              {entry.uploadedAt && (
+                              {Boolean(entry.uploadedAt) && (
                                 <span className="text-zinc-400">
                                   (
                                   {new Date(
@@ -477,7 +475,7 @@ export const Staff = () => {
                   )}
                 </div>
               )}
-            <RecordData data={cleanRecordData(member)} />
+            <RecordData data={cleanRecordData(member as unknown as Record<string, unknown>)} />
              <ActionButtonContainer
               handleDelete={() => setDeleteStaffTarget(member)}
               handleUnassign={

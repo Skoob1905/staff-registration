@@ -86,6 +86,7 @@ export const ClientAgencies = () => {
       try {
         let ids: string[] = [];
 
+        if (!appUser) return;
         if (appUser.role === "admin") {
           const userData = await getUser(appUser.uid);
           if (cancelled) return;

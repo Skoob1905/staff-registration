@@ -19,7 +19,6 @@ interface FileInteractionButtonsProps {
 export const FileInteractionButtons = ({
   fileUrl,
   fileName,
-  name,
   onDelete,
   size = "md",
   interactionKey,

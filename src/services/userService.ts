@@ -29,7 +29,7 @@ export const getAgencyProfile = async (
 ): Promise<Agency | null> => {
   const data = await getAgency(agencyId);
   if (!data) return null;
-  const name: string =
+  const name: string = (
     data.business_name ||
     data.Company_Name ||
     data.company_name ||
@@ -43,7 +43,8 @@ export const getAgencyProfile = async (
       "organisation",
       "company",
     ) ||
-    "Unknown";
+    "Unknown"
+  ) as string;
   return {
     id: agencyId,
     name,

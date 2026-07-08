@@ -50,17 +50,6 @@ export const Dashboard = () => {
     void run();
   }, [appUser]);
 
-  const toDateStr = (iso: string) => {
-    const d = new Date(iso);
-    return isNaN(d.getTime())
-      ? "—"
-      : d.toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
-  };
-
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>

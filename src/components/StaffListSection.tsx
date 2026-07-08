@@ -55,7 +55,7 @@ export const StaffListSection = ({
   rightAccordionValue,
   onRightAccordionChange,
 }: StaffListSectionProps) => {
-  const { role } = useAuth();
+  const { appUser, role } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
@@ -101,13 +101,14 @@ export const StaffListSection = ({
   const searchParams = useMemo(
     () => ({
       indexName: "staff_name_desc",
+      agencyId: appUser?.agencyId ?? "",
       facetFilters: staffFacetFilters,
       facets,
       query: filters.name,
       page,
       hitsPerPage: pageSize,
     }),
-    [staffFacetFilters, facets, filters.name, page, pageSize],
+    [staffFacetFilters, facets, filters.name, page, pageSize, appUser?.agencyId],
   );
 
   useEffect(() => {

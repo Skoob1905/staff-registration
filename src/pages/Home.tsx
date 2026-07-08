@@ -178,10 +178,10 @@ export const Home = () => {
               ))}
             </div>
           )}
-          {member.metadata?.documents &&
-            member.metadata.documents.length > 0 && (
+          {Boolean((member.metadata as Record<string, unknown>)?.documents) &&
+            ((member.metadata as Record<string, unknown>)?.documents as any[])?.length > 0 && (
               <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                {member.metadata.documents.map((entry: any, i: number) => (
+                {((member.metadata as Record<string, unknown>)?.documents as any[])?.map((entry: any, i: number) => (
                   <Metadata
                     key={`${member.id}::doc::${entry.fileName}`}
                     title="Document"

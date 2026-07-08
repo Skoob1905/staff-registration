@@ -2,7 +2,6 @@ import { type ElementType, useEffect, useState } from "react";
 import {
   Building2,
   Clock,
-  FileText,
   FolderOpen,
   Receipt,
   Users,

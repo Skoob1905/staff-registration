@@ -51,7 +51,7 @@ export const PreviewModal = ({
     const fetchStaff = async () => {
       try {
         const staff = await getAllStaff();
-        setStaffList(staff as BulkStaff[]);
+        setStaffList(staff as unknown as BulkStaff[]);
         console.log({ staff });
       } catch (err) {
         console.error("Failed to fetch staff for dropdown", err);

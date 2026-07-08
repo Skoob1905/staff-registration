@@ -65,6 +65,7 @@ export const Clients = () => {
 
   const { items: agencies } = usePaginatedRecords({
     indexName: "agencies_name_desc",
+    agencyId: appUser?.agencyId ?? "",
     hitsPerPage: 1000,
   });
 
@@ -258,7 +259,7 @@ export const Clients = () => {
                   />
                 </div>
               )}
-              {(appUser?.role === "super" || meta?.assignedAgencies) && (
+              {(appUser?.role === "super" || Boolean(meta?.assignedAgencies)) && (
                 <div className="flex items-center gap-2 mb-2">
                   <Metadata
                     title="Agencies"
