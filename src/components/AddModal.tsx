@@ -674,7 +674,7 @@ export const AddModal = ({
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {csvType === "staff" && (
+                  {/* {csvType === "staff" && (
                     <Button
                       type="button"
                       disabled={loading}
@@ -682,7 +682,7 @@ export const AddModal = ({
                     >
                       {hasAssignment ? "Edit" : "Auto-Assign"}
                     </Button>
-                  )}
+                  )} */}
                   <Button
                     type="button"
                     disabled={loading}
