@@ -34,8 +34,10 @@ import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { sendLogins } from "./utils/sendLogins.js";
 import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
+import { dedupRecords } from "./utils/dedup";
+import type { LoginDoc } from "./types";
+export { processImportLogins } from "./logins/processImportLogins";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
@@ -61,28 +63,6 @@ const namePattern = /^[A-Za-z' -]+$/;
 const normalizeKey = (key: string): string =>
   key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
-const NI_NORMALIZED_VARIANTS = new Set([
-  "ninumber",
-  "nino",
-  "nationalinsurancenumber",
-  "nationalinsuranceno",
-  "nationalinsurance",
-  "nin",
-  "ni",
-  "natinsnumber",
-  "natinsno",
-  "natins",
-  "nationalins",
-  "ninsurance",
-  "insurance",
-  "ssn",
-  "socialsecuritynumber",
-  "nidentifier",
-  "nationalid",
-  "natid",
-  "niid",
-]);
-
 const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
   "businessname",
   "business",
@@ -103,15 +83,6 @@ const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
   "entityname",
   "entity",
 ]);
-
-const getNINumber = (row: Record<string, unknown>): string => {
-  for (const [key, value] of Object.entries(row)) {
-    if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
-      return String(value ?? "");
-    }
-  }
-  return "";
-};
 
 const getBusinessName = (row: Record<string, unknown>): string => {
   for (const [key, value] of Object.entries(row)) {
@@ -863,41 +834,22 @@ export const importAgencyCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const existingNames = new Set<string>();
+  const { newRecords, duplicateCount } = await dedupRecords({
+    db,
+    collectionName: "agencies",
+    oldQueryField: "importedByAgencyId",
+    newQueryField: "metadata.uploadedBy",
+    records,
+    getKey: getAgencyRef,
+    agencyId: caller.agencyId ?? undefined,
+  });
 
-  if (caller.agencyId) {
-    const agenciesRef = db.collection("agencies");
-    const [oldSnaps, newSnaps] = await Promise.all([
-      agenciesRef.where("importedByAgencyId", "==", caller.agencyId).get(),
-      agenciesRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-    ]);
-
-    const docSeen = new Set<string>();
-    for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-      if (docSeen.has(doc.id)) continue;
-      docSeen.add(doc.id);
-      const data = doc.data();
-      const name = getBusinessName(data).toLowerCase().trim();
-      if (name) existingNames.add(name);
-    }
-  }
-
-  const newRecords: Array<Record<string, unknown>> = [];
-  let duplicateCount = 0;
-
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) continue;
-    const name = getBusinessName(record).toLowerCase().trim();
-    if (name && existingNames.has(name)) {
-      duplicateCount++;
-      continue;
-    }
+  for (const record of newRecords) {
     const emailVal = findNormalizedValue(record, "email", "emailaddress");
     if (emailVal) {
       record["email"] = normalizeEmail(emailVal);
     }
     record["ref"] = getAgencyRef(record) || "";
-    newRecords.push(record);
   }
 
   if (newRecords.length === 0) {
@@ -950,30 +902,25 @@ export const importAgencyCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
-  const createLogins = request.data?.createLogins !== false;
-
-  if (createLogins) {
-    const loginResults = await sendLogins({
-      records: newRecords,
+  const loginsBatch = db.batch();
+  let loginCount = 0;
+  for (const record of newRecords) {
+    const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    if (!email || !emailPattern.test(email)) continue;
+    const loginRef = db.collection("logins").doc(email);
+    loginsBatch.set(loginRef, {
+      email,
       role: "client",
-      callerUid,
-      invitedByAgencyId: caller.agencyId ?? callerUid,
-      agencyId: caller.agencyId ?? callerUid,
-      webApiKey: WEB_API_KEY.value(),
-      continueUrl: RESET_CONTINUE_URL.value(),
-    });
-
-    return {
-      ok: true,
-      added: writtenCount,
-      duplicates: duplicateCount,
-      total: records.length,
       importId,
-      loginAccountsCreated: loginResults.created,
-      loginAccountsSkipped: loginResults.skipped,
-      loginAccountsFailed: loginResults.failed,
-    };
+      pending: true,
+      requestedAt: FieldValue.serverTimestamp(),
+      requestedBy: callerUid,
+    } as LoginDoc);
+    loginCount++;
   }
+  if (loginCount > 0) await loginsBatch.commit();
 
   return {
     ok: true,
@@ -1014,41 +961,22 @@ export const importClientCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const existingNames = new Set<string>();
+  const { newRecords, duplicateCount } = await dedupRecords({
+    db,
+    collectionName: "clients",
+    oldQueryField: "importedByAgencyId",
+    newQueryField: "metadata.uploadedBy",
+    records,
+    getKey: getClientRef,
+    agencyId: caller.agencyId ?? undefined,
+  });
 
-  if (caller.agencyId) {
-    const clientsRef = db.collection("clients");
-    const [oldSnaps, newSnaps] = await Promise.all([
-      clientsRef.where("importedByAgencyId", "==", caller.agencyId).get(),
-      clientsRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-    ]);
-
-    const docSeen = new Set<string>();
-    for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-      if (docSeen.has(doc.id)) continue;
-      docSeen.add(doc.id);
-      const data = doc.data();
-      const name = getBusinessName(data).toLowerCase().trim();
-      if (name) existingNames.add(name);
-    }
-  }
-
-  const newRecords: Array<Record<string, unknown>> = [];
-  let duplicateCount = 0;
-
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) continue;
-    const name = getBusinessName(record).toLowerCase().trim();
-    if (name && existingNames.has(name)) {
-      duplicateCount++;
-      continue;
-    }
+  for (const record of newRecords) {
     const emailVal = findNormalizedValue(record, "email", "emailaddress");
     if (emailVal) {
       record["email"] = normalizeEmail(emailVal);
     }
     record["ref"] = getClientRef(record) || "";
-    newRecords.push(record);
   }
 
   if (newRecords.length === 0) {
@@ -1101,30 +1029,25 @@ export const importClientCsv = onCall(async (request) => {
     importedAt: FieldValue.serverTimestamp(),
   });
 
-  const createLogins = request.data?.createLogins !== false;
-
-  if (createLogins) {
-    const loginResults = await sendLogins({
-      records: newRecords,
+  const loginsBatch = db.batch();
+  let loginCount = 0;
+  for (const record of newRecords) {
+    const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    if (!email || !emailPattern.test(email)) continue;
+    const loginRef = db.collection("logins").doc(email);
+    loginsBatch.set(loginRef, {
+      email,
       role: "admin",
-      callerUid,
-      invitedByAgencyId: caller.agencyId ?? callerUid,
-      agencyId: caller.agencyId ?? callerUid,
-      webApiKey: WEB_API_KEY.value(),
-      continueUrl: RESET_CONTINUE_URL.value(),
-    });
-
-    return {
-      ok: true,
-      added: writtenCount,
-      duplicates: duplicateCount,
-      total: records.length,
       importId,
-      loginAccountsCreated: loginResults.created,
-      loginAccountsSkipped: loginResults.skipped,
-      loginAccountsFailed: loginResults.failed,
-    };
+      pending: true,
+      requestedAt: FieldValue.serverTimestamp(),
+      requestedBy: callerUid,
+    } as LoginDoc);
+    loginCount++;
   }
+  if (loginCount > 0) await loginsBatch.commit();
 
   return {
     ok: true,
@@ -1165,24 +1088,13 @@ export const importStaffCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const existingNiNumbers = new Set<string>();
-
-  if (caller.agencyId) {
-    const staffRef = db.collection("staff");
-    const [oldSnaps, newSnaps] = await Promise.all([
-      staffRef.where("agencyId", "==", caller.agencyId).get(),
-      staffRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-    ]);
-
-    const docSeen = new Set<string>();
-    for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-      if (docSeen.has(doc.id)) continue;
-      docSeen.add(doc.id);
-      const data = doc.data();
-      const ni = getNINumber(data).toLowerCase();
-      if (ni) existingNiNumbers.add(ni);
-    }
-  }
+  const { newRecords, duplicateCount } = await dedupRecords({
+    db,
+    collectionName: "staff",
+    records,
+    getKey: getStaffRef,
+    fetchAll: true,
+  });
 
   let assignedToId = request.data?.assignedToId
     ? String(request.data.assignedToId)
@@ -1205,18 +1117,7 @@ export const importStaffCsv = onCall(async (request) => {
 
   const tagIds = request.data?.tagIds as string[] | undefined;
 
-  const newRecords: Array<Record<string, unknown>> = [];
-  let duplicateCount = 0;
-
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) continue;
-    const ni = getNINumber(record).toLowerCase();
-    if (ni && existingNiNumbers.has(ni)) {
-      duplicateCount++;
-      continue;
-    }
-    existingNiNumbers.add(ni);
-
+  for (const record of newRecords) {
     const forename = findNormalizedValue(record, "forename", "firstname");
     const surname = findNormalizedValue(record, "surname", "lastname");
     const fullName = findNormalizedValue(record, "fullname");
@@ -1241,8 +1142,6 @@ export const importStaffCsv = onCall(async (request) => {
     }
 
     record["ref"] = getStaffRef(record) || "";
-
-    newRecords.push(record);
   }
 
   if (newRecords.length === 0) {
@@ -1265,7 +1164,10 @@ export const importStaffCsv = onCall(async (request) => {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
-      const docRef = db.collection("staff").doc();
+      const staffRef = getStaffRef(record);
+      const docRef = staffRef
+        ? db.collection("staff").doc(staffRef)
+        : db.collection("staff").doc();
       batch.set(docRef, {
         ...record,
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
@@ -1284,7 +1186,6 @@ export const importStaffCsv = onCall(async (request) => {
             : {}),
         },
       });
-      const staffRef = getStaffRef(record);
       if (staffRef) newStaffIds.push(staffRef);
     }
     await batch.commit();
@@ -1313,32 +1214,28 @@ export const importStaffCsv = onCall(async (request) => {
     importedByUid: callerUid,
     importedByEmail: caller.email ?? null,
     importedAt: FieldValue.serverTimestamp(),
+    assignedToId: assignedToId || null,
   });
 
-  const createLogins = request.data?.createLogins !== false;
-
-  if (createLogins) {
-    const loginResults = await sendLogins({
-      records: newRecords,
+  const loginsBatch = db.batch();
+  let loginCount = 0;
+  for (const record of newRecords) {
+    const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    if (!email || !emailPattern.test(email)) continue;
+    const loginRef = db.collection("logins").doc(email);
+    loginsBatch.set(loginRef, {
+      email,
       role: "worker",
-      callerUid,
-      invitedByAgencyId: caller.agencyId ?? callerUid,
-      agencyId: assignedToId || undefined,
-      webApiKey: WEB_API_KEY.value(),
-      continueUrl: RESET_CONTINUE_URL.value(),
-    });
-
-    return {
-      ok: true,
-      added: writtenCount,
-      duplicates: duplicateCount,
-      total: records.length,
       importId,
-      loginAccountsCreated: loginResults.created,
-      loginAccountsSkipped: loginResults.skipped,
-      loginAccountsFailed: loginResults.failed,
-    };
+      pending: true,
+      requestedAt: FieldValue.serverTimestamp(),
+      requestedBy: callerUid,
+    } as LoginDoc);
+    loginCount++;
   }
+  if (loginCount > 0) await loginsBatch.commit();
 
   return {
     ok: true,

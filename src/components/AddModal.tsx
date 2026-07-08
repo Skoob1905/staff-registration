@@ -353,10 +353,19 @@ export const AddModal = ({
       }
       if (ALGOLIA_INDEX_PREFIX === "dev_") {
         const collectionName =
-          csvType === "staff" ? "staff" : csvType === "agency" ? "agencies" : "clients";
+          csvType === "staff"
+            ? "staff"
+            : csvType === "agency"
+              ? "agencies"
+              : "clients";
         const maxRecords =
           csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
-        const label = csvType === "staff" ? "staff" : csvType === "agency" ? "agencies" : "clients";
+        const label =
+          csvType === "staff"
+            ? "staff"
+            : csvType === "agency"
+              ? "agencies"
+              : "clients";
         const existingCount = await countCollection(collectionName);
         if (existingCount + csvData.rows.length > maxRecords) {
           toast({
@@ -413,7 +422,6 @@ export const AddModal = ({
             }
           : {}),
         ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
-        createLogins: !import.meta.env.DEV,
       });
       setProcessing(false);
 
@@ -421,9 +429,6 @@ export const AddModal = ({
         added: number;
         duplicates: number;
         importId?: string;
-        loginAccountsCreated?: number;
-        loginAccountsSkipped?: number;
-        loginAccountsFailed?: number;
       };
 
       if (data.importId && recordsToSend.length > 0) {
@@ -449,14 +454,10 @@ export const AddModal = ({
         data.duplicates > 0
           ? ` with ${data.duplicates} duplicate${data.duplicates === 1 ? "" : "s"}`
           : "";
-      const loginMsg =
-        data.loginAccountsCreated !== undefined
-          ? `, ${data.loginAccountsCreated} login${data.loginAccountsCreated === 1 ? "" : "s"} sent`
-          : "";
 
       toast({
         title: "File uploaded",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}${loginMsg}.`,
+        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}.`,
         replaceToast: true,
       });
       setUploadProgress(0);
@@ -467,6 +468,32 @@ export const AddModal = ({
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       await onSuccess?.(data.importId);
+
+      if (data.importId && csvType !== "timesheet") {
+        const processLoginCallable = httpsCallable(
+          functions,
+          "processImportLogins",
+        );
+        processLoginCallable({ importId: data.importId })
+          .then((res) => {
+            const r = res.data as { created: number; skipped: number };
+            if (r.created > 0) {
+              toast({
+                title: "Logins created",
+                description: `${r.created} login${r.created === 1 ? "" : "s"} sent${r.skipped > 0 ? `, ${r.skipped} skipped` : ""}.`,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error("[processImportLogins] failed", err);
+            toast({
+              title: "Login creation failed",
+              description:
+                "Some logins may not have been sent. Contact support.",
+              variant: "warning" as const,
+            });
+          });
+      }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (
