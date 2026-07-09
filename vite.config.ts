@@ -16,7 +16,7 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   test: {
-    exclude: ["node_modules", "functions"],
+    exclude: ["node_modules", ".opencode", "functions"],
   },
   server: {
     host: "localhost",

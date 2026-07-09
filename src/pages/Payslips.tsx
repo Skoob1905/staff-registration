@@ -57,7 +57,6 @@ export const Payslips = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
     loadData()
       .then(setStaffList)
       .catch(() => setStaffList([]))
