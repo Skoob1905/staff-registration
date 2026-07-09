@@ -22,6 +22,7 @@ const SUPER_ROUTES = [
   { label: "STAFF", to: "/staff" },
   { label: "UPLOAD", to: "/upload" },
   { label: "INVOICES", to: "/invoices" },
+  { label: "PAYSLIPS", to: "/payslips" },
   { label: "PROFILE", to: "/profile" },
 ];
 
@@ -29,6 +30,7 @@ const ADMIN_ROUTES = [
   { label: "AGENCIES", to: "/agencies" },
   { label: "STAFF", to: "/staff" },
   { label: "INVOICES", to: "/invoices" },
+  { label: "PAYSLIPS", to: "/payslips" },
   // hide for the tiem being
   // { label: "TIMESHEETS", to: "/timesheets" },
   { label: "PROFILE", to: "/profile" },

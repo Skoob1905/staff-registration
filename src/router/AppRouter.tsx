@@ -7,6 +7,7 @@ import { Agencies } from "../pages/Agencies";
 import { ClientAgencies } from "../pages/ClientAgencies";
 import { Clients } from "../pages/Clients";
 import { AllTimesheets } from "../pages/AllTimesheets";
+import { Payslips } from "../pages/Payslips";
 import { AllInvoices } from "../pages/AllInvoices";
 import { Staff } from "../pages/Staff";
 import { Home } from "../pages/Home";
@@ -67,6 +68,13 @@ const TimesheetsSwitch = () => {
   return <Timesheets />;
 };
 
+const PayslipsSwitch = () => {
+  const { appUser } = useAuth();
+  if (!appUser) return <Navigate to="/login" replace />;
+  if (appUser.role === "super" || appUser.role === "admin") return <Payslips />;
+  return <Navigate to="/staff" replace />;
+};
+
 const AgenciesSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
@@ -86,6 +94,7 @@ export const AppRouter = () => (
           <Route path="/upload" element={<Upload />} />
           <Route path="/invoices" element={<InvoicesSwitch />} />
           <Route path="/timesheets" element={<TimesheetsSwitch />} />
+          <Route path="/payslips" element={<PayslipsSwitch />} />
           <Route path="/support" element={<Support />} />
           <Route path="/dashboard" element={<DashboardSwitch />} />
 

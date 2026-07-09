@@ -3390,3 +3390,84 @@ export const uploadPayslipToStaff = onCall(async (request) => {
 
   return { ok: true, payslipId: payslipRef.id, url: fileUrl };
 });
+
+export const deletePayslip = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { payslipId, staffId } = request.data as {
+    payslipId?: string;
+    staffId?: string;
+  };
+  if (!payslipId || !staffId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "payslipId and staffId are required.",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string; agencyId?: string };
+  if (callerData.role !== "super" && callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Super or admin only.");
+  }
+
+  const payslipSnap = await db.collection("payslips").doc(payslipId).get();
+  if (!payslipSnap.exists) {
+    throw new HttpsError("not-found", "Payslip not found.");
+  }
+
+  const payslipData = payslipSnap.data() as {
+    userId?: string;
+    fileName?: string;
+    agencyId?: string;
+  };
+
+  if (callerData.role !== "super" && payslipData.agencyId !== callerData.agencyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Cannot delete payslips from another agency.",
+    );
+  }
+
+  const fileName = payslipData.fileName ?? "";
+  if (fileName) {
+    try {
+      await getStorage()
+        .bucket()
+        .file(`payslips/${staffId}/${fileName}`)
+        .delete();
+    } catch {
+      // file may not exist — proceed with document cleanup
+    }
+  }
+
+  await db.collection("payslips").doc(payslipId).delete();
+
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (staffSnap.exists) {
+    const staffData = staffSnap.data() as {
+      metadata?: { payslipsSent?: string[] };
+    };
+    const existing = staffData?.metadata?.payslipsSent ?? [];
+    await staffRef.set(
+      {
+        metadata: {
+          payslipsSent: existing.filter((id) => id !== payslipId),
+        },
+      },
+      { merge: true },
+    );
+  }
+
+  return { ok: true };
+});

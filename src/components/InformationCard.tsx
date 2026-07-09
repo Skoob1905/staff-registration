@@ -69,7 +69,7 @@ interface InformationCardProps {
   isNew: boolean;
   hasDownloaded: boolean;
   admin: boolean;
-  uploadedAt: string;
+  uploadedAt: unknown;
   documentInfo: ReactNode;
   infoBottom?: ReactNode;
   actions: ReactNode;

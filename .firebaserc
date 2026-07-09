@@ -1,6 +1,5 @@
 {
   "projects": {
-    "production": "mdsce-prod",
     "development": "mdsce-dev"
   },
   "targets": {},

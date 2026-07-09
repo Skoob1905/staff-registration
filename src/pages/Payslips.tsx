@@ -1,39 +1,188 @@
+import { useEffect, useState } from "react";
+import { httpsCallable } from "firebase/functions";
+import { Loader2 } from "lucide-react";
+import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../components/ui";
 import { Section } from "../components/Section";
+import { AccordionTitle } from "../components/AccordionTitle";
+import { InformationCard } from "../components/InformationCard";
+import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
+import { useToast } from "../context/ToastProvider";
+import { useAuth } from "../context/AuthProvider";
+import { functions } from "../services/firebase";
+import { getUser } from "../services/firestore";
+import { formatSentDate } from "../utils/date";
+import { getAllStaffPayslips, type StaffPayslips } from "../utils/payslips";
 
-const payslips = [
-  { period: "May 2026", gross: "£3,200.00", ni: "£180.40", tax: "£420.00", net: "£2,599.60", status: "Paid" },
-  { period: "April 2026", gross: "£3,100.00", ni: "£172.80", tax: "£405.00", net: "£2,522.20", status: "Paid" },
-  { period: "March 2026", gross: "£3,250.00", ni: "£184.60", tax: "£430.00", net: "£2,635.40", status: "Paid" },
-  { period: "February 2026", gross: "£2,950.00", ni: "£162.00", tax: "£380.00", net: "£2,408.00", status: "Paid" },
-  { period: "January 2026", gross: "£3,000.00", ni: "£165.60", tax: "£390.00", net: "£2,444.40", status: "Paid" },
-];
+interface DeleteTarget {
+  staffId: string;
+  staffName: string;
+  payslipId: string;
+  payslipName: string;
+}
 
-export const Payslips = () => (
-  <div className="space-y-4">
-    <Section title="Payslips">
-      <div className="space-y-2">
-        {payslips.map((p) => (
-          <div key={p.period} className="flex items-center justify-between rounded-xl border border-[var(--border)] p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
-                {p.period.slice(0, 3)}
-              </div>
-              <div>
-                <p className="text-sm font-semibold">{p.period}</p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Gross: {p.gross} &middot; NI: {p.ni} &middot; Tax: {p.tax}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-green-700">{p.net}</p>
-              <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                {p.status}
-              </span>
-            </div>
+export const Payslips = () => {
+  useEffect(() => {
+    document.title = "Payslips";
+  }, []);
+
+  const { appUser } = useAuth();
+  const { toast } = useToast();
+  const [staffList, setStaffList] = useState<StaffPayslips[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchData = () => {
+    setLoading(true);
+
+    const load = async () => {
+      let agencyIds: string[] | undefined;
+
+      if (appUser?.role === "admin") {
+        const userData = await getUser(appUser.uid);
+        if (userData) {
+          const ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
+          if (ids.length === 0 && appUser.agencyId) {
+            ids.push(appUser.agencyId);
+          }
+          agencyIds = ids.length > 0 ? ids : undefined;
+        }
+      }
+
+      const data = await getAllStaffPayslips(agencyIds);
+      setStaffList(data);
+    };
+
+    load()
+      .catch((err) => {
+        console.error("[Payslips] fetch failed:", err);
+        setStaffList([]);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [appUser]);
+
+  const onDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const fn = httpsCallable(functions, "deletePayslip");
+      await fn({
+        payslipId: deleteTarget.payslipId,
+        staffId: deleteTarget.staffId,
+      });
+      toast({ title: "Payslip deleted", variant: "success" });
+      setDeleteTarget(null);
+      fetchData();
+    } catch {
+      toast({
+        title: "Delete failed",
+        description: "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const totalPayslips = staffList.reduce((sum, s) => sum + s.payslips.length, 0);
+
+  return (
+    <div className="mx-auto space-y-4">
+      <Section title="Payslips" count={totalPayslips}>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
           </div>
-        ))}
-      </div>
-    </Section>
-  </div>
-);
+        ) : staffList.length === 0 ? (
+          <p className="text-sm text-zinc-500">No payslips uploaded yet.</p>
+        ) : (
+          <AccordionRoot className="mt-1.5 sm:mt-3 space-y-3" type="multiple">
+            {staffList.map((staff, idx) => {
+              const latestPayslip = staff.payslips.reduce((latest, p) => {
+                const t =
+                  (p.timestamp as { toDate?: () => Date } | undefined)
+                    ?.toDate?.()
+                    ?.getTime() ?? 0;
+                const lt =
+                  (latest.timestamp as { toDate?: () => Date } | undefined)
+                    ?.toDate?.()
+                    ?.getTime() ?? 0;
+                return t > lt ? p : latest;
+              }, staff.payslips[0]);
+
+              return (
+                <AccordionItem
+                  key={staff.staffId}
+                  value={staff.staffId}
+                  className="animate-cascade"
+                  style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <AccordionTitle>{staff.staffName}</AccordionTitle>
+                    </span>
+                  }
+                  actions={
+                    <span className="text-xs text-zinc-400">
+                      Latest: {formatSentDate(latestPayslip.timestamp)}
+                    </span>
+                  }
+                >
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {staff.payslips.map((payslip) => (
+                      <InformationCard
+                        key={payslip.id}
+                        variant="payslip"
+                        name={payslip.fileName}
+                        isNew={!payslip.hasDownloaded}
+                        hasDownloaded={!!payslip.hasDownloaded}
+                        uploadedAt={payslip.timestamp}
+                        admin
+                        documentInfo={null}
+                        actions={
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                window.open(payslip.fileUrl, "_blank", "noopener,noreferrer");
+                              }}
+                            >
+                              Download
+                            </Button>
+                            <DeleteButton
+                              onClick={() => {
+                                setDeleteTarget({
+                                  staffId: staff.staffId,
+                                  staffName: staff.staffName,
+                                  payslipId: payslip.id,
+                                  payslipName: payslip.fileName,
+                                });
+                              }}
+                            />
+                          </div>
+                        }
+                      />
+                    ))}
+                  </div>
+                </AccordionItem>
+              );
+            })}
+          </AccordionRoot>
+        )}
+      </Section>
+
+      <DeleteConfirmModal
+        open={deleteTarget !== null}
+        deleting={deleting}
+        label="payslip"
+        itemName={deleteTarget?.payslipName ?? ""}
+        clientName={deleteTarget?.staffName ?? ""}
+        onDelete={() => void onDelete()}
+        onClose={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+};

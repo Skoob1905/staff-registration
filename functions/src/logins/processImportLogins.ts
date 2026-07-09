@@ -112,10 +112,13 @@ export const processImportLogins = onCall(
         );
 
         if (!resp.ok) {
-          console.warn("[processImportLogins] sendOobCode failed", {
+          const body = await resp.text();
+          console.error("[processImportLogins] sendOobCode failed", {
             email,
             status: resp.status,
+            body,
           });
+          throw new Error(`sendOobCode failed: ${resp.status}`);
         }
 
         await doc.ref.update({

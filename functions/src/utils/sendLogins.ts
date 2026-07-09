@@ -114,10 +114,13 @@ export async function sendLogins(
       );
 
       if (!resp.ok) {
-        console.warn("[sendLogins] sendOobCode failed", {
+        const body = await resp.text();
+        console.error("[sendLogins] sendOobCode failed", {
           email,
           status: resp.status,
+          body,
         });
+        throw new Error(`sendOobCode failed: ${resp.status}`);
       }
 
       created++;
