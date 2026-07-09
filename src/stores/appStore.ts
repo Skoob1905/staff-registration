@@ -1,14 +1,13 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "../services/firebase";
+  getAgency,
+  getStaff,
+  getUsersByAgencyAndRole,
+  getAgenciesByImportingAgency,
+  getImportHistory,
+  getAllTags,
+} from "../services/firestore";
 import { getStaffName } from "../utils/keyHeaderNormalisation";
 import { toDate } from "../utils/date";
 import type { Agency, BulkStaff, StaffTag } from "../types/domain";
@@ -89,8 +88,8 @@ export const useAppStore = create<AppState>()(
       if (state.assignedStaffLoaded || state.assignedStaffLoading) return;
       set({ assignedStaffLoading: true });
       try {
-        const agencySnap = await getDoc(doc(db, "agencies", targetAgencyId));
-        if (!agencySnap.exists()) {
+        const agencyData = await getAgency(targetAgencyId);
+        if (!agencyData) {
           set({
             assignedStaff: [],
             assignedStaffLoaded: true,
@@ -98,15 +97,14 @@ export const useAppStore = create<AppState>()(
           });
           return;
         }
-        const agencyData = agencySnap.data() as Agency;
-        const staffIds = agencyData.assignedStaff || [];
+        const staffIds = ((agencyData.metadata as Record<string, unknown> | undefined)?.assignedStaff as string[]) || [];
         const staffPromises = staffIds.map((id) =>
-          getDoc(doc(db, "staff", id)),
+          getStaff(id),
         );
-        const staffSnaps = await Promise.all(staffPromises);
-        const loaded = staffSnaps
-          .filter((snap) => snap.exists())
-          .map((snap) => ({ id: snap.id, ...snap.data() }) as BulkStaff);
+        const staffDocs = await Promise.all(staffPromises);
+        const loaded = staffDocs
+          .filter((doc): doc is Record<string, unknown> => doc !== null)
+          .map((doc) => ({ id: doc.id as string, ...doc }) as BulkStaff);
 
         const merged = loaded.map((s) => {
           return { ...s, fullName: getStaffName(s) };
@@ -140,19 +138,13 @@ export const useAppStore = create<AppState>()(
       set({ adminsLoading: true });
       console.log("[store] loadAdmins — querying Firestore...");
       try {
-        const snaps = await getDocs(
-          query(
-            collection(db, "users"),
-            where("agencyId", "==", agencyId),
-            where("role", "==", "admin"),
-          ),
-        );
+        const docs = await getUsersByAgencyAndRole(agencyId, "admin");
         set({
-          admins: snaps.docs.map((d) => ({ id: d.id, ...d.data() })),
+          admins: docs.map((d) => ({ id: d.uid, ...d })),
           adminsLoaded: true,
           adminsLoading: false,
         });
-        console.log(`[store] loadAdmins — loaded ${snaps.docs.length} admins`);
+        console.log(`[store] loadAdmins — loaded ${docs.length} admins`);
       } catch {
         set({ admins: [], adminsLoaded: true, adminsLoading: false });
         console.error("[store] loadAdmins — failed");
@@ -169,21 +161,16 @@ export const useAppStore = create<AppState>()(
       set({ agenciesLoading: true });
       console.log("[store] loadAgencies — querying Firestore...");
       try {
-        const snaps = await getDocs(
-          query(
-            collection(db, "agencies"),
-            where("importedByAgencyId", "==", agencyId),
-          ),
-        );
+        const docs = await getAgenciesByImportingAgency(agencyId);
         set({
-          agencies: snaps.docs.map(
-            (d) => ({ id: d.id, ...d.data() }) as Agency,
+          agencies: docs.map(
+            (d) => ({ id: d.id, ...d }) as Agency,
           ),
           agenciesLoaded: true,
           agenciesLoading: false,
         });
         console.log(
-          `[store] loadAgencies — loaded ${snaps.docs.length} agencies`,
+          `[store] loadAgencies — loaded ${docs.length} agencies`,
         );
       } catch {
         set({ agencies: [], agenciesLoaded: true, agenciesLoading: false });
@@ -197,9 +184,9 @@ export const useAppStore = create<AppState>()(
         return state.companyCache[companyId];
       }
       try {
-        const snap = await getDoc(doc(db, "agencies", companyId));
-        if (!snap.exists()) return undefined;
-        const company = { id: snap.id, ...snap.data() } as AgencyDoc;
+        const data = await getAgency(companyId);
+        if (!data) return undefined;
+        const company = { id: companyId, ...data } as AgencyDoc;
         set((s) => ({
           companyCache: { ...s.companyCache, [companyId]: company },
         }));
@@ -227,13 +214,13 @@ export const useAppStore = create<AppState>()(
       set({ tagsLoading: true });
       console.log("[store] loadTags — querying Firestore...");
       try {
-        const snaps = await getDocs(collection(db, "tags"));
+        const docs = await getAllTags();
         set({
-          tags: snaps.docs.map((d) => ({ id: d.id, ...d.data() }) as StaffTag),
+          tags: docs.map((d) => ({ id: d.id as string, ...d }) as StaffTag),
           tagsLoaded: true,
           tagsLoading: false,
         });
-        console.log(`[store] loadTags — loaded ${snaps.docs.length} tags`);
+        console.log(`[store] loadTags — loaded ${docs.length} tags`);
       } catch {
         set({ tags: [], tagsLoaded: true, tagsLoading: false });
         console.error("[store] loadTags — failed");
@@ -247,14 +234,7 @@ export const useAppStore = create<AppState>()(
         return;
       }
       try {
-        const constraints: import("firebase/firestore").QueryConstraint[] = [];
-        if (type) constraints.push(where("type", "==", type));
-        const q = query(collection(db, "csv_imports"), ...constraints);
-        const snaps = await getDocs(q);
-        const items = snaps.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<CsvImport, "id">),
-        }));
+        const items = (await getImportHistory(type)) as unknown as CsvImport[];
         items.sort((a, b) => {
           const dateA = toDate(a.importedAt)?.getTime() ?? 0;
           const dateB = toDate(b.importedAt)?.getTime() ?? 0;

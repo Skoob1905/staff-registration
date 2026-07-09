@@ -1,10 +1,15 @@
-name: CI/CD
+name: CI + Deploy
 
 on:
   push:
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
+    name: Lint, test, build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,117 +18,52 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Write env file
-        env:
-          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
-          ENV_DEVELOPMENT: ${{ secrets.ENV_DEVELOPMENT }}
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "$ENV_PRODUCTION" > .env.production
-          else
-            echo "$ENV_DEVELOPMENT" > .env.development
-          fi
+      - run: npm ci
+        working-directory: functions
       - run: npm run lint
+      - run: npm run lint
+        working-directory: functions
       - run: npm run test
+      - run: npm run test
+        working-directory: functions
       - run: npm run build
+      - run: npm run build
+        working-directory: functions
 
   deploy:
+    name: Deploy to Firebase Production
     needs: ci
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-
-      - uses: google-github-actions/auth@v2
+      - run: npm run build
+      - uses: w9jds/firebase-action@v13
         with:
-          credentials_json: ${{ github.ref_name == 'main' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
-
-      - name: Check for functions changes
-        id: check-functions
-        run: |
-          if git diff --name-only "${{ github.event.before }}" HEAD -- functions/ | grep -q . 2>/dev/null; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Write functions env file
+          args: deploy --only functions,hosting,firestore:rules,storage:rules --project production
         env:
-          FUNCTIONS_ENV_PROD: ${{ secrets.FUNCTIONS_ENV_PROD }}
-          FUNCTIONS_ENV_DEV: ${{ secrets.FUNCTIONS_ENV_DEV }}
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "$FUNCTIONS_ENV_PROD" > functions/.env.prod
-          else
-            echo "$FUNCTIONS_ENV_DEV" > functions/.env.dev
-          fi
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_PROD }}
 
-      - name: Deploy functions (conditional)
-        if: steps.check-functions.outputs.changed == 'true'
-        run: |
-          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-          npx firebase-tools deploy --only functions --project $PROJECT
-
-      - name: Check for storage.rules changes
-        id: check-storage-rules
-        run: |
-          if git diff --name-only "${{ github.event.before }}" HEAD -- storage.rules | grep -q . 2>/dev/null; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Deploy storage rules (conditional)
-        if: steps.check-storage-rules.outputs.changed == 'true'
-        run: |
-          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-          npx firebase-tools deploy --only storage --project $PROJECT
-
-      - name: Check for firestore.rules changes
-        id: check-firestore-rules
-        run: |
-          if git diff --name-only "${{ github.event.before }}" HEAD -- firestore.rules | grep -q . 2>/dev/null; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Deploy firestore rules (conditional)
-        if: steps.check-firestore-rules.outputs.changed == 'true'
-        run: |
-          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-          npx firebase-tools deploy --only firestore:rules --project $PROJECT
-
-      - name: Check for firestore indexes changes
-        id: check-indexes
-        run: |
-          if git diff --name-only "${{ github.event.before }}" HEAD -- firestore.indexes.json | grep -q . 2>/dev/null; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Deploy firestore indexes (conditional)
-        if: steps.check-indexes.outputs.changed == 'true'
-        run: |
-          PROJECT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-          npx firebase-tools deploy --only firestore:indexes --project $PROJECT
-
-      - name: Output deploy summary
-        run: |
-          if [ "${{ steps.check-functions.outputs.changed }}" = "true" ]; then
-            echo "Deployed Cloud Functions to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
-          fi
-          if [ "${{ steps.check-storage-rules.outputs.changed }}" = "true" ]; then
-            echo "Deployed storage rules to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
-          fi
-          if [ "${{ steps.check-firestore-rules.outputs.changed }}" = "true" ]; then
-            echo "Deployed Firestore rules to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
-          fi
-          if [ "${{ steps.check-indexes.outputs.changed }}" = "true" ]; then
-            echo "Deployed Firestore indexes to ${{ github.ref_name == 'main' && 'prod' || 'dev' }}"
-          fi
-          if [ "${{ steps.check-functions.outputs.changed }}" != "true" ] &&
-             [ "${{ steps.check-storage-rules.outputs.changed }}" != "true" ] &&
-             [ "${{ steps.check-firestore-rules.outputs.changed }}" != "true" ] &&
-             [ "${{ steps.check-indexes.outputs.changed }}" != "true" ]; then
-            echo "No deployable Firebase changes detected; skipping deploy."
-          fi
+  deploy-dev:
+    name: Deploy to Firebase Development
+    needs: ci
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: w9jds/firebase-action@v13
+        with:
+          args: deploy --only functions,hosting,firestore:rules,storage:rules --project development
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_DEV }}

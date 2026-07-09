@@ -1,6 +1,5 @@
 import { useEffect, useReducer, useCallback, useState } from "react";
 import { searchClient } from "@algolia/client-search";
-import { useToast } from "../context/ToastProvider";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 
@@ -19,7 +18,13 @@ interface State<T> {
 
 type Action<T> =
   | { type: "loading" }
-  | { type: "success"; items: T[]; totalPages: number; totalResults: number; facetCounts?: Record<string, Record<string, number>> }
+  | {
+      type: "success";
+      items: T[];
+      totalPages: number;
+      totalResults: number;
+      facetCounts?: Record<string, Record<string, number>>;
+    }
   | { type: "error" };
 
 function createInitialState<T>(): State<T> {
@@ -30,24 +35,24 @@ interface UsePaginatedRecordsParams {
   indexName: string;
   agencyId: string;
   facetFilters?: string[][];
+  filters?: string;
   query?: string;
   page?: number;
   hitsPerPage?: number;
   facets?: string[];
+  enabled?: boolean;
 }
 
 export function usePaginatedRecords<T = Record<string, unknown>>({
   indexName,
-  agencyId,
   facetFilters,
+  filters,
   query = "",
   page = 0,
   hitsPerPage = 10,
   facets,
+  enabled = true,
 }: UsePaginatedRecordsParams) {
-
-  const { toast } = useToast()
-
   const [state, dispatch] = useReducer(
     (prev: State<T>, action: Action<T>): State<T> => {
       switch (action.type) {
@@ -70,14 +75,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!agencyId) {
-      toast({
-        title: "Can't fetch records",
-        description: "User doesn't have a agencyId",
-        variant: "error",
-      })
-      return
-    }
+    if (!enabled) return;
 
     let cancelled = false;
     dispatch({ type: "loading" });
@@ -89,6 +87,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
           query,
           page,
           hitsPerPage,
+          filters: filters || undefined,
           facetFilters: facetFilters ?? [],
           facets,
         },
@@ -113,7 +112,9 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
           items: formattedHits,
           totalPages: response.nbPages ?? 0,
           totalResults: response.nbHits ?? 0,
-          facetCounts: response.facets as Record<string, Record<string, number>> | undefined,
+          facetCounts: response.facets as
+            | Record<string, Record<string, number>>
+            | undefined,
         });
       })
       .catch((err) => {
@@ -128,7 +129,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [agencyId, indexName, page, hitsPerPage, refreshKey, query, facetFilters, facets, toast]);
+  }, [indexName, page, hitsPerPage, refreshKey, query, filters, facetFilters, facets, enabled]);
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);

@@ -12,74 +12,137 @@ service firebase.storage {
       );
     }
 
+    function userRole() {
+      return userDoc().data.role;
+    }
+
+    function userAgencyId() {
+      return userDoc().data.agencyId;
+    }
+
+    function isSuper() {
+      return isSignedIn() && userRole() == "super";
+    }
+
+    function isWorker() {
+      return isSignedIn() && userRole() == "worker";
+    }
+
     function isAdmin() {
-      return isSignedIn() && userDoc().data.role == "admin";
+      return isSignedIn() && userRole() == "admin";
     }
 
-    // Unsigned contracts assigned by admin to a staff member.
-    match /contracts/unsigned/{userId}/{allPaths=**} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+    function adminAssignedAgencyIds() {
+      let ids = userDoc().data.assignedAgencyIds;
+      return ids is list ? ids : [];
     }
 
-    // Signed contracts uploaded by staff (or admin if needed).
-    match /contracts/signed/{userId}/{allPaths=**} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-    }
-
-    // Payslips uploaded by admin for staff, scoped per agency.
-    // Path: payslips/{agencyId}/{userId}/{fileName}
-    match /payslips/{agencyId}/{userId}/{allPaths=**} {
-      allow read: if isSignedIn() && (
-        (request.auth.uid == userId && userDoc().data.agencyId == agencyId) ||
-        (isAdmin() && userDoc().data.agencyId == agencyId)
+    function adminHasAgency(agencyId) {
+      return isAdmin() && (
+        agencyId == userAgencyId() ||
+        adminAssignedAgencyIds().hasAny([agencyId])
       );
-      allow write: if isAdmin() && userDoc().data.agencyId == agencyId;
     }
 
-    // Staff-initiated uploads back to agency.
+    // Unsigned contracts
+    match /contracts/unsigned/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (
+        (request.auth.uid == userId && (isClient() || isWorker())) ||
+        isSuper()
+      );
+      allow write: if isSuper();
+    }
+
+    // Signed contracts
+    match /contracts/signed/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && (
+        (request.auth.uid == userId && (isClient() || isWorker())) ||
+        isSuper()
+      );
+      allow write: if isSignedIn() && (
+        (request.auth.uid == userId && (isClient() || isWorker())) ||
+        isSuper()
+      );
+    }
+
+    // Payslips
+    match /payslips/{userId}/{allPaths=**} {
+      allow read: if isSignedIn()
+      allow write: if isSuper();
+    }
+
+    // Staff uploads
     match /uploads/from_staff/{userId}/{allPaths=**} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if isSignedIn() && (
+        (request.auth.uid == userId && (isClient() || isWorker())) ||
+        isSuper()
+      );
+      allow write: if isSignedIn() && (
+        (request.auth.uid == userId && (isClient() || isWorker())) ||
+        isSuper()
+      );
     }
 
-    // CSV imports uploaded by admin for agency client data.
-    // Auth check is enforced server-side by the cloud function; storage rules
-    // avoid firestore.get() due to cross-service evaluation issues in this project.
+    // CSV imports for agency client data
     match /agency_imports/{agencyId}/{allPaths=**} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
 
-    // Signed contracts uploaded by admin against a client.
+    // CSV imports for agency CSV uploads
+    match /agencies/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    // CSV imports for client CSV uploads
+    match /clients/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    // CSV imports for staff CSV uploads
+    match /staff/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Signed contracts uploaded by admin against a client
     match /signed_contracts/{clientId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuper();
     }
 
-    // Timesheets uploaded by client users.
+    // Timesheets uploaded by client users
     match /timesheets/{clientId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuper();
     }
 
-    // CSV imports uploaded by admin for staff data.
-    // Auth check is enforced server-side by the cloud function; storage rules
-    // avoid firestore.get() due to cross-service evaluation issues in this project.
+    // CSV imports for staff data
     match /staff_imports/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isSuper();
     }
 
-    // CVs uploaded by admin for staff members.
+    // CVs uploaded for staff members
     match /cvs/{staffId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuper();
     }
 
-    // Bulk CSV uploads from the Upload page drag-and-drop zone.
+    // Documents uploaded for staff members
+    match /documents/{staffId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSuper();
+    }
+
+    // Bulk CSV uploads
     match /bulk-uploads/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isSuper();
+    }
+
+    // Invoices uploaded for clients
+    match /invoices/{clientId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSuper();
     }
 
     match /{allPaths=**} {

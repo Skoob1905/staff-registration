@@ -19,6 +19,14 @@ service cloud.firestore {
       return userDoc().data.agencyId;
     }
 
+    function isSuper() {
+      return isSignedIn() && userRole() == "super";
+    }
+
+    function isWorker() {
+      return isSignedIn() && userRole() == "worker";
+    }
+
     function isAdmin() {
       return isSignedIn() && userRole() == "admin";
     }
@@ -31,81 +39,89 @@ service cloud.firestore {
       return isSignedIn() && resourceAgencyId == userAgencyId();
     }
 
+    function adminAssignedAgencyIds() {
+      let ids = userDoc().data.assignedAgencyIds;
+      return ids is list ? ids : [];
+    }
+
+    function adminHasAgency(agencyId) {
+      return isAdmin() && (
+        agencyId == userAgencyId() ||
+        adminAssignedAgencyIds().hasAny([agencyId])
+      );
+    }
+
+    function clientHasAgency(agencyId) {
+      let ids = userDoc().data.assignedAgencyIds;
+      return isClient() && ids is list && agencyId in ids;
+    }
+
     // Agencies
     match /agencies/{agencyId} {
       allow read: if isSignedIn() && (
-        isAdmin() ||
-        (isClient() && agencyId == userAgencyId())
+        isSuper() ||
+        adminHasAgency(agencyId) ||
+        (isClient() || isWorker()) && (agencyId == userAgencyId() || clientHasAgency(agencyId))
       );
-      allow write: if isAdmin();
+      allow list: if isClient();
+      allow write: if isSuper();
     }
 
     // User profiles
     match /users/{uid} {
-      // User can read own profile; admin can read profiles in same agency
       allow read: if isSignedIn() && (
         request.auth.uid == uid ||
-        (isAdmin() && (
-          sameAgency(resource.data.agencyId) ||
-          sameAgency(resource.data.invitedByAgencyId)
-        ))
+        isSuper()
       );
 
-      // Admin manages users in own agency
-      allow create: if isAdmin() &&
+      allow create: if isSuper() &&
         request.resource.data.agencyId == userAgencyId();
 
-      allow update, delete: if isAdmin() &&
-        resource.data.agencyId == userAgencyId();
+      allow update, delete: if isSuper();
     }
 
-    // Unsigned contracts (admin creates/manages, staff reads own pending)
+    // Unsigned contracts
     match /unsigned_contracts/{docId} {
       allow read: if isSignedIn() && (
         (resource.data.targetUserId == request.auth.uid &&
-         sameAgency(resource.data.agencyId)) ||
-        (isAdmin() && sameAgency(resource.data.agencyId))
+         sameAgency(resource.data.agencyId) &&
+         (isClient() || isWorker())) ||
+        (isSuper() && sameAgency(resource.data.agencyId)) ||
+        adminHasAgency(resource.data.agencyId)
       );
 
-      allow create, update, delete: if isAdmin() &&
+      allow create, update, delete: if isSuper() &&
         request.resource.data.agencyId == userAgencyId();
     }
 
-    // Signed contracts (staff creates own; admin reads agency records)
+    // Signed contracts
     match /signed_contracts/{docId} {
       allow read: if isSignedIn() && (
         (resource.data.userId == request.auth.uid &&
-         sameAgency(resource.data.agencyId)) ||
-        (isAdmin() && sameAgency(resource.data.agencyId))
+         sameAgency(resource.data.agencyId) &&
+         (isClient() || isWorker())) ||
+        (isSuper() && sameAgency(resource.data.agencyId)) ||
+        adminHasAgency(resource.data.agencyId)
       );
 
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.agencyId == userAgencyId();
+        request.resource.data.agencyId == userAgencyId() &&
+        (isClient() || isWorker());
 
-      // Optional: admin can update/delete within agency
-      allow update, delete: if isAdmin() &&
+      allow update, delete: if isSuper() &&
         resource.data.agencyId == userAgencyId();
     }
 
-    // Payslips (admin writes, staff reads own)
+    // Payslips
     match /payslips/{docId} {
-      allow read: if isSignedIn() && (
-        (resource.data.userId == request.auth.uid &&
-         sameAgency(resource.data.agencyId)) ||
-        (isAdmin() && sameAgency(resource.data.agencyId))
-      );
+      allow read: if isSignedIn();
 
-      allow create, delete: if isAdmin() &&
-        request.resource.data.agencyId == userAgencyId();
+      allow create, delete: if isSuper();
 
-      // Admin can fully manage payslip docs in-agency.
-      allow update: if isAdmin() && resource.data.agencyId == userAgencyId();
+      allow update: if isSuper();
 
-      // Staff can only mark their own payslip as downloaded.
       allow update: if isSignedIn() &&
-        resource.data.userId == request.auth.uid &&
-        resource.data.agencyId == userAgencyId() &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.agencyId == resource.data.agencyId &&
         request.resource.data.fileName == resource.data.fileName &&
@@ -115,59 +131,75 @@ service cloud.firestore {
         request.resource.data.hasDownloaded == true;
     }
 
-    // Manual staff uploads to agency
+    // Staff uploads
     match /staff_uploads/{docId} {
       allow read: if isSignedIn() && (
         (resource.data.userId == request.auth.uid &&
-         sameAgency(resource.data.agencyId)) ||
-        (isAdmin() && sameAgency(resource.data.agencyId))
+         sameAgency(resource.data.agencyId) &&
+         (isClient() || isWorker())) ||
+        (isSuper() && sameAgency(resource.data.agencyId)) ||
+        adminHasAgency(resource.data.agencyId)
       );
 
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.agencyId == userAgencyId();
+        request.resource.data.agencyId == userAgencyId() &&
+        (isClient() || isWorker());
 
-      allow update, delete: if isAdmin() &&
+      allow update, delete: if isSuper() &&
         resource.data.agencyId == userAgencyId();
     }
 
     // CSV import history
     match /csv_imports/{docId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin() && request.resource.data.agencyId == userAgencyId();
+      allow read: if isSuper();
+      allow write: if isSuper() && request.resource.data.agencyId == userAgencyId();
     }
 
     // Staff records imported via CSV
     match /staff/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuper();
     }
 
-    // Holds invited staff records before they complete registration and
-    // are promoted into the users collection.
+    // Clients collection (imported agencies)
+    match /clients/{docId} {
+      allow read: if isSignedIn() && (
+        isSuper() ||
+        adminHasAgency(resource.data.metadata.uploadedBy) ||
+        (isClient() || isWorker()) && resource.data.metadata.uploadedBy == userAgencyId() ||
+        resource.data.email == request.auth.token.email
+      );
+      allow write: if isSuper();
+    }
+
+    // Unregistered staff
     match /unregistered_staff/{docId} {
-      allow read: if (isAdmin() && sameAgency(resource.data.agencyId)) ||
-        (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow create, update, delete: if isAdmin() &&
+      allow read: if (
+        (isSuper() && sameAgency(resource.data.agencyId)) ||
+        adminHasAgency(resource.data.agencyId) ||
+        (isSignedIn() && resource.data.uid == request.auth.uid)
+      );
+      allow create, update, delete: if isSuper() &&
         request.resource.data.agencyId == userAgencyId();
     }
 
-    // Staff types used for filtering staff
+    // Staff types
     match /staffType/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if isSuper();
+      allow write: if isSuper();
     }
 
-    // Tags for staff members
+    // Tags
     match /tags/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if isSuper();
+      allow write: if isSuper();
     }
 
-    // Logins created by admin for client companies
+    // Logins
     match /logins/{docId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if isSuper();
+      allow write: if isSuper();
     }
   }
 }

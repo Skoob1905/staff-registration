@@ -1,8 +1,8 @@
 import { type ReactNode } from "react";
-import { Clock, Download, Eye, Receipt } from "lucide-react";
+import { Banknote, Clock, Download, Eye, FileText, Receipt } from "lucide-react";
 import { formatSentDate } from "../utils/date";
 
-type CardVariant = "timesheet" | "invoice";
+type CardVariant = "timesheet" | "invoice" | "payslip" | "document";
 
 const config: Record<
   CardVariant,
@@ -38,6 +38,28 @@ const config: Record<
                 radial-gradient(ellipse at 100% 0%, rgba(20,184,166,0.06), transparent 55%),
                 radial-gradient(ellipse at 0% 100%, rgba(20,184,166,0.02), transparent 45%),
                 linear-gradient(135deg, rgba(20,184,166,0.04), transparent)`,
+  },
+  payslip: {
+    icon: Banknote,
+    border: "border-purple-300/20",
+    accentBg: "rgb(168, 85, 247)",
+    glow: `linear-gradient(to top, rgba(168,85,247,0.06), transparent 50%),
+           linear-gradient(135deg, rgba(168,85,247,0.04), transparent),
+           radial-gradient(ellipse at 100% 0%, rgba(168,85,247,0.06), transparent 55%)`,
+    isNewGlow: `radial-gradient(ellipse at 0% 0%, rgba(250,204,21,0.20) 0%, rgba(250,204,21,0.08) 50%, transparent 70%),
+                linear-gradient(to top, rgba(168,85,247,0.06), transparent 50%),
+                linear-gradient(135deg, rgba(168,85,247,0.04), transparent)`,
+  },
+  document: {
+    icon: FileText,
+    border: "border-amber-300/20",
+    accentBg: "rgb(245, 158, 11)",
+    glow: `linear-gradient(to top, rgba(245,158,11,0.06), transparent 50%),
+           linear-gradient(135deg, rgba(245,158,11,0.04), transparent),
+           radial-gradient(ellipse at 100% 0%, rgba(245,158,11,0.06), transparent 55%)`,
+    isNewGlow: `radial-gradient(ellipse at 0% 0%, rgba(250,204,21,0.20) 0%, rgba(250,204,21,0.08) 50%, transparent 70%),
+                linear-gradient(to top, rgba(245,158,11,0.06), transparent 50%),
+                linear-gradient(135deg, rgba(245,158,11,0.04), transparent)`,
   },
 };
 

@@ -1,33 +1,21 @@
-import {
-  type ElementType,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
-import { httpsCallable } from "firebase/functions";
+import { type ElementType, useEffect, useState } from "react";
 import {
   Building2,
   Clock,
-  FileSignature,
-  FileText,
-  FileUser,
+  FolderOpen,
+  Receipt,
   Users,
 } from "lucide-react";
 import { AddModal } from "../components/AddModal";
 import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
-import { CVUploadModal } from "../components/CVUploadModal";
 import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { functions } from "../services/firebase";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { readCvFile, type CvFile } from "../utils/cvUpload";
 import {
   hasNIColumn,
   hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
-import type { BulkStaff } from "../types/domain";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
@@ -65,7 +53,7 @@ interface UploadType {
   multiple?: boolean;
 }
 
-const ADMIN_TYPES: UploadType[] = [
+const SUPER_TYPES: UploadType[] = [
   {
     id: "staff",
     icon: Users,
@@ -76,43 +64,44 @@ const ADMIN_TYPES: UploadType[] = [
     fileLimit: "Max 2MB",
   },
   {
-    id: "clients",
+    id: "agencies",
     icon: Building2,
-    title: "Clients",
-    description: "Bulk import your clients",
+    title: "Agencies",
+    description: "Bulk import agencies",
     color: "#34A853",
     acceptedFiles: ".csv",
     fileLimit: "Max 2MB",
   },
   {
-    id: "contracts",
-    icon: FileSignature,
-    title: "Contracts",
-    description: "Upload a contract against a client",
+    id: "clients",
+    icon: Building2,
+    title: "Clients",
+    description: "Bulk import clients",
+    color: "#9C27B0",
+    acceptedFiles: ".csv",
+    fileLimit: "Max 2MB",
+  },
+  {
+    id: "documents",
+    icon: FolderOpen,
+    title: "Documents",
+    description: "Upload a staff document",
     color: "#FB8C00",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
   },
   {
     id: "invoices",
-    icon: FileText,
+    icon: Receipt,
     title: "Invoices",
-    description: "Upload an invoice a client to pay",
-    color: "#E91E63",
+    description: "Upload an invoice for your client.",
+    color: "#7C3AED",
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
   },
-  {
-    id: "cvs",
-    icon: FileUser,
-    title: "CVs",
-    description: "Bulk upload your staffs CV's",
-    color: "#AB47BC",
-    acceptedFiles: ".pdf,.docx",
-    fileLimit: "Max 2MB per file",
-    multiple: true,
-  },
 ];
+
+const ADMIN_TYPES: UploadType[] = [];
 
 const CLIENT_TYPES: UploadType[] = [
   {
@@ -126,80 +115,41 @@ const CLIENT_TYPES: UploadType[] = [
   },
 ];
 
-export const UploadPage = () => {
+export const Upload = () => {
   useEffect(() => {
     document.title = "Upload";
   }, []);
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const isSuper = appUser?.role === "super";
   const isAdmin = appUser?.role === "admin";
-  const types = isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
+  const types = isSuper ? SUPER_TYPES : isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
 
-  const [cvUploading, setCvUploading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
-  const [addModalCsvType, setAddModalCsvType] = useState<"staff" | "agency" | "timesheet">(
-    "staff",
-  );
+  const [addModalCsvType, setAddModalCsvType] = useState<
+    "staff" | "agency" | "client" | "timesheet"
+  >("staff");
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewMode, setPreviewMode] = useState<"invoice" | "contract">(
-    "invoice",
-  );
+  const [previewMode, setPreviewMode] = useState<
+    "invoice" | "contract" | "payslip" | "document"
+  >("invoice");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  const [cvFiles, setCvFiles] = useState<CvFile[]>([]);
-  const [showCvModal, setShowCvModal] = useState(false);
-
-  const { items: staffList } = usePaginatedRecords<BulkStaff>({
-    indexName: "staff_name_desc",
-    agencyId: appUser?.agencyId ?? "",
-    hitsPerPage: 10000,
-  });
-
-
-  const handleCvUpload = useCallback(async () => {
-    const valid = cvFiles.filter((f) => f.match && !f.error && f.base64);
-    if (valid.length === 0) return;
-
-    setCvUploading(true);
-
-    try {
-      const fn = httpsCallable(functions, "uploadStaffCvs");
-      await fn({
-        cvs: valid.map((f) => ({
-          staffId: f.match!.id,
-          fileName: f.file.name,
-          fileBase64: f.base64,
-        })),
-      });
-
-      toast({
-        title: "CVs uploaded",
-        description: `${valid.length} CV(s) uploaded successfully`,
-        variant: "success",
-      });
-
-      setCvFiles([]);
-      setShowCvModal(false);
-    } catch {
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload CVs. Please try again.",
-        variant: "error",
-      });
-    } finally {
-      setCvUploading(false);
-    }
-  }, [cvFiles, toast]);
-
   const handleFileSelect = async (file: File, typeId: string) => {
-    if (typeId === "staff" || typeId === "clients") {
+    if (typeId === "staff" || typeId === "agencies" || typeId === "clients") {
+      const typeLabel =
+        typeId === "staff"
+          ? "Staff"
+          : typeId === "agencies"
+            ? "Agency"
+            : "Client";
       if (file.size > MAX_FILE_SIZE) {
         toast({
           title: "File too large",
-          description: `${typeId === "staff" ? "Staff" : "Client"} CSV must be 2MB or less.`,
+          description: `${typeLabel} CSV must be 2MB or less.`,
           variant: "error",
         });
         return;
@@ -224,7 +174,7 @@ export const UploadPage = () => {
       } else {
         if (!hasBusinessNameColumn(headers)) {
           toast({
-            title: "Invalid Client Upload",
+            title: `Invalid ${typeLabel} Upload`,
             description:
               "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
             variant: "error",
@@ -232,7 +182,7 @@ export const UploadPage = () => {
           return;
         }
         setAddModalFile(file);
-        setAddModalCsvType("agency");
+        setAddModalCsvType(typeId === "agencies" ? "agency" : "client");
         setShowAddModal(true);
       }
     } else if (typeId === "timesheets") {
@@ -288,19 +238,32 @@ export const UploadPage = () => {
       setPreviewFile(file);
       setPreviewMode("invoice");
       setShowPreviewModal(true);
+    } else if (typeId === "payslips") {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Payslip must be 2MB or less.",
+          variant: "error",
+        });
+        return;
+      }
+      setPreviewFile(file);
+      setPreviewMode("payslip");
+      setShowPreviewModal(true);
+    } else if (typeId === "documents") {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Document must be 2MB or less.",
+          variant: "error",
+        });
+        return;
+      }
+      setPreviewFile(file);
+      setPreviewMode("document");
+      setShowPreviewModal(true);
     }
   };
-
-  const handleFilesSelect = useCallback(
-    async (files: File[]) => {
-      const results = await Promise.all(
-        files.map((file) => readCvFile(file, staffList)),
-      );
-      setCvFiles((prev) => [...prev, ...results]);
-      setShowCvModal(true);
-    },
-    [staffList],
-  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -327,11 +290,7 @@ export const UploadPage = () => {
                     : (file) => handleFileSelect(file, type.id)
                 }
                 onFilesSelect={
-                  type.multiple
-                    ? (files) => {
-                        void handleFilesSelect(files);
-                      }
-                    : undefined
+                  type.multiple ? (_files: File[]) => undefined : undefined
                 }
               />
             </div>
@@ -350,14 +309,18 @@ export const UploadPage = () => {
             ? "recordTimesheetUpload"
             : addModalCsvType === "staff"
               ? "importStaffCsv"
-              : "importAgencyCsv"
+              : addModalCsvType === "agency"
+                ? "importAgencyCsv"
+                : "importClientCsv"
         }
         storagePath={
           addModalCsvType === "timesheet"
             ? "timesheet_imports"
             : addModalCsvType === "staff"
-              ? "staff_imports"
-              : "agency_imports"
+              ? "staff"
+              : addModalCsvType === "agency"
+                ? "agencies"
+                : "clients"
         }
         itemLabel={
           addModalCsvType === "timesheet"
@@ -392,19 +355,6 @@ export const UploadPage = () => {
           setShowPreviewModal(false);
           setPreviewFile(null);
         }}
-      />
-
-      <CVUploadModal
-        open={showCvModal}
-        cvFiles={cvFiles}
-        cvUploading={cvUploading}
-        onOpenChange={(open) => {
-          if (!cvUploading) {
-            setShowCvModal(open);
-            if (!open) setCvFiles([]);
-          }
-        }}
-        onUpload={handleCvUpload}
       />
     </div>
   );

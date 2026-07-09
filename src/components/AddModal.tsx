@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { collection, getCountFromServer } from "firebase/firestore";
+import { countCollection } from "../services/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
 import { Body, BodyMedium, Caption, Muted } from "../config/typography";
@@ -10,7 +10,7 @@ import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { db, functions, storage } from "../services/firebase";
+import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
 import {
@@ -120,7 +120,7 @@ export const AddModal = ({
   const { toast } = useToast();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
-  const isAdmin = appUser?.role === "admin";
+  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
 
   useEffect(() => {
     if (open) loadTags(true).catch(() => {});
@@ -233,7 +233,7 @@ export const AddModal = ({
         }
       }
 
-      if (csvType === "agency") {
+      if (csvType === "agency" || csvType === "client") {
         if (!hasBusinessNameColumn(parsed.headers)) {
           toast({
             title: "Invalid client file",
@@ -352,12 +352,21 @@ export const AddModal = ({
         return;
       }
       if (ALGOLIA_INDEX_PREFIX === "dev_") {
-        const collectionName = csvType === "staff" ? "staff" : "agencies";
+        const collectionName =
+          csvType === "staff"
+            ? "staff"
+            : csvType === "agency"
+              ? "agencies"
+              : "clients";
         const maxRecords =
           csvType === "staff" ? MAX_STAFF_RECORDS : MAX_CLIENT_RECORDS;
-        const label = csvType === "staff" ? "staff" : "clients";
-        const snap = await getCountFromServer(collection(db, collectionName));
-        const existingCount = snap.data().count;
+        const label =
+          csvType === "staff"
+            ? "staff"
+            : csvType === "agency"
+              ? "agencies"
+              : "clients";
+        const existingCount = await countCollection(collectionName);
         if (existingCount + csvData.rows.length > maxRecords) {
           toast({
             title: "Too Many Records",
@@ -368,7 +377,7 @@ export const AddModal = ({
         }
       }
 
-      const path = `${storagePath}/${appUser.agencyId}/${Date.now()}-${csvData.fileName}`;
+      const path = `${storagePath}/${Date.now()}-${csvData.fileName}`;
       const storageRef = ref(storage, path);
       const task = uploadBytesResumable(storageRef, csvData.rawFile);
       task.on("state_changed", (snapshot) => {
@@ -459,6 +468,32 @@ export const AddModal = ({
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       await onSuccess?.(data.importId);
+
+      if (data.importId && csvType !== "timesheet") {
+        const processLoginCallable = httpsCallable(
+          functions,
+          "processImportLogins",
+        );
+        processLoginCallable({ importId: data.importId })
+          .then((res) => {
+            const r = res.data as { created: number; skipped: number };
+            if (r.created > 0) {
+              toast({
+                title: "Logins created",
+                description: `${r.created} login${r.created === 1 ? "" : "s"} sent${r.skipped > 0 ? `, ${r.skipped} skipped` : ""}.`,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error("[processImportLogins] failed", err);
+            toast({
+              title: "Login creation failed",
+              description:
+                "Some logins may not have been sent. Contact support.",
+              variant: "warning" as const,
+            });
+          });
+      }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (
@@ -639,7 +674,7 @@ export const AddModal = ({
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {csvType === "staff" && (
+                  {/* {csvType === "staff" && (
                     <Button
                       type="button"
                       disabled={loading}
@@ -647,7 +682,7 @@ export const AddModal = ({
                     >
                       {hasAssignment ? "Edit" : "Auto-Assign"}
                     </Button>
-                  )}
+                  )} */}
                   <Button
                     type="button"
                     disabled={loading}

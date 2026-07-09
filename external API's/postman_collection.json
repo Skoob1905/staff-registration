@@ -1,0 +1,188 @@
+{
+  "info": {
+    "name": "MDSCE - API Keys",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "### Getting Started\n\n1. **Get a Firebase ID Token**: Open the MDSCE app in a browser, login as a `super` user, open DevTools Console, and run:\n   ```js\n   import('firebase/auth').then(m => { m.getIdToken(m.getAuth().currentUser).then(t => navigator.clipboard.writeText(t)) })\n   ```\n   Copy the token and paste it into the `idToken` variable.\n\n2. **Generate an API Key**: Call `generateApiKey` with a label. Copy the returned `apiKey` into the `apiKey` variable.\n\n3. **Upload a Payslip**: Use either the Raw Binary or Base64 JSON method."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://europe-west2-mdsce-dev.cloudfunctions.net",
+      "type": "string"
+    },
+    {
+      "key": "idToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "label",
+      "value": "Payroll Provider",
+      "type": "string"
+    },
+    {
+      "key": "clientEmail",
+      "value": "staff@example.com",
+      "type": "string"
+    },
+    {
+      "key": "fileName",
+      "value": "payslip.pdf",
+      "type": "string"
+    },
+    {
+      "key": "pdfBase64",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Admin",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{idToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "generateApiKey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.result?.apiKey) {",
+                  "  pm.collectionVariables.set('apiKey', json.result.apiKey);",
+                  "  console.log('API Key saved to variable:', json.result.apiKey);",
+                  "}",
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"label\": \"{{label}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/generateApiKey",
+              "host": ["{{baseUrl}}"],
+              "path": ["generateApiKey"]
+            },
+            "description": "Generates a new API key. If a key with the same label already exists, it is replaced.\n\n**Auth:** Set via the Admin folder's Authorization tab (Bearer token using `{{idToken}}`)\n\n**Test script** auto-saves the returned `apiKey` into the `apiKey` collection variable."
+          }
+        },
+        {
+          "name": "revokeApiKey",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": {\n    \"label\": \"{{label}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/revokeApiKey",
+              "host": ["{{baseUrl}}"],
+              "path": ["revokeApiKey"]
+            },
+            "description": "Revokes an API key by deleting its Firestore document.\n\n**Auth:** Set via the Admin folder's Authorization tab (Bearer token using `{{idToken}}`)."
+          }
+        }
+      ],
+      "description": "Admin endpoints requiring Firebase Auth (super role)."
+    },
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Upload via file upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "/Users/joseph/worktrees/mdsce/send-staff-email/data/payslip.pdf"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/uploadPayslipExternal?clientEmail={{clientEmail}}&fileName={{fileName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploadPayslipExternal"],
+              "query": [
+                {
+                  "key": "clientEmail",
+                  "value": "{{clientEmail}}"
+                },
+                {
+                  "key": "fileName",
+                  "value": "{{fileName}}"
+                }
+              ]
+            },
+            "description": "Uploads a payslip by selecting a PDF file directly.\n\n**Auth:** `X-API-Key` header (no Firebase Auth needed)\n\n**Body:** Use the binary file picker to select your PDF.\n\n**Query params:** `clientEmail` (required) and `fileName` (optional, defaults to payslip.pdf)."
+          }
+        },
+        {
+          "name": "Upload via base64",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileBase64\": \"{{pdfBase64}}\",\n  \"fileName\": \"{{fileName}}\",\n  \"clientEmail\": \"{{clientEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/uploadPayslipExternal",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploadPayslipExternal"]
+            },
+            "description": "Uploads a payslip using base64-encoded text.\n\n**Auth:** `X-API-Key` header (no Firebase Auth needed)\n\n**Generate pdfBase64 before sending:**\n```bash\nbase64 -i /path/to/payslip.pdf | pbcopy\n```\nThen paste the value into the `pdfBase64` collection variable."
+          }
+        }
+      ],
+      "description": "Public endpoints requiring only an API Key."
+    }
+  ]
+}

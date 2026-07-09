@@ -14,13 +14,11 @@ export interface AgencyTimesheets {
 }
 
 export const getAllTimesheets = async (): Promise<AgencyTimesheets[]> => {
-  const { collection, getDocs } = await import("firebase/firestore");
-  const { db } = await import("../services/firebase");
-  const snaps = await getDocs(collection(db, "agencies"));
+  const { getAllAgencies } = await import("../services/firestore");
+  const snaps = await getAllAgencies();
   const results: AgencyTimesheets[] = [];
 
-  for (const snap of snaps.docs) {
-    const data = snap.data() as Record<string, unknown>;
+  for (const data of snaps as Record<string, unknown>[]) {
     const timesheets = ((data.metadata as Record<string, unknown>)?.timesheets ?? []) as TimesheetEntry[];
     if (timesheets.length > 0) {
       const name: string =
@@ -31,7 +29,7 @@ export const getAllTimesheets = async (): Promise<AgencyTimesheets[]> => {
         (data.agencyName as string) ||
         "Unknown Agency";
       results.push({
-        agencyId: snap.id,
+        agencyId: data.id as string,
         agencyName: name,
         timesheets: timesheets.sort(
           (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
@@ -46,11 +44,9 @@ export const getAllTimesheets = async (): Promise<AgencyTimesheets[]> => {
 export const getTimesheetsForAgency = async (
   agencyId: string,
 ): Promise<TimesheetEntry[]> => {
-  const { doc, getDoc } = await import("firebase/firestore");
-  const { db } = await import("../services/firebase");
-  const snap = await getDoc(doc(db, "agencies", agencyId));
-  if (!snap.exists()) return [];
-  const data = snap.data() as Record<string, unknown>;
+  const { getAgency } = await import("../services/firestore");
+  const data = await getAgency(agencyId);
+  if (!data) return [];
   const timesheets = ((data.metadata as Record<string, unknown>)?.timesheets ?? []) as TimesheetEntry[];
   return timesheets.sort(
     (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),

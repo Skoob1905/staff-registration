@@ -1,6 +1,7 @@
 import { httpsCallable } from "firebase/functions";
-import { doc, getDoc } from "firebase/firestore";
-import { db, functions } from "./firebase";
+import { getClient, getAllClients } from "./firestore";
+import { functions } from "./firebase";
+import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 
 export interface InvoiceEntry {
   id: string;
@@ -90,15 +91,13 @@ export const deleteInvoice = async (
   await fn({ agencyId, invoiceId });
 };
 
-export const getInvoicesForAgency = async (
-  agencyId: string,
+export const getInvoicesForClient = async (
+  clientId: string,
 ): Promise<InvoiceEntry[]> => {
-  const snap = await getDoc(doc(db, "agencies", agencyId));
-  if (!snap.exists()) return [];
-  const data = snap.data() as {
-    metadata?: { invoices?: InvoiceEntry[] };
-  };
-  const invoices = data.metadata?.invoices ?? [];
+  const data = await getClient(clientId);
+  if (!data) return [];
+  const metadata = data.metadata as { invoices?: InvoiceEntry[] } | undefined;
+  const invoices = metadata?.invoices ?? [];
   return invoices.sort(
     (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
   );
@@ -107,27 +106,33 @@ export const getInvoicesForAgency = async (
 export const getAllInvoices = async (): Promise<
   Array<{ agencyId: string; agencyName: string; invoices: InvoiceEntry[] }>
 > => {
-  const { collection, getDocs } = await import("firebase/firestore");
-  const snaps = await getDocs(collection(db, "agencies"));
+  const snaps = await getAllClients();
   const results: Array<{
     agencyId: string;
     agencyName: string;
     invoices: InvoiceEntry[];
   }> = [];
 
-  for (const snap of snaps.docs) {
-    const data = snap.data() as Record<string, unknown>;
+  for (const data of snaps as Record<string, unknown>[]) {
     const invoices = ((data.metadata as Record<string, unknown>)?.invoices ?? []) as InvoiceEntry[];
     if (invoices.length > 0) {
       const name: string =
-        (data.name as string) ||
         (data.business_name as string) ||
         (data.Company_Name as string) ||
         (data.company_name as string) ||
+        (data.name as string) ||
         (data.agencyName as string) ||
+        findValueByNormalizedKey(
+          data as Record<string, unknown>,
+          "businessname",
+          "name",
+          "agencyname",
+          "organisation",
+          "company",
+        ) ||
         "Unknown Agency";
       results.push({
-        agencyId: snap.id,
+        agencyId: (data.id as string),
         agencyName: name,
         invoices: invoices.sort(
           (a, b) =>

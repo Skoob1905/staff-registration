@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 import { AccordionRoot } from "./ui";
 import { PaginationBar } from "./PaginationBar";
 import { Section } from "./Section";
@@ -39,7 +40,9 @@ export const PaginatedSection = <T,>({
 }: PaginatedSectionProps<T>) => (
   <Section title={title} count={totalResults} action={action}>
     {loading && items.length === 0 ? (
-      <Muted>Loading...</Muted>
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+      </div>
     ) : items.length === 0 ? (
       <Muted>Add some {title.toLowerCase()} now!</Muted>
     ) : (

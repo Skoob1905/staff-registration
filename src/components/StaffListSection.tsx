@@ -18,11 +18,9 @@ import { FileInteractionButtons } from "./FileInteractionButtons";
 import { Metadata } from "./Metadata";
 import { Pill } from "./Pill";
 import { AccordionTitle } from "./AccordionTitle";
-import {
-  buildFacetFilters,
-  buildFacetRequestFields,
-} from "../utils/loginsFilter";
-import { FileText } from "lucide-react";
+import { buildFacetRequestFields } from "../utils/loginsFilter";
+import { FileText, Loader2 } from "lucide-react";
+import { Section } from "./Section";
 import type {
   Agency,
   BulkStaff,
@@ -31,12 +29,12 @@ import type {
 } from "../types/domain";
 
 interface StaffListSectionProps {
-  view: "admin" | "client";
-  targetAgencyId?: string;
   action?: ReactNode;
   refreshTrigger?: number;
   renderItem?: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
+  targetAgencyNames?: string[];
+  namesLoading?: boolean;
 
   leftAccordionValue?: string;
   onLeftAccordionChange?: (value: string) => void;
@@ -45,28 +43,28 @@ interface StaffListSectionProps {
 }
 
 export const StaffListSection = ({
-  view,
-  targetAgencyId,
   action,
   refreshTrigger,
   renderItem,
   agencies,
+  targetAgencyNames,
+  namesLoading,
 
   leftAccordionValue,
   onLeftAccordionChange,
   rightAccordionValue,
   onRightAccordionChange,
 }: StaffListSectionProps) => {
-  const { appUser } = useAuth();
+  const { appUser, role } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const isClient = view === "client";
-  const assignedToId = targetAgencyId || appUser?.agencyId || "";
+  const isClient = role === "client";
+
   const staffKeyMap = useMemo<FilterKeyMap>(
-    () => ({ tag: "tags", agency: "metadata.assignedToId" }),
+    () => ({ tag: "tags", agency: "metadata.assignedToName" }),
     [],
   );
 
@@ -79,28 +77,47 @@ export const StaffListSection = ({
   }, [tags]);
 
   const staffFacetFilters = useMemo(() => {
-    const ffs = buildFacetFilters(filters, staffKeyMap);
-    if (isClient && assignedToId) {
-      ffs.push([`${staffKeyMap.agency}:${assignedToId}`]);
+    const ffs: string[][] = [];
+
+    // Tags
+    for (const id of filters.tagIds) {
+      ffs.push([`${staffKeyMap.tag}:${id}`]);
     }
+
+    // metadata.assignedToName
+    if (targetAgencyNames && targetAgencyNames.length > 0) {
+      ffs.push(targetAgencyNames.map((n) => `${staffKeyMap.agency}:${n}`));
+      return ffs;
+    }
+
     return ffs;
-  }, [isClient, assignedToId, filters, staffKeyMap]);
+  }, [filters, staffKeyMap, targetAgencyNames]);
 
   const facets = useMemo(
     () => buildFacetRequestFields(staffKeyMap),
     [staffKeyMap],
   );
 
-  const { items, loading, refresh, totalPages, totalResults, facetCounts } =
-    usePaginatedRecords<BulkStaff>({
+  const searchParams = useMemo(
+    () => ({
       indexName: "staff_name_desc",
-      agencyId: "all",
+      agencyId: appUser?.agencyId ?? "",
       facetFilters: staffFacetFilters,
       facets,
       query: filters.name,
       page,
       hitsPerPage: pageSize,
-    });
+      enabled: !namesLoading,
+    }),
+    [staffFacetFilters, facets, filters.name, page, pageSize, appUser?.agencyId, namesLoading],
+  );
+
+  useEffect(() => {
+    console.log("[StaffListSection] Algolia search:", searchParams);
+  }, [searchParams]);
+
+  const { items, loading, refresh, totalPages, totalResults, facetCounts } =
+    usePaginatedRecords<BulkStaff>(searchParams);
 
   const prevRefreshTrigger = useRef(refreshTrigger);
   useEffect(() => {
@@ -109,6 +126,14 @@ export const StaffListSection = ({
       refresh();
     }
   }, [refreshTrigger, refresh]);
+
+  const prevAgencyNames = useRef(targetAgencyNames);
+  useEffect(() => {
+    if (targetAgencyNames !== prevAgencyNames.current) {
+      prevAgencyNames.current = targetAgencyNames;
+      refresh();
+    }
+  }, [targetAgencyNames, refresh]);
 
   useEffect(() => {
     loadTags().catch(() => {});
@@ -122,9 +147,9 @@ export const StaffListSection = ({
   }, [facetCounts, tagsMap]);
 
   const filterAgencies = useMemo(() => {
-    if (!agencies || !facetCounts?.["metadata.assignedToId"]) return agencies;
-    const counts = facetCounts["metadata.assignedToId"];
-    return agencies.filter((a) => (counts[a.id] ?? 0) > 0);
+    if (!agencies || !facetCounts?.["metadata.assignedToName"]) return agencies;
+    const counts = facetCounts["metadata.assignedToName"];
+    return agencies.filter((a) => (counts[a.name] ?? 0) > 0);
   }, [agencies, facetCounts]);
 
   const handleFiltersChange = useCallback(
@@ -172,7 +197,11 @@ export const StaffListSection = ({
                   key={`${member.id}::${entry.fileName}`}
                   title="CV"
                   className="flex items-center animate-cascade"
-                  style={{ animationDelay: `${(idx + 1) * 12}ms` } as React.CSSProperties}
+                  style={
+                    {
+                      animationDelay: `${(idx + 1) * 12}ms`,
+                    } as React.CSSProperties
+                  }
                   value={
                     <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                       <span className="text-[var(--muted-foreground)]">
@@ -238,9 +267,22 @@ export const StaffListSection = ({
     [tagsMap],
   );
 
+  const sectionTitle =
+    isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff";
+
+  if (namesLoading) {
+    return (
+      <Section title={sectionTitle}>
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+        </div>
+      </Section>
+    );
+  }
+
   return (
     <PaginatedFilterSection
-      title={isClient ? "Assigned Staff" : "Staff"}
+      title={sectionTitle}
       filterKeys={staffKeyMap}
       items={items}
       loading={loading}
@@ -260,7 +302,10 @@ export const StaffListSection = ({
       tags={filterTagsMap}
       tagCounts={facetCounts?.tags}
       agencies={filterAgencies}
-      enableAgencyFilter={!isClient}
+      enableAgencyFilter={Boolean(
+        !isClient || (agencies && agencies.length > 0),
+      )}
+      enableTagFilter
       emptyMessage={
         isClient ? "You've not been assigned any staff yet" : undefined
       }

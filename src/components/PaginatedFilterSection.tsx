@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Filter } from "lucide-react";
+import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "./ui";
 import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
@@ -121,7 +121,9 @@ export const PaginatedFilterSection = <T,>({
     <>
       <Section title={title} count={totalResults} action={renderHeaderAction()}>
         {loading && items.length === 0 ? (
-          <Muted>Loading...</Muted>
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+          </div>
         ) : items.length === 0 ? (
           <Muted>
             {activeFilterCount > 0

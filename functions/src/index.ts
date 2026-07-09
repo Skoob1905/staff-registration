@@ -8,8 +8,9 @@
  */
 
 import { setGlobalOptions } from "firebase-functions";
+
 // import { onRequest } from "firebase-functions/https";
-// import * as logger from "firebase-functions/logger";
+import * as logger from "firebase-functions/logger";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -24,57 +25,43 @@ import { setGlobalOptions } from "firebase-functions";
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { algoliasearch } from "algoliasearch";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-
 import { defineString } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
+import { dedupRecords } from "./utils/dedup";
+import type { LoginDoc } from "./types";
+export { processImportLogins } from "./logins/processImportLogins";
 
-initializeApp();
+// API Keys for external users using the API
+export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
 
+const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
+const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
+const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
 const WEB_API_KEY = defineString("WEB_API_KEY");
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
+
+setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
+
+initializeApp();
 
 const normalizeEmail = (value: unknown): string =>
   String(value || "")
     .trim()
     .toLowerCase();
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const namePattern = /^[A-Za-z' -]+$/;
 
 const normalizeKey = (key: string): string =>
   key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-
-const NI_NORMALIZED_VARIANTS = new Set([
-  "ninumber",
-  "nino",
-  "nationalinsurancenumber",
-  "nationalinsuranceno",
-  "nationalinsurance",
-  "nin",
-  "ni",
-  "natinsnumber",
-  "natinsno",
-  "natins",
-  "nationalins",
-  "ninsurance",
-  "insurance",
-  "ssn",
-  "socialsecuritynumber",
-  "nidentifier",
-  "nationalid",
-  "natid",
-  "niid",
-]);
 
 const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
   "businessname",
@@ -96,15 +83,6 @@ const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
   "entityname",
   "entity",
 ]);
-
-const getNINumber = (row: Record<string, unknown>): string => {
-  for (const [key, value] of Object.entries(row)) {
-    if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
-      return String(value ?? "");
-    }
-  }
-  return "";
-};
 
 const getBusinessName = (row: Record<string, unknown>): string => {
   for (const [key, value] of Object.entries(row)) {
@@ -153,17 +131,19 @@ export const invitePortalUser = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
+
+  const callerAgencyId = caller.agencyId ?? "";
 
   const existingRegistered = await db
     .collection("users")
     .where("email", "==", email)
-    .where("agencyId", "==", caller.agencyId)
+    .where("agencyId", "==", callerAgencyId)
     .limit(1)
     .get();
   if (!existingRegistered.empty) {
@@ -173,7 +153,7 @@ export const invitePortalUser = onCall(async (request) => {
   const existingAwaiting = await db
     .collection("unregistered_staff")
     .where("email", "==", email)
-    .where("agencyId", "==", caller.agencyId)
+    .where("agencyId", "==", callerAgencyId)
     .limit(1)
     .get();
   if (!existingAwaiting.empty) {
@@ -204,7 +184,7 @@ export const invitePortalUser = onCall(async (request) => {
     {
       uid: user.uid,
       email,
-      agencyId: caller.agencyId,
+      agencyId: callerAgencyId,
       role: "client",
       invitedByUid: callerUid,
       status: "awaiting",
@@ -220,8 +200,8 @@ export const invitePortalUser = onCall(async (request) => {
       uid: user.uid,
       email,
       role: "client",
-      agencyId: caller.agencyId,
-      invitedByAgencyId: caller.agencyId,
+      agencyId: callerAgencyId,
+      invitedByAgencyId: callerAgencyId,
       invitedByUid: callerUid,
       invitedAt: FieldValue.serverTimestamp(),
     },
@@ -295,10 +275,10 @@ export const assignClientLogin = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
@@ -348,18 +328,21 @@ export const assignClientLogin = onCall(async (request) => {
     }
   }
 
-  await db.collection("users").doc(user.uid).set(
-    {
-      uid: user.uid,
-      email,
-      role: "client",
-      agencyId: agencyDocId,
-      invitedByAgencyId: caller.agencyId,
-      invitedByUid: callerUid,
-      invitedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await db
+    .collection("users")
+    .doc(user.uid)
+    .set(
+      {
+        uid: user.uid,
+        email,
+        role: "client",
+        agencyId: agencyDocId,
+        invitedByAgencyId: caller.agencyId ?? callerUid,
+        invitedByUid: callerUid,
+        invitedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
   const continueUrl = String(
     request.data?.continueUrl || RESET_CONTINUE_URL.value(),
@@ -453,10 +436,10 @@ export const removeUnregisteredStaffUser = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
@@ -638,8 +621,8 @@ export const markContractSent = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const targetSnap = await db.collection("users").doc(targetUserId).get();
@@ -648,7 +631,7 @@ export const markContractSent = onCall(async (request) => {
   }
 
   const target = targetSnap.data() as { agencyId?: string };
-  if (target.agencyId !== caller.agencyId) {
+  if (caller.role !== "super" && target.agencyId !== caller.agencyId) {
     throw new HttpsError(
       "permission-denied",
       "Target user is not in your agency.",
@@ -836,8 +819,8 @@ export const importAgencyCsv = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const records = request.data?.records;
@@ -851,33 +834,22 @@ export const importAgencyCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const agenciesRef = db.collection("agencies");
-  const [oldSnaps, newSnaps] = await Promise.all([
-    agenciesRef.where("importedByAgencyId", "==", caller.agencyId).get(),
-    agenciesRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-  ]);
+  const { newRecords, duplicateCount } = await dedupRecords({
+    db,
+    collectionName: "agencies",
+    oldQueryField: "importedByAgencyId",
+    newQueryField: "metadata.uploadedBy",
+    records,
+    getKey: getAgencyRef,
+    agencyId: caller.agencyId ?? undefined,
+  });
 
-  const docSeen = new Set<string>();
-  const existingNames = new Set<string>();
-  for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-    if (docSeen.has(doc.id)) continue;
-    docSeen.add(doc.id);
-    const data = doc.data();
-    const name = getBusinessName(data).toLowerCase().trim();
-    if (name) existingNames.add(name);
-  }
-
-  const newRecords: Array<Record<string, unknown>> = [];
-  let duplicateCount = 0;
-
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) continue;
-    const name = getBusinessName(record).toLowerCase().trim();
-    if (name && existingNames.has(name)) {
-      duplicateCount++;
-      continue;
+  for (const record of newRecords) {
+    const emailVal = findNormalizedValue(record, "email", "emailaddress");
+    if (emailVal) {
+      record["email"] = normalizeEmail(emailVal);
     }
-    newRecords.push(record);
+    record["ref"] = getAgencyRef(record) || "";
   }
 
   if (newRecords.length === 0) {
@@ -895,18 +867,21 @@ export const importAgencyCsv = onCall(async (request) => {
   const BATCH_LIMIT = 500;
   let writtenCount = 0;
 
+  const uploadedBy = caller.agencyId ?? callerUid;
+
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("agencies").doc();
+      const meta = {
+        uploadedInFile: importId,
+        uploadedBy,
+        importedAt: FieldValue.serverTimestamp(),
+      };
       batch.set(docRef, {
         ...record,
-        metadata: {
-          uploadedInFile: importId,
-          uploadedBy: caller.agencyId,
-          importedAt: FieldValue.serverTimestamp(),
-        },
+        metadata: meta,
       });
     }
     await batch.commit();
@@ -917,7 +892,7 @@ export const importAgencyCsv = onCall(async (request) => {
 
   await importRef.set({
     type: "agency",
-    agencyId: caller.agencyId,
+    agencyId: caller.agencyId ?? "",
     fileName,
     fileUrl: fileUrl || null,
     recordCount: newRecords.length,
@@ -926,6 +901,153 @@ export const importAgencyCsv = onCall(async (request) => {
     importedByEmail: caller.email ?? null,
     importedAt: FieldValue.serverTimestamp(),
   });
+
+  const loginsBatch = db.batch();
+  let loginCount = 0;
+  for (const record of newRecords) {
+    const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    if (!email || !emailPattern.test(email)) continue;
+    const loginRef = db.collection("logins").doc(email);
+    loginsBatch.set(loginRef, {
+      email,
+      role: "client",
+      importId,
+      pending: true,
+      requestedAt: FieldValue.serverTimestamp(),
+      requestedBy: callerUid,
+    } as LoginDoc);
+    loginCount++;
+  }
+  if (loginCount > 0) await loginsBatch.commit();
+
+  return {
+    ok: true,
+    added: writtenCount,
+    duplicates: duplicateCount,
+    total: records.length,
+    importId,
+  };
+});
+
+export const importClientCsv = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+    email?: string;
+  };
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
+  }
+
+  const records = request.data?.records;
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "A non-empty records array is required.",
+    );
+  }
+
+  const fileName = String(request.data?.fileName || "unknown.csv");
+  const fileUrl = String(request.data?.fileUrl || "");
+
+  const { newRecords, duplicateCount } = await dedupRecords({
+    db,
+    collectionName: "clients",
+    oldQueryField: "importedByAgencyId",
+    newQueryField: "metadata.uploadedBy",
+    records,
+    getKey: getClientRef,
+    agencyId: caller.agencyId ?? undefined,
+  });
+
+  for (const record of newRecords) {
+    const emailVal = findNormalizedValue(record, "email", "emailaddress");
+    if (emailVal) {
+      record["email"] = normalizeEmail(emailVal);
+    }
+    record["ref"] = getClientRef(record) || "";
+  }
+
+  if (newRecords.length === 0) {
+    return {
+      ok: true,
+      added: 0,
+      duplicates: duplicateCount,
+      total: records.length,
+    };
+  }
+
+  const importRef = db.collection("csv_imports").doc();
+  const importId = importRef.id;
+
+  const BATCH_LIMIT = 500;
+  let writtenCount = 0;
+
+  const uploadedBy = caller.agencyId ?? callerUid;
+
+  for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = newRecords.slice(i, i + BATCH_LIMIT);
+    for (const record of chunk) {
+      const docRef = db.collection("clients").doc();
+      const meta = {
+        uploadedInFile: importId,
+        uploadedBy,
+        importedAt: FieldValue.serverTimestamp(),
+      };
+      batch.set(docRef, {
+        ...record,
+        metadata: meta,
+      });
+    }
+    await batch.commit();
+    writtenCount += chunk.length;
+  }
+
+  const totalRecords = Number(request.data?.totalRecords) || records.length;
+
+  await importRef.set({
+    type: "client",
+    agencyId: caller.agencyId ?? "",
+    fileName,
+    fileUrl: fileUrl || null,
+    recordCount: newRecords.length,
+    totalRecords,
+    importedByUid: callerUid,
+    importedByEmail: caller.email ?? null,
+    importedAt: FieldValue.serverTimestamp(),
+  });
+
+  const loginsBatch = db.batch();
+  let loginCount = 0;
+  for (const record of newRecords) {
+    const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    if (!email || !emailPattern.test(email)) continue;
+    const loginRef = db.collection("logins").doc(email);
+    loginsBatch.set(loginRef, {
+      email,
+      role: "admin",
+      importId,
+      pending: true,
+      requestedAt: FieldValue.serverTimestamp(),
+      requestedBy: callerUid,
+    } as LoginDoc);
+    loginCount++;
+  }
+  if (loginCount > 0) await loginsBatch.commit();
 
   return {
     ok: true,
@@ -951,8 +1073,8 @@ export const importStaffCsv = onCall(async (request) => {
     agencyId?: string;
     email?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const records = request.data?.records;
@@ -966,21 +1088,13 @@ export const importStaffCsv = onCall(async (request) => {
   const fileName = String(request.data?.fileName || "unknown.csv");
   const fileUrl = String(request.data?.fileUrl || "");
 
-  const staffRef = db.collection("staff");
-  const [oldSnaps, newSnaps] = await Promise.all([
-    staffRef.where("agencyId", "==", caller.agencyId).get(),
-    staffRef.where("metadata.uploadedBy", "==", caller.agencyId).get(),
-  ]);
-
-  const docSeen = new Set<string>();
-  const existingNiNumbers = new Set<string>();
-  for (const doc of [...oldSnaps.docs, ...newSnaps.docs]) {
-    if (docSeen.has(doc.id)) continue;
-    docSeen.add(doc.id);
-    const data = doc.data();
-    const ni = getNINumber(data).toLowerCase();
-    if (ni) existingNiNumbers.add(ni);
-  }
+  const { newRecords, duplicateCount } = await dedupRecords({
+    db,
+    collectionName: "staff",
+    records,
+    getKey: getStaffRef,
+    fetchAll: true,
+  });
 
   let assignedToId = request.data?.assignedToId
     ? String(request.data.assignedToId)
@@ -989,8 +1103,8 @@ export const importStaffCsv = onCall(async (request) => {
     ? String(request.data.assignedToName)
     : null;
 
-  if (!assignedToId) {
-    assignedToId = caller.agencyId ?? null;
+  if (!assignedToId && caller.agencyId) {
+    assignedToId = caller.agencyId;
   }
   const callerAgencySnap = assignedToId
     ? await db.collection("agencies").doc(assignedToId).get()
@@ -1003,18 +1117,7 @@ export const importStaffCsv = onCall(async (request) => {
 
   const tagIds = request.data?.tagIds as string[] | undefined;
 
-  const newRecords: Array<Record<string, unknown>> = [];
-  let duplicateCount = 0;
-
-  for (const record of records) {
-    if (typeof record !== "object" || record === null) continue;
-    const ni = getNINumber(record).toLowerCase();
-    if (ni && existingNiNumbers.has(ni)) {
-      duplicateCount++;
-      continue;
-    }
-    existingNiNumbers.add(ni);
-
+  for (const record of newRecords) {
     const forename = findNormalizedValue(record, "forename", "firstname");
     const surname = findNormalizedValue(record, "surname", "lastname");
     const fullName = findNormalizedValue(record, "fullname");
@@ -1033,7 +1136,12 @@ export const importStaffCsv = onCall(async (request) => {
       record["Surname"] = surname ?? "";
     }
 
-    newRecords.push(record);
+    const emailVal = findNormalizedValue(record, "email", "emailaddress");
+    if (emailVal) {
+      record["email"] = normalizeEmail(emailVal);
+    }
+
+    record["ref"] = getStaffRef(record) || "";
   }
 
   if (newRecords.length === 0) {
@@ -1056,13 +1164,17 @@ export const importStaffCsv = onCall(async (request) => {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
-      const docRef = db.collection("staff").doc();
+      const staffRef = getStaffRef(record);
+      const docRef = staffRef
+        ? db.collection("staff").doc(staffRef)
+        : db.collection("staff").doc();
       batch.set(docRef, {
         ...record,
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
         metadata: {
+          role: "worker",
           uploadedInFile: importId,
-          uploadedBy: caller.agencyId,
+          uploadedBy: caller.agencyId ?? callerUid,
           importedAt: FieldValue.serverTimestamp(),
           ...(assignedToId
             ? {
@@ -1074,7 +1186,7 @@ export const importStaffCsv = onCall(async (request) => {
             : {}),
         },
       });
-      newStaffIds.push(docRef.id);
+      if (staffRef) newStaffIds.push(staffRef);
     }
     await batch.commit();
     writtenCount += chunk.length;
@@ -1085,7 +1197,8 @@ export const importStaffCsv = onCall(async (request) => {
       .collection("agencies")
       .doc(assignedToId)
       .update({
-        assignedStaff: FieldValue.arrayUnion(...newStaffIds),
+        assignedStaff: FieldValue.delete(),
+        "metadata.assignedStaff": FieldValue.arrayUnion(...newStaffIds),
       });
   }
 
@@ -1093,7 +1206,7 @@ export const importStaffCsv = onCall(async (request) => {
 
   await importRef.set({
     type: "staff",
-    agencyId: caller.agencyId,
+    agencyId: caller.agencyId ?? "",
     fileName,
     fileUrl: fileUrl || null,
     recordCount: newRecords.length,
@@ -1101,7 +1214,28 @@ export const importStaffCsv = onCall(async (request) => {
     importedByUid: callerUid,
     importedByEmail: caller.email ?? null,
     importedAt: FieldValue.serverTimestamp(),
+    assignedToId: assignedToId || null,
   });
+
+  const loginsBatch = db.batch();
+  let loginCount = 0;
+  for (const record of newRecords) {
+    const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+    if (!rawEmail) continue;
+    const email = normalizeEmail(rawEmail);
+    if (!email || !emailPattern.test(email)) continue;
+    const loginRef = db.collection("logins").doc(email);
+    loginsBatch.set(loginRef, {
+      email,
+      role: "worker",
+      importId,
+      pending: true,
+      requestedAt: FieldValue.serverTimestamp(),
+      requestedBy: callerUid,
+    } as LoginDoc);
+    loginCount++;
+  }
+  if (loginCount > 0) await loginsBatch.commit();
 
   return {
     ok: true,
@@ -1123,18 +1257,40 @@ export const assignStaffToAgency = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const staffId = String(request.data?.staffId || "").trim();
-  const assignedToId = String(request.data?.assignedToId || "").trim();
-  const assignedToName = String(request.data?.assignedToName || "").trim();
+  const agencyId = String(request.data?.agencyId || "").trim();
 
-  if (!staffId || !assignedToId || !assignedToName) {
+  logger.info("assignStaffToAgency called", { staffId, agencyId, callerUid });
+
+  if (!staffId || !agencyId) {
     throw new HttpsError(
       "invalid-argument",
-      "staffId, assignedToId, and assignedToName are required.",
+      "staffId and agencyId are required.",
+    );
+  }
+
+  const agencySnap = await db.collection("agencies").doc(agencyId).get();
+  if (!agencySnap.exists) {
+    throw new HttpsError("not-found", "Agency not found.");
+  }
+
+  const agencyData = agencySnap.data()!;
+
+  const assignedToName = getBusinessName(agencyData);
+
+  const staffSnap = await db.collection("staff").doc(staffId).get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff member not found.");
+  }
+  const refValue = getStaffRef(staffSnap.data()!);
+  if (!refValue) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Staff record has no reference value.",
     );
   }
 
@@ -1144,9 +1300,8 @@ export const assignStaffToAgency = onCall(async (request) => {
     .set(
       {
         metadata: {
-          assignedToId,
+          assignedToId: agencyId,
           assignedToName,
-          assignedBy: caller.email ?? callerUid,
           assignedAt: FieldValue.serverTimestamp(),
         },
       },
@@ -1155,12 +1310,13 @@ export const assignStaffToAgency = onCall(async (request) => {
 
   await db
     .collection("agencies")
-    .doc(assignedToId)
+    .doc(agencyId)
     .update({
-      assignedStaff: FieldValue.arrayUnion(staffId),
+      assignedStaff: FieldValue.delete(),
+      "metadata.assignedStaff": FieldValue.arrayUnion(refValue),
     });
 
-  return { ok: true, staffId, assignedToId };
+  return { ok: true, staffId, agencyId };
 });
 
 export const deleteUserContract = onCall(async (request) => {
@@ -1182,8 +1338,8 @@ export const deleteUserContract = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Caller profile missing.");
   }
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const userRef = db.collection("users").doc(targetUserId);
@@ -1192,7 +1348,7 @@ export const deleteUserContract = onCall(async (request) => {
     throw new HttpsError("not-found", "Target user not found.");
   }
   const target = userSnap.data() as { agencyId?: string };
-  if (target.agencyId !== caller.agencyId) {
+  if (caller.role !== "super" && target.agencyId !== caller.agencyId) {
     throw new HttpsError(
       "permission-denied",
       "Target user is not in your agency.",
@@ -1261,8 +1417,8 @@ export const bulkUploadStaff = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const agencyId = String(request.data?.agencyId || "").trim();
@@ -1335,8 +1491,8 @@ export const bulkUploadStaff = onCall(async (request) => {
       email,
       title,
       initial: String(row.initial || "").trim(),
-      Forename: forename,
-      Surname: surname,
+      forename,
+      surname,
       address1: String(row.address1 || "").trim(),
       address2: String(row.address2 || "").trim(),
       agencyId,
@@ -1390,8 +1546,8 @@ export const removeAgencies = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const importId = String(request.data?.importId || "").trim();
@@ -1427,8 +1583,6 @@ export const removeAgencies = onCall(async (request) => {
     .where("metadata.uploadedInFile", "==", importId)
     .get();
 
-  const agencyIds = agencySnaps.docs.map((d) => d.id);
-
   const BATCH_LIMIT = 500;
   let deletedCount = 0;
 
@@ -1442,15 +1596,167 @@ export const removeAgencies = onCall(async (request) => {
     await batch.commit();
   }
 
-  // Remove associated client logins
+  // Delete Auth users + users docs for imported agencies with email
   const adminAuth = getAuth();
-  for (const agencyId of agencyIds) {
-    const userSnaps = await db
+  for (const snap of agencySnaps.docs) {
+    const data = snap.data() as { email?: string };
+    const email = data.email;
+    if (!email || !emailPattern.test(email)) continue;
+    const userDocs = await db
       .collection("users")
-      .where("agencyId", "==", agencyId)
-      .where("role", "==", "client")
+      .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userSnaps.docs) {
+    for (const userDoc of userDocs.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
+  }
+
+  await importRef.delete();
+
+  return { ok: true, deletedCount, importId };
+});
+
+export const assignAgencyToClient = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const clientId = String(request.data?.clientId || "").trim();
+  const assignedAgencyIds: string[] = Array.isArray(
+    request.data?.assignedAgencyIds,
+  )
+    ? request.data.assignedAgencyIds.map(String)
+    : [];
+
+  if (!clientId) {
+    throw new HttpsError("invalid-argument", "clientId is required.");
+  }
+
+  await db
+    .collection("clients")
+    .doc(clientId)
+    .set(
+      {
+        metadata: {
+          assignedAgencies: assignedAgencyIds,
+        },
+      },
+      { merge: true },
+    );
+
+  // Sync assignedAgencyIds to the client's user doc so the Firestore
+  // security rules can grant read access to the assigned agencies.
+  const clientSnap = await db.collection("clients").doc(clientId).get();
+  const clientData = clientSnap.data() as { email?: string } | undefined;
+  if (clientData?.email) {
+    const userQuery = await db
+      .collection("users")
+      .where("email", "==", clientData.email.toLowerCase())
+      .where("role", "==", "admin")
+      .limit(1)
+      .get();
+    if (!userQuery.empty) {
+      await db
+        .collection("users")
+        .doc(userQuery.docs[0].id)
+        .update({ assignedAgencyIds });
+    }
+  }
+
+  return { ok: true, clientId, assignedAgencyIds };
+});
+
+export const removeClients = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as {
+    role?: string;
+    agencyId?: string;
+  };
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
+  }
+
+  const importId = String(request.data?.importId || "").trim();
+  if (!importId) {
+    throw new HttpsError("invalid-argument", "importId is required.");
+  }
+
+  const importRef = db.collection("csv_imports").doc(importId);
+  const importSnap = await importRef.get();
+  if (!importSnap.exists) {
+    throw new HttpsError("not-found", "Import record not found.");
+  }
+
+  const importData = importSnap.data() as {
+    fileUrl?: string | null;
+  };
+
+  if (importData.fileUrl) {
+    try {
+      const filePath = decodeURIComponent(
+        importData.fileUrl.split("/o/")[1]?.split("?")[0] ?? "",
+      );
+      if (filePath) {
+        await getStorage().bucket().file(filePath).delete();
+      }
+    } catch {
+      // file may not exist — proceed with record deletion
+    }
+  }
+
+  const clientSnaps = await db
+    .collection("clients")
+    .where("metadata.uploadedInFile", "==", importId)
+    .get();
+
+  const BATCH_LIMIT = 500;
+  let deletedCount = 0;
+
+  for (let i = 0; i < clientSnaps.docs.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    const chunk = clientSnaps.docs.slice(i, i + BATCH_LIMIT);
+    for (const doc of chunk) {
+      batch.delete(doc.ref);
+      deletedCount++;
+    }
+    await batch.commit();
+  }
+
+  // Delete Auth users + users docs for imported clients with email
+  const adminAuth = getAuth();
+  for (const snap of clientSnaps.docs) {
+    const data = snap.data() as { email?: string };
+    const email = data.email;
+    if (!email || !emailPattern.test(email)) continue;
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+    for (const userDoc of userDocs.docs) {
       try {
         await adminAuth.deleteUser(userDoc.id);
       } catch (err: unknown) {
@@ -1480,8 +1786,8 @@ export const removeStaffImport = onCall(async (request) => {
     role?: string;
     agencyId?: string;
   };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const importId = String(request.data?.importId || "").trim();
@@ -1524,7 +1830,8 @@ export const removeStaffImport = onCall(async (request) => {
     const assignedToId = data.metadata?.assignedToId;
     if (assignedToId) {
       const ids = agencyUpdates.get(assignedToId) || [];
-      ids.push(snap.id);
+      const refValue = getStaffRef(data);
+      if (refValue) ids.push(refValue);
       agencyUpdates.set(assignedToId, ids);
     }
   }
@@ -1542,12 +1849,33 @@ export const removeStaffImport = onCall(async (request) => {
     await batch.commit();
   }
 
+  // Delete Auth users + users docs for staff members with email
+  const adminAuth = getAuth();
+  for (const snap of staffSnaps.docs) {
+    const data = snap.data() as { email?: string };
+    const email = data.email;
+    if (!email || !emailPattern.test(email)) continue;
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+    for (const userDoc of userDocs.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
+  }
+
   for (const [agencyId, staffIds] of agencyUpdates) {
     await db
       .collection("agencies")
       .doc(agencyId)
       .update({
-        assignedStaff: FieldValue.arrayRemove(...staffIds),
+        "metadata.assignedStaff": FieldValue.arrayRemove(...staffIds),
       });
   }
 
@@ -1572,8 +1900,8 @@ export const backfillAssignedBy = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const agencyId = caller.agencyId;
@@ -1629,8 +1957,8 @@ export const unassignStaffFromAgency = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const staffId = String(request.data?.staffId || "").trim();
@@ -1638,15 +1966,31 @@ export const unassignStaffFromAgency = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "staffId is required.");
   }
 
+  logger.info("unassignStaffFromAgency called", { staffId, callerUid });
+
   const staffSnap = await db.collection("staff").doc(staffId).get();
   if (!staffSnap.exists) {
     throw new HttpsError("not-found", "Staff member not found.");
   }
 
   const staffData = staffSnap.data();
-  const assignedToId = staffData?.metadata?.assignedToId;
-  if (!assignedToId) {
+  const agencyId = staffData?.metadata?.assignedToId;
+  logger.info("unassignStaffFromAgency staff data", {
+    staffId,
+    agencyId,
+    hasMetadata: !!staffData?.metadata,
+    metadataKeys: staffData?.metadata ? Object.keys(staffData.metadata) : [],
+  });
+  if (!agencyId) {
     throw new HttpsError("failed-precondition", "Staff not assigned.");
+  }
+
+  const refValue = getStaffRef(staffData);
+  if (!refValue) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Staff record has no reference value.",
+    );
   }
 
   await db
@@ -1657,7 +2001,6 @@ export const unassignStaffFromAgency = onCall(async (request) => {
         metadata: {
           assignedToId: FieldValue.delete(),
           assignedToName: FieldValue.delete(),
-          assignedBy: FieldValue.delete(),
           assignedAt: FieldValue.delete(),
         },
       },
@@ -1666,12 +2009,12 @@ export const unassignStaffFromAgency = onCall(async (request) => {
 
   await db
     .collection("agencies")
-    .doc(assignedToId)
+    .doc(agencyId)
     .update({
-      assignedStaff: FieldValue.arrayRemove(staffId),
+      "metadata.assignedStaff": FieldValue.arrayRemove(refValue),
     });
 
-  return { ok: true, staffId, assignedToId };
+  return { ok: true, staffId, agencyId };
 });
 
 export const addStaffTag = onCall(async (request) => {
@@ -1685,8 +2028,8 @@ export const addStaffTag = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const staffId = String(request.data?.staffId || "").trim();
@@ -1730,10 +2073,10 @@ export const removeClientLogin = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string; agencyId?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
-  if (!caller.agencyId) {
+  if (!caller.agencyId && caller.role !== "super") {
     throw new HttpsError("failed-precondition", "Admin has no agencyId.");
   }
 
@@ -1815,8 +2158,8 @@ export const deleteContract = onCall(async (request) => {
   }
 
   const caller = callerSnap.data() as { role?: string };
-  if (caller.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (caller.role !== "admin" && caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const clientId = String(request.data?.clientId || "").trim();
@@ -1864,6 +2207,12 @@ export const recordTimesheetUpload = onCall(async (request) => {
   }
 
   const { clientId, fileName, fileBase64, contentType } = request.data;
+  console.log("[recordTimesheetUpload] received data:", {
+    clientId,
+    fileName,
+    fileBase64Len: fileBase64?.length,
+    hasContentType: !!contentType,
+  });
   if (!clientId || !fileName || !fileBase64) {
     throw new HttpsError(
       "invalid-argument",
@@ -1878,17 +2227,19 @@ export const recordTimesheetUpload = onCall(async (request) => {
     throw new HttpsError("not-found", "User profile not found.");
   }
 
-  const callerData = callerSnap.data() as {
-    email?: string;
-    agencyId?: string;
-    role?: string;
-  };
-  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+  const callerData = callerSnap.data() as Record<string, unknown>;
+  const callerEmail = (callerData.EMAIL ?? callerData.email ?? "") as string;
+  const callerRole = (callerData.ROLE ?? callerData.role ?? "") as string;
+  console.log("[recordTimesheetUpload] caller data:", {
+    callerRole,
+    callerEmail,
+  });
+  const uploadedBy = (request.auth.token?.email ?? callerEmail) || "unknown";
 
-  if (callerData.role === "client" && callerData.agencyId !== clientId) {
+  if (callerRole !== "client") {
     throw new HttpsError(
       "permission-denied",
-      "Cannot upload timesheet for another client.",
+      "Only clients can upload timesheets.",
     );
   }
 
@@ -1983,7 +2334,7 @@ export const seenItems = onCall(async (request) => {
   if (!type || !Array.isArray(ids) || ids.length === 0 || !agencyId) {
     throw new HttpsError(
       "invalid-argument",
-      "type ('invoices' | 'timesheets'), a non-empty ids array, and agencyId are required.",
+      "type, a non-empty ids array, and agencyId are required.",
     );
   }
 
@@ -1996,15 +2347,16 @@ export const seenItems = onCall(async (request) => {
 
   const db = getFirestore();
 
-  const fieldPath =
-    type === "invoices" ? "metadata.invoices" : "metadata.timesheets";
-  const idKey = type === "invoices" ? "id" : "fileName";
+  const isInvoices = type === "invoices";
+  const fieldPath = isInvoices ? "metadata.invoices" : "metadata.timesheets";
+  const idKey = isInvoices ? "id" : "fileName";
+  const collection = isInvoices ? "clients" : "agencies";
 
   const idSet = new Set(ids);
-  const snap = await db.collection("agencies").doc(agencyId).get();
+  const snap = await db.collection(collection).doc(agencyId).get();
 
   if (!snap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+    throw new HttpsError("not-found", "Document not found.");
   }
 
   const data = snap.data() as Record<string, unknown> | undefined;
@@ -2019,7 +2371,7 @@ export const seenItems = onCall(async (request) => {
   });
 
   await db
-    .collection("agencies")
+    .collection(collection)
     .doc(agencyId)
     .update({ [fieldPath]: updated });
 
@@ -2040,7 +2392,7 @@ export const setDownloaded = onCall(async (request) => {
   if (!type || !agencyId || !Array.isArray(ids) || ids.length === 0) {
     throw new HttpsError(
       "invalid-argument",
-      "type ('invoices' | 'timesheets'), agencyId, and a non-empty ids array are required.",
+      "type, agencyId, and a non-empty ids array are required.",
     );
   }
 
@@ -2052,14 +2404,15 @@ export const setDownloaded = onCall(async (request) => {
   }
 
   const db = getFirestore();
-  const fieldPath =
-    type === "invoices" ? "metadata.invoices" : "metadata.timesheets";
-  const idKey = type === "invoices" ? "id" : "fileName";
+  const isInvoices = type === "invoices";
+  const fieldPath = isInvoices ? "metadata.invoices" : "metadata.timesheets";
+  const idKey = isInvoices ? "id" : "fileName";
+  const collection = isInvoices ? "clients" : "agencies";
   const idSet = new Set(ids);
 
-  const snap = await db.collection("agencies").doc(agencyId).get();
+  const snap = await db.collection(collection).doc(agencyId).get();
   if (!snap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+    throw new HttpsError("not-found", "Document not found.");
   }
 
   const data = snap.data() as Record<string, unknown> | undefined;
@@ -2074,7 +2427,7 @@ export const setDownloaded = onCall(async (request) => {
   });
 
   await db
-    .collection("agencies")
+    .collection(collection)
     .doc(agencyId)
     .update({ [fieldPath]: updated });
 
@@ -2102,8 +2455,8 @@ export const deleteTimesheet = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super admin only.");
   }
 
   const storagePath = `timesheets/${clientId}/${fileName}`;
@@ -2154,8 +2507,8 @@ export const uploadStaffCvs = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { email?: string; role?: string };
-  if (callerData.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
@@ -2254,8 +2607,8 @@ export const deleteStaffCv = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
   }
 
   const storagePath = `cvs/${staffId}/${fileName}`;
@@ -2283,21 +2636,236 @@ export const deleteStaffCv = onCall(async (request) => {
   return { ok: true };
 });
 
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import { algoliasearch } from "algoliasearch";
+export const uploadStaffDocument = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
 
-const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
-const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
-const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
+  const { staffId, fileName, fileBase64 } = request.data as {
+    staffId: string;
+    fileName: string;
+    fileBase64: string;
+  };
+  if (!staffId || !fileName || !fileBase64) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: staffId, fileName, fileBase64",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { email?: string; role?: string };
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const staffSnap = await db.collection("staff").doc(staffId).get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff not found.");
+  }
+
+  const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
+  const bucket = getStorage().bucket();
+  const filePath = `documents/${staffId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  const token =
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const buffer = Buffer.from(fileBase64, "base64");
+
+  await fileRef.save(buffer, {
+    metadata: {
+      contentType: "application/pdf",
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+  const entry = {
+    fileName,
+    fileUrl,
+    uploadedBy,
+    uploadedAt: new Date().toISOString(),
+  };
+
+  await db
+    .collection("staff")
+    .doc(staffId)
+    .update({
+      "metadata.documents": FieldValue.arrayUnion(entry),
+    });
+
+  return { ok: true, staffId, fileName };
+});
+
+export const deleteStaffDocument = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+
+  const { staffId, fileName } = request.data as {
+    staffId: string;
+    fileName: string;
+  };
+  if (!staffId || !fileName) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required fields: staffId, fileName",
+    );
+  }
+
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("not-found", "User profile not found.");
+  }
+
+  const callerData = callerSnap.data() as { role?: string };
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const storagePath = `documents/${staffId}/${fileName}`;
+  try {
+    await getStorage().bucket().file(storagePath).delete();
+  } catch {
+    // file may not exist — proceed with clearing the entry
+  }
+
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff not found.");
+  }
+
+  const data = staffSnap.data() as {
+    metadata?: { documents?: Array<Record<string, unknown>> };
+  };
+  const current = data.metadata?.documents ?? [];
+
+  await staffRef.update({
+    "metadata.documents": current.filter((e) => e.fileName !== fileName),
+  });
+
+  return { ok: true };
+});
+
+export const removeStaffMember = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+
+  const caller = callerSnap.data() as { role?: string };
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const staffId = String(request.data?.staffId || "").trim();
+  if (!staffId) {
+    throw new HttpsError("invalid-argument", "staffId is required.");
+  }
+
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (!staffSnap.exists) {
+    throw new HttpsError("not-found", "Staff member not found.");
+  }
+
+  const staffData = staffSnap.data() as {
+    email?: string;
+    metadata?: { assignedToId?: string };
+  };
+
+  // Remove from agency assignedStaff if assigned
+  const assignedToId = staffData.metadata?.assignedToId;
+  if (assignedToId) {
+    const refValue = getStaffRef(staffData);
+    if (refValue) {
+      await db
+        .collection("agencies")
+        .doc(assignedToId)
+        .update({
+          "metadata.assignedStaff": FieldValue.arrayRemove(refValue),
+        });
+    }
+  }
+
+  // Delete Auth user + users doc by email
+  const email = staffData.email;
+  if (email && emailPattern.test(email)) {
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+
+    const adminAuth = getAuth();
+    for (const userDoc of userDocs.docs) {
+      try {
+        await adminAuth.deleteUser(userDoc.id);
+      } catch (err: unknown) {
+        const authErr = err as { code?: string };
+        if (authErr.code !== "auth/user-not-found") throw err;
+      }
+      await userDoc.ref.delete();
+    }
+  }
+
+  // Delete staff document
+  await staffRef.delete();
+
+  return { ok: true, staffId };
+});
 
 const getAlgoliaClient = () =>
   algoliasearch(ALGOLIA_APP_ID.value(), ALGOLIA_ADMIN_API_KEY.value());
 
 const algoliaIndex = (name: string) => `${ALGOLIA_INDEX_PREFIX.value()}${name}`;
 
-// ── Agencies → clients index ──
+// ── Agencies → agencies index ──
 export const syncAgencyToAlgolia = onDocumentWritten(
   { document: "agencies/{docId}", maxInstances: 10 },
+  async (event) => {
+    const client = getAlgoliaClient();
+    const snap = event.data;
+    if (!snap) return;
+
+    if (!snap.after.exists) {
+      await client.deleteObject({
+        indexName: algoliaIndex("agencies"),
+        objectID: event.params.docId,
+      });
+      console.log(`Deleted agency ${event.params.docId} from agencies index`);
+      return;
+    }
+
+    const data = snap.after.data();
+    if (!data) return;
+    const sortableName = getBusinessName(data).toLowerCase().trim();
+
+    await client.saveObject({
+      indexName: algoliaIndex("agencies"),
+      body: { objectID: event.params.docId, ...data, sortableName },
+    });
+    console.log(`Saved agency ${event.params.docId} to agencies index`);
+  },
+);
+
+// ── Clients → clients index ──
+export const syncClientsToAlgolia = onDocumentWritten(
+  { document: "clients/{docId}", maxInstances: 10 },
   async (event) => {
     const client = getAlgoliaClient();
     const snap = event.data;
@@ -2308,7 +2876,7 @@ export const syncAgencyToAlgolia = onDocumentWritten(
         indexName: algoliaIndex("clients"),
         objectID: event.params.docId,
       });
-      console.log(`Deleted agency ${event.params.docId} from clients index`);
+      console.log(`Deleted client ${event.params.docId} from clients index`);
       return;
     }
 
@@ -2320,7 +2888,7 @@ export const syncAgencyToAlgolia = onDocumentWritten(
       indexName: algoliaIndex("clients"),
       body: { objectID: event.params.docId, ...data, sortableName },
     });
-    console.log(`Saved agency ${event.params.docId} to clients index`);
+    console.log(`Saved client ${event.params.docId} to clients index`);
   },
 );
 
@@ -2411,6 +2979,7 @@ export const backfillAlgoliaIndices = onCall(
     const db = getFirestore();
     let totalStaff = 0;
     let totalAgencies = 0;
+    let totalClients = 0;
     let totalLogins = 0;
 
     // ── Staff ──
@@ -2434,7 +3003,7 @@ export const backfillAlgoliaIndices = onCall(
       totalStaff = staffObjects.length;
     }
 
-    // ── Agencies (clients index) ──
+    // ── Agencies (agencies index) ──
     const agencySnap = await db.collection("agencies").get();
     const agencyObjects: Array<Record<string, unknown>> = [];
     for (const doc of agencySnap.docs) {
@@ -2446,10 +3015,28 @@ export const backfillAlgoliaIndices = onCall(
     }
     if (agencyObjects.length > 0) {
       await client.saveObjects({
-        indexName: algoliaIndex("clients"),
+        indexName: algoliaIndex("agencies"),
         objects: agencyObjects,
       });
       totalAgencies = agencyObjects.length;
+    }
+
+    // ── Clients (clients index) ──
+    const clientSnap = await db.collection("clients").get();
+    const clientObjects: Array<Record<string, unknown>> = [];
+    for (const doc of clientSnap.docs) {
+      const data = doc.data();
+      const sortableName = getBusinessName(data ?? {})
+        .toLowerCase()
+        .trim();
+      clientObjects.push({ objectID: doc.id, ...data, sortableName });
+    }
+    if (clientObjects.length > 0) {
+      await client.saveObjects({
+        indexName: algoliaIndex("clients"),
+        objects: clientObjects,
+      });
+      totalClients = clientObjects.length;
     }
 
     // ── Users / logins (role=client) ──
@@ -2481,6 +3068,7 @@ export const backfillAlgoliaIndices = onCall(
       ok: true,
       staffBackfilled: totalStaff,
       agenciesBackfilled: totalAgencies,
+      clientsBackfilled: totalClients,
       loginsBackfilled: totalLogins,
     };
   },
@@ -2524,14 +3112,17 @@ export const uploadInvoice = onCall(async (request) => {
     email?: string;
     role?: string;
   };
+  if (callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
   const uploadedBy = request.auth.token?.email ?? callerData.email ?? "unknown";
 
-  const agencySnap = await db.collection("agencies").doc(agencyId).get();
-  if (agencySnap.exists) {
-    const agencyData = agencySnap.data() as {
+  const clientSnap = await db.collection("clients").doc(agencyId).get();
+  if (clientSnap.exists) {
+    const clientData = clientSnap.data() as {
       metadata?: { invoices?: Array<{ fileName?: string }> };
     };
-    const existing = agencyData.metadata?.invoices ?? [];
+    const existing = clientData.metadata?.invoices ?? [];
     if (existing.some((inv) => inv.fileName === fileName)) {
       throw new HttpsError(
         "already-exists",
@@ -2578,11 +3169,12 @@ export const uploadInvoice = onCall(async (request) => {
   };
 
   await db
-    .collection("agencies")
+    .collection("clients")
     .doc(agencyId)
-    .update({
-      "metadata.invoices": FieldValue.arrayUnion(entry),
-    });
+    .set(
+      { metadata: { invoices: FieldValue.arrayUnion(entry) } },
+      { merge: true },
+    );
 
   return { ok: true, url: fileUrl };
 });
@@ -2600,8 +3192,8 @@ export const markInvoicePaid = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "admin" && callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const agencyId = String(request.data?.agencyId || "").trim();
@@ -2613,13 +3205,13 @@ export const markInvoicePaid = onCall(async (request) => {
     );
   }
 
-  const agencyRef = db.collection("agencies").doc(agencyId);
-  const agencySnap = await agencyRef.get();
-  if (!agencySnap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+  const clientRef = db.collection("clients").doc(agencyId);
+  const clientSnap = await clientRef.get();
+  if (!clientSnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
   }
 
-  const data = agencySnap.data() as {
+  const data = clientSnap.data() as {
     metadata?: { invoices?: Array<Record<string, unknown>> };
   };
   const current = data.metadata?.invoices ?? [];
@@ -2636,7 +3228,7 @@ export const markInvoicePaid = onCall(async (request) => {
     return inv;
   });
 
-  await agencyRef.update({
+  await clientRef.update({
     "metadata.invoices": updated,
   });
 
@@ -2656,8 +3248,8 @@ export const deleteInvoice = onCall(async (request) => {
   }
 
   const callerData = callerSnap.data() as { role?: string };
-  if (callerData.role !== "admin") {
-    throw new HttpsError("permission-denied", "Admin only.");
+  if (callerData.role !== "admin" && callerData.role !== "super") {
+    throw new HttpsError("permission-denied", "Admin or Super only.");
   }
 
   const agencyId = String(request.data?.agencyId || "").trim();
@@ -2669,13 +3261,13 @@ export const deleteInvoice = onCall(async (request) => {
     );
   }
 
-  const agencyRef = db.collection("agencies").doc(agencyId);
-  const agencySnap = await agencyRef.get();
-  if (!agencySnap.exists) {
-    throw new HttpsError("not-found", "Agency not found.");
+  const clientRef = db.collection("clients").doc(agencyId);
+  const clientSnap = await clientRef.get();
+  if (!clientSnap.exists) {
+    throw new HttpsError("not-found", "Client not found.");
   }
 
-  const data = agencySnap.data() as {
+  const data = clientSnap.data() as {
     metadata?: { invoices?: Array<Record<string, unknown>> };
   };
   const current = data.metadata?.invoices ?? [];
@@ -2703,7 +3295,7 @@ export const deleteInvoice = onCall(async (request) => {
       (inv.fileName as string) !== invoiceId,
   );
 
-  await agencyRef.update({
+  await clientRef.update({
     "metadata.invoices": updated,
   });
 
@@ -2728,4 +3320,73 @@ export const getMaintenanceWindow = onCall(async () => {
     start: data.start?.toMillis() ?? null,
     end: data.end?.toMillis() ?? null,
   };
+});
+
+export const uploadPayslipToStaff = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const { fileBase64, fileName, userId, agencyId } = request.data;
+  if (!fileBase64 || !fileName || !userId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "fileBase64, fileName, and userId are required.",
+    );
+  }
+
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  if (!callerSnap.exists) {
+    throw new HttpsError("permission-denied", "Caller profile missing.");
+  }
+  const caller = callerSnap.data() as { role?: string; email?: string };
+  if (caller.role !== "super") {
+    throw new HttpsError("permission-denied", "Super only.");
+  }
+
+  const bucket = getStorage().bucket();
+  const filePath = `payslips/${userId}/${fileName}`;
+  const fileRef = bucket.file(filePath);
+
+  const token =
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const buffer = Buffer.from(fileBase64, "base64");
+
+  await fileRef.save(buffer, {
+    metadata: {
+      contentType: "application/pdf",
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+
+  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+  const sentBy = caller.email ?? "Unknown";
+
+  const payslipRef = await db.collection("payslips").add({
+    userId,
+    agencyId: agencyId ?? "",
+    fileName,
+    fileUrl,
+    sentBy,
+    timestamp: FieldValue.serverTimestamp(),
+    hasDownloaded: false,
+  });
+
+  const staffRef = db.collection("staff").doc(userId);
+  const staffSnap = await staffRef.get();
+  const staffData = staffSnap.data() as {
+    metadata?: { payslipsSent?: string[] };
+  };
+  const existing = staffData?.metadata?.payslipsSent ?? [];
+  await staffRef.set(
+    {
+      metadata: {
+        payslipsSent: [payslipRef.id, ...existing],
+      },
+    },
+    { merge: true },
+  );
+
+  return { ok: true, payslipId: payslipRef.id, url: fileUrl };
 });
