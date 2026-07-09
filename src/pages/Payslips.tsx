@@ -50,11 +50,15 @@ export const Payslips = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
     loadData()
-      .then(setStaffList)
-      .catch(() => setStaffList([]))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        setStaffList(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setStaffList([]);
+        setLoading(false);
+      });
   }, [appUser]);
 
   const onDelete = async () => {
