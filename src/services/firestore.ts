@@ -14,6 +14,7 @@ import {
   arrayRemove,
   getCountFromServer,
   serverTimestamp,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -187,7 +188,7 @@ export async function getUnsignedContractsByUser(
   agencyId: string,
   status?: string,
 ): Promise<Record<string, unknown>[]> {
-  const constraints: any[] = [
+  const constraints: QueryConstraint[] = [
     where("targetUserId", "==", userId),
     where("agencyId", "==", agencyId),
   ];
@@ -315,7 +316,7 @@ export async function getAllUploadHistory(): Promise<
 export async function getImportHistory(
   type?: string,
 ): Promise<Record<string, unknown>[]> {
-  const constraints: any[] = [];
+  const constraints: QueryConstraint[] = [];
   if (type) {
     constraints.push(where("type", "==", type));
   }

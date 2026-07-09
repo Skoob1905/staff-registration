@@ -86,15 +86,12 @@ export const Clients = () => {
     [agencies],
   );
 
-  useEffect(() => {
-    if (assignAgenciesTarget) {
-      const meta = assignAgenciesTarget.metadata as
-        | Record<string, unknown>
-        | undefined;
-      const ids = (meta?.assignedAgencies as string[] | undefined) ?? [];
-      setSelectedAgencyIds(new Set(ids));
-    }
-  }, [assignAgenciesTarget]);
+  const openAssignAgencies = (client: Record<string, unknown>) => {
+    const meta = client.metadata as Record<string, unknown> | undefined;
+    const ids = (meta?.assignedAgencies as string[] | undefined) ?? [];
+    setSelectedAgencyIds(new Set(ids));
+    setAssignAgenciesTarget(client);
+  };
 
   const getPrimaryLabel = (client: Record<string, unknown>): string => {
     return (
@@ -277,7 +274,7 @@ export const Clients = () => {
               )}
               <RecordData data={cleanRecordData(client)} />
               <ActionButtonContainer
-                handleAgencies={() => setAssignAgenciesTarget(client)}
+                handleAgencies={() => openAssignAgencies(client)}
                 handleDelete={() => setConfirmDeleteClient(client)}
               />
             </AccordionItem>
