@@ -450,14 +450,9 @@ export const AddModal = ({
         });
       }
 
-      const dupMsg =
-        data.duplicates > 0
-          ? ` with ${data.duplicates} duplicate${data.duplicates === 1 ? "" : "s"}`
-          : "";
-
       toast({
-        title: "File uploaded",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupMsg}.`,
+        title: "Import complete",
+        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added. Logins will be sent shortly.`,
         replaceToast: true,
       });
       setUploadProgress(0);
@@ -475,15 +470,6 @@ export const AddModal = ({
           "processImportLogins",
         );
         processLoginCallable({ importId: data.importId })
-          .then((res) => {
-            const r = res.data as { created: number; skipped: number };
-            if (r.created > 0) {
-              toast({
-                title: "Logins created",
-                description: `${r.created} login${r.created === 1 ? "" : "s"} sent${r.skipped > 0 ? `, ${r.skipped} skipped` : ""}.`,
-              });
-            }
-          })
           .catch((err) => {
             console.error("[processImportLogins] failed", err);
             toast({
