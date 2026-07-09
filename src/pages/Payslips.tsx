@@ -32,37 +32,29 @@ export const Payslips = () => {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchData = () => {
-    setLoading(true);
+  const loadData = async (): Promise<StaffPayslips[]> => {
+    let agencyIds: string[] | undefined;
 
-    const load = async () => {
-      let agencyIds: string[] | undefined;
-
-      if (appUser?.role === "admin") {
-        const userData = await getUser(appUser.uid);
-        if (userData) {
-          const ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
-          if (ids.length === 0 && appUser.agencyId) {
-            ids.push(appUser.agencyId);
-          }
-          agencyIds = ids.length > 0 ? ids : undefined;
+    if (appUser?.role === "admin") {
+      const userData = await getUser(appUser.uid);
+      if (userData) {
+        const ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
+        if (ids.length === 0 && appUser.agencyId) {
+          ids.push(appUser.agencyId);
         }
+        agencyIds = ids.length > 0 ? ids : undefined;
       }
+    }
 
-      const data = await getAllStaffPayslips(agencyIds);
-      setStaffList(data);
-    };
-
-    load()
-      .catch((err) => {
-        console.error("[Payslips] fetch failed:", err);
-        setStaffList([]);
-      })
-      .finally(() => setLoading(false));
+    return getAllStaffPayslips(agencyIds);
   };
 
   useEffect(() => {
-    fetchData();
+    setLoading(true);
+    loadData()
+      .then(setStaffList)
+      .catch(() => setStaffList([]))
+      .finally(() => setLoading(false));
   }, [appUser]);
 
   const onDelete = async () => {
@@ -76,7 +68,7 @@ export const Payslips = () => {
       });
       toast({ title: "Payslip deleted", variant: "success" });
       setDeleteTarget(null);
-      fetchData();
+      setStaffList(await loadData());
     } catch {
       toast({
         title: "Delete failed",
