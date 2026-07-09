@@ -1,6 +1,6 @@
 {
   "projects": {
-    "production": "mdsce-app",
+    "production": "mdsce-prod",
     "development": "mdsce-dev"
   },
   "targets": {},
