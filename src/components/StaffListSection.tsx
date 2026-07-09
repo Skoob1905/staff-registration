@@ -107,8 +107,9 @@ export const StaffListSection = ({
       query: filters.name,
       page,
       hitsPerPage: pageSize,
+      enabled: !namesLoading,
     }),
-    [staffFacetFilters, facets, filters.name, page, pageSize, appUser?.agencyId],
+    [staffFacetFilters, facets, filters.name, page, pageSize, appUser?.agencyId, namesLoading],
   );
 
   useEffect(() => {

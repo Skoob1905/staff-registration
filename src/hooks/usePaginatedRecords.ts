@@ -40,6 +40,7 @@ interface UsePaginatedRecordsParams {
   page?: number;
   hitsPerPage?: number;
   facets?: string[];
+  enabled?: boolean;
 }
 
 export function usePaginatedRecords<T = Record<string, unknown>>({
@@ -50,6 +51,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   page = 0,
   hitsPerPage = 10,
   facets,
+  enabled = true,
 }: UsePaginatedRecordsParams) {
   const [state, dispatch] = useReducer(
     (prev: State<T>, action: Action<T>): State<T> => {
@@ -73,6 +75,8 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let cancelled = false;
     dispatch({ type: "loading" });
 
@@ -125,7 +129,7 @@ export function usePaginatedRecords<T = Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [indexName, page, hitsPerPage, refreshKey, query, filters, facetFilters, facets]);
+  }, [indexName, page, hitsPerPage, refreshKey, query, filters, facetFilters, facets, enabled]);
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);

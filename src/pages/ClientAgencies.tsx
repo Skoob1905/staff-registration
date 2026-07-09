@@ -167,6 +167,7 @@ export const ClientAgencies = () => {
     query: filters.name,
     page,
     hitsPerPage: pageSize,
+    enabled: ready,
   });
 
   const onPrevPage = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
