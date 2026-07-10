@@ -31,6 +31,14 @@ export class EmailProvider {
     });
   }
 
+  async generatePortalResetLink(email: string): Promise<string> {
+    const firebaseLink = await this.generatePasswordResetLink(email);
+    const url = new URL(firebaseLink);
+    const oobCode = url.searchParams.get("oobCode") ?? "";
+    const apiKey = url.searchParams.get("apiKey") ?? "";
+    return `${RESET_CONTINUE_URL.value()}/reset-password?mode=resetPassword&oobCode=${oobCode}&apiKey=${apiKey}`;
+  }
+
   async sendEmail({
     email,
     subject,
@@ -60,10 +68,11 @@ export class EmailProvider {
     subject?: string;
     templateName?: string;
   }): Promise<void> {
-    const resetLink = await this.generatePasswordResetLink(email);
+    const customLink = await this.generatePortalResetLink(email);
+
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, resetLink);
+    const htmlBody = raw.replace(/\{\{link\}\}/g, customLink);
     await this.sendEmail({ email, subject, htmlBody });
   }
 

@@ -324,8 +324,8 @@ export const sendPasswordReset = onCall(async (request) => {
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
   const emailProvider = new EmailProvider();
-  const resetLink = await emailProvider.generatePasswordResetLink(email);
-  const htmlBody = `<p>Use the link below to reset your password.</p><p><a href="${resetLink}">Reset password</a></p>`;
+  const customLink = await emailProvider.generatePortalResetLink(email);
+  const htmlBody = `<p>Use the link below to reset your password.</p><p><a href="${customLink}">Reset password</a></p>`;
   await emailProvider.sendEmail({
     email,
     subject: "Reset your password",
