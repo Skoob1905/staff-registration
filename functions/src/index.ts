@@ -38,7 +38,6 @@ import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 import { dedupRecords } from "./utils/dedup";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
-export { processImportLogins } from "./logins/processImportLogins";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
@@ -208,7 +207,7 @@ export const invitePortalUser = onCall(async (request) => {
   );
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendRegistrationLink({ email });
+  await emailProvider.sendClientRegistrationLink(email);
 
   return { ok: true, userId: user.uid };
 });
@@ -314,7 +313,7 @@ export const assignClientLogin = onCall(async (request) => {
     );
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendRegistrationLink({ email });
+  await emailProvider.sendClientRegistrationLink(email);
 
   return { ok: true, userId: user.uid };
 });
@@ -817,6 +816,7 @@ export const importAgencyCsv = onCall(async (request) => {
 
   const loginsBatch = db.batch();
   let loginCount = 0;
+  const emails: string[] = [];
   for (const record of newRecords) {
     const rawEmail = findNormalizedValue(record, "email", "emailaddress");
     if (!rawEmail) continue;
@@ -832,8 +832,16 @@ export const importAgencyCsv = onCall(async (request) => {
       requestedBy: callerUid,
     } as LoginDoc);
     loginCount++;
+    emails.push(email);
   }
   if (loginCount > 0) await loginsBatch.commit();
+
+  if (emails.length > 0) {
+    const emailProvider = new EmailProvider();
+    await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
+      emailProvider.sendAgencyRegistrationLink(email),
+    );
+  }
 
   return {
     ok: true,
@@ -944,6 +952,7 @@ export const importClientCsv = onCall(async (request) => {
 
   const loginsBatch = db.batch();
   let loginCount = 0;
+  const emails: string[] = [];
   for (const record of newRecords) {
     const rawEmail = findNormalizedValue(record, "email", "emailaddress");
     if (!rawEmail) continue;
@@ -959,8 +968,16 @@ export const importClientCsv = onCall(async (request) => {
       requestedBy: callerUid,
     } as LoginDoc);
     loginCount++;
+    emails.push(email);
   }
   if (loginCount > 0) await loginsBatch.commit();
+
+  if (emails.length > 0) {
+    const emailProvider = new EmailProvider();
+    await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
+      emailProvider.sendClientRegistrationLink(email),
+    );
+  }
 
   return {
     ok: true,
@@ -1132,6 +1149,7 @@ export const importStaffCsv = onCall(async (request) => {
 
   const loginsBatch = db.batch();
   let loginCount = 0;
+  const emails: string[] = [];
   for (const record of newRecords) {
     const rawEmail = findNormalizedValue(record, "email", "emailaddress");
     if (!rawEmail) continue;
@@ -1147,8 +1165,16 @@ export const importStaffCsv = onCall(async (request) => {
       requestedBy: callerUid,
     } as LoginDoc);
     loginCount++;
+    emails.push(email);
   }
   if (loginCount > 0) await loginsBatch.commit();
+
+  if (emails.length > 0) {
+    const emailProvider = new EmailProvider();
+    await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
+      emailProvider.sendWorkerRegistrationLink(email),
+    );
+  }
 
   return {
     ok: true,
@@ -2651,7 +2677,7 @@ export const uploadStaffDocument = onCall(async (request) => {
   const staffEmail = (staffSnap.data() as { email?: string })?.email;
   if (staffEmail) {
     const emailProvider = new EmailProvider();
-    await emailProvider.sendDocument({ email: staffEmail });
+    await emailProvider.sendDocumentEmail({ email: staffEmail });
   }
 
   return { ok: true, staffId, fileName };
@@ -3280,7 +3306,7 @@ export const getMaintenanceWindow = onCall(async () => {
   };
 });
 
-export const uploadPayslipToStaff = onCall(async (request) => {
+export const uploadPayslip = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
 
@@ -3349,7 +3375,7 @@ export const uploadPayslipToStaff = onCall(async (request) => {
   const staffEmail = (staffSnap.data() as { email?: string })?.email;
   if (staffEmail) {
     const emailProvider = new EmailProvider();
-    await emailProvider.sentPayslip({ email: staffEmail });
+    await emailProvider.sendPayslipEmail({ email: staffEmail });
   }
 
   return { ok: true, payslipId: payslipRef.id, url: fileUrl };

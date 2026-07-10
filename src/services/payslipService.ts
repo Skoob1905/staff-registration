@@ -3,7 +3,7 @@ import { getStaffByEmail, getPayslip } from "./firestore";
 import { functions } from "./firebase";
 import type { Payslip } from "../types/domain";
 
-export const uploadPayslipToStaff = async (
+export const callUploadPayslip = async (
   fileBase64: string,
   fileName: string,
   userId: string,
@@ -12,7 +12,7 @@ export const uploadPayslipToStaff = async (
   const callable = httpsCallable<
     { fileBase64: string; fileName: string; userId: string; agencyId: string },
     { ok: boolean; payslipId: string; url: string }
-  >(functions, "uploadPayslipToStaff");
+  >(functions, "uploadPayslip");
   const result = await callable({ fileBase64, fileName, userId, agencyId });
   return result.data;
 };
@@ -34,7 +34,7 @@ export const uploadPayslip = async (
   agencyId: string,
 ): Promise<{ payslipId: string; url: string }> => {
   const fileBase64 = await blobToBase64(file);
-  return uploadPayslipToStaff(fileBase64, file.name, userId, agencyId);
+  return callUploadPayslip(fileBase64, file.name, userId, agencyId);
 };
 
 export const getPayslipsForUser = async (email: string): Promise<Payslip[]> => {
