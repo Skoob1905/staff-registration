@@ -55,7 +55,7 @@ export const ResetPassword = () => {
   if (!oobCode) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4 app-bg">
-        <Card className="w-full max-w-md p-6 text-center bg-white/85 backdrop-blur-xs">
+        <Card className="w-full max-w-md p-6 text-center">
           <p className="text-sm text-zinc-500">
             Invalid or expired reset link.
           </p>
@@ -65,13 +65,16 @@ export const ResetPassword = () => {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 app-bg">
-      <img
-        src={config.login}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover opacity-20"
-      />
-      <Card className="relative z-10 w-full max-w-md bg-white/85 backdrop-blur-xs">
+    <div className="flex min-h-screen items-center justify-center px-4 app-bg">
+      <Card className="w-full max-w-md">
+        <div className="flex flex-col items-center gap-8 mb-6">
+          <img
+            src={config.login}
+            alt={config.name}
+            className="w-auto h-auto max-h-[20vh] object-contain"
+          />
+        </div>
+
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="password">New Password</Label>
