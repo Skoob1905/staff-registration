@@ -174,7 +174,7 @@ export const uploadPayslipExternal = onRequest(
 
     try {
       const emailProvider = new EmailProvider();
-      await emailProvider.sendPayslipEmail({ email: clientEmail });
+      await emailProvider.sendPayslipEmail(clientEmail);
     } catch (emailErr) {
       // best-effort: log and continue so upload still succeeds
       console.error("Failed to send payslip email", emailErr);

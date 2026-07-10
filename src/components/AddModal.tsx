@@ -426,9 +426,15 @@ export const AddModal = ({
       setProcessing(false);
 
       const data = result.data as {
+        ok: boolean;
         added: number;
         duplicates: number;
         importId?: string;
+        emails?: {
+          sent: number;
+          failed: number;
+          failures: { email: string; error: string }[];
+        };
       };
 
       if (data.importId && recordsToSend.length > 0) {
@@ -450,11 +456,25 @@ export const AddModal = ({
         });
       }
 
-      toast({
-        title: "Import complete",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added. Logins will be sent shortly.`,
-        replaceToast: true,
-      });
+      if (data.ok) {
+        const emailSent =
+          data.emails && data.emails.sent > 0
+            ? ` — ${data.emails.sent} email(s) sent`
+            : "";
+        toast({
+          title: "Import complete",
+          description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added.${emailSent}`,
+          replaceToast: true,
+        });
+      } else {
+        const failed = data.emails?.failed ?? 0;
+        const sent = data.emails?.sent ?? 0;
+        toast({
+          title: `${failed} email(s) failed`,
+          description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} saved. ${sent} sent, ${failed} failed.`,
+          variant: "error",
+        });
+      }
       setUploadProgress(0);
       setCsvData(null);
       setSelectedClientId(undefined);
@@ -463,42 +483,6 @@ export const AddModal = ({
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       await onSuccess?.(data.importId);
-
-      if (data.importId && csvType !== "timesheet") {
-        const processLoginCallable = httpsCallable(
-          functions,
-          "processImportLogins",
-        );
-        processLoginCallable({ importId: data.importId })
-          .then((result) => {
-            const { created, failed } = result.data as {
-              created: number;
-              failed: number;
-            };
-            if (failed > 0) {
-              toast({
-                title: `${failed} email(s) failed to send`,
-                description: `${created} created successfully. Contact support if this persists.`,
-                variant: "warning" as const,
-              });
-            } else if (created > 0) {
-              toast({
-                title: `${created} login(s) created`,
-                description: "Password reset emails have been sent.",
-                variant: "success" as const,
-              });
-            }
-          })
-          .catch((err) => {
-            console.error("[processImportLogins] failed", err);
-            toast({
-              title: "Login creation failed",
-              description:
-                "Some logins may not have been sent. Contact support.",
-              variant: "warning" as const,
-            });
-          });
-      }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (

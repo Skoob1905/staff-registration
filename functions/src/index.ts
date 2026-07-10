@@ -104,6 +104,19 @@ const findNormalizedValue = (
   return null;
 };
 
+/**
+ * Invites a portal user by creating a Firebase Auth account and a Firestore
+ * user profile. Sends a client registration email with a password reset link.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.email - The email address to invite.
+ * @returns `{ ok: true, userId: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if email is missing or invalid.
+ * @throws {HttpsError} "already-exists" if email is already registered or awaiting.
+ */
 export const invitePortalUser = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -212,6 +225,22 @@ export const invitePortalUser = onCall(async (request) => {
   return { ok: true, userId: user.uid };
 });
 
+/**
+ * Assigns a client login to a specific agency. Creates a Firebase Auth
+ * account if one does not exist, writes a Firestore user profile with
+ * role `client`, and sends a client registration email.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.email      - The email address to assign.
+ * @param request.data.agencyDocId - The Firestore document ID of the agency.
+ * @returns `{ ok: true, userId: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if email or agencyDocId is missing/invalid.
+ * @throws {HttpsError} "already-exists" if email is already registered or awaiting.
+ * @throws {HttpsError} "failed-precondition" if admin caller has no agencyId.
+ */
 export const assignClientLogin = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -318,12 +347,22 @@ export const assignClientLogin = onCall(async (request) => {
   return { ok: true, userId: user.uid };
 });
 
+/**
+ * Sends a password reset email to the specified address.
+ *
+ * Does not require authentication — this is the public forgot-password
+ * endpoint.
+ *
+ * @param request.data.email - The email address to send the reset link to.
+ * @returns `{ ok: true }` on success.
+ * @throws {HttpsError} "invalid-argument" if email is missing.
+ */
 export const sendPasswordReset = onCall(async (request) => {
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendResetPassword({ email });
+  await emailProvider.sendResetPassword(email);
 
   return { ok: true };
 });
@@ -716,6 +755,24 @@ export const updatePayslipDownloadedStatus = onCall(async (request) => {
   return { ok: true, payslipId };
 });
 
+/**
+ * Imports agency records from a CSV payload. Performs server-side
+ * duplicate detection scoped to the caller's agency, writes new
+ * records to Firestore, creates pending login documents, records
+ * an entry in the `csv_imports` collection, and batch-sends
+ * agency registration emails at 1-second intervals.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.records      - Array of CSV row objects.
+ * @param request.data.fileName     - Original CSV filename.
+ * @param request.data.fileUrl      - Storage URL of the uploaded CSV.
+ * @param request.data.totalRecords - Total rows before dedup (for logging).
+ * @returns `{ ok: true, added: number, duplicates: number, total: number, importId: string }`.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
+ */
 export const importAgencyCsv = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -836,22 +893,47 @@ export const importAgencyCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
+  let emailResult:
+    | { sent: number; failed: number; failures: { email: string; error: string }[] }
+    | undefined;
+
   if (emails.length > 0) {
     const emailProvider = new EmailProvider();
-    await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
+    emailResult = await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
       emailProvider.sendAgencyRegistrationLink(email),
     );
   }
 
+  const allSent = !emailResult || emailResult.failed === 0;
+
   return {
-    ok: true,
+    ok: allSent,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    emails: emailResult ?? { sent: 0, failed: 0, failures: [] },
   };
 });
 
+/**
+ * Imports client records from a CSV payload. Performs server-side
+ * duplicate detection scoped to the caller's agency, writes new
+ * records to Firestore, creates pending login documents, records
+ * an entry in the `csv_imports` collection, and batch-sends
+ * client registration emails at 1-second intervals.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.records      - Array of CSV row objects.
+ * @param request.data.fileName     - Original CSV filename.
+ * @param request.data.fileUrl      - Storage URL of the uploaded CSV.
+ * @param request.data.totalRecords - Total rows before dedup (for logging).
+ * @returns `{ ok: true, added: number, duplicates: number, total: number, importId: string }`.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
+ */
 export const importClientCsv = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -972,22 +1054,51 @@ export const importClientCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
+  let emailResult:
+    | { sent: number; failed: number; failures: { email: string; error: string }[] }
+    | undefined;
+
   if (emails.length > 0) {
     const emailProvider = new EmailProvider();
-    await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
+    emailResult = await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
       emailProvider.sendClientRegistrationLink(email),
     );
   }
 
+  const allSent = !emailResult || emailResult.failed === 0;
+
   return {
-    ok: true,
+    ok: allSent,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    emails: emailResult ?? { sent: 0, failed: 0, failures: [] },
   };
 });
 
+/**
+ * Imports staff (worker) records from a CSV payload. Performs global
+ * server-side duplicate detection (across all agencies), writes new
+ * records to Firestore with optional tag and assignment metadata,
+ * creates pending login documents, records an entry in the
+ * `csv_imports` collection, and batch-sends worker registration
+ * emails at 1-second intervals.
+ *
+ * Requires caller role: `super` only.
+ *
+ * @param request.data.records        - Array of CSV row objects.
+ * @param request.data.fileName       - Original CSV filename.
+ * @param request.data.fileUrl        - Storage URL of the uploaded CSV.
+ * @param request.data.totalRecords   - Total rows before dedup (for logging).
+ * @param request.data.assignedToId   - (Optional) Agency ID to assign staff to.
+ * @param request.data.assignedToName - (Optional) Agency name for metadata.
+ * @param request.data.tagIds         - (Optional) Array of tag IDs to apply.
+ * @returns `{ ok: true, added: number, duplicates: number, total: number, importId: string }`.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not super.
+ * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
+ */
 export const importStaffCsv = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -1169,19 +1280,26 @@ export const importStaffCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
+  let emailResult:
+    | { sent: number; failed: number; failures: { email: string; error: string }[] }
+    | undefined;
+
   if (emails.length > 0) {
     const emailProvider = new EmailProvider();
-    await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
+    emailResult = await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
       emailProvider.sendWorkerRegistrationLink(email),
     );
   }
 
+  const allSent = !emailResult || emailResult.failed === 0;
+
   return {
-    ok: true,
+    ok: allSent,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    emails: emailResult ?? { sent: 0, failed: 0, failures: [] },
   };
 });
 
@@ -2608,6 +2726,18 @@ export const deleteStaffCv = onCall(async (request) => {
   return { ok: true };
 });
 
+/**
+ * Uploads a document for a staff member, stores it in Cloud Storage,
+ * updates the staff Firestore document, and sends a document-upload
+ * notification email.
+ *
+ * @param request.data.staffId    - Firestore document ID of the staff record.
+ * @param request.data.fileName   - Original filename.
+ * @param request.data.fileBase64 - Base64-encoded file content.
+ * @returns `{ ok: true, staffId: string, fileName: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "invalid-argument" if required fields are missing.
+ */
 export const uploadStaffDocument = onCall(async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Sign in required.");
@@ -2677,7 +2807,7 @@ export const uploadStaffDocument = onCall(async (request) => {
   const staffEmail = (staffSnap.data() as { email?: string })?.email;
   if (staffEmail) {
     const emailProvider = new EmailProvider();
-    await emailProvider.sendDocumentEmail({ email: staffEmail });
+    await emailProvider.sendDocumentEmail(staffEmail);
   }
 
   return { ok: true, staffId, fileName };
@@ -3306,6 +3436,19 @@ export const getMaintenanceWindow = onCall(async () => {
   };
 });
 
+/**
+ * Uploads a payslip for a staff member, stores it in Cloud Storage,
+ * updates the staff Firestore document with metadata, and sends a
+ * payslip-available notification email.
+ *
+ * @param request.data.fileBase64 - Base64-encoded PDF content.
+ * @param request.data.fileName   - Original filename.
+ * @param request.data.userId     - Firestore document ID of the staff record.
+ * @param request.data.agencyId   - Agency ID for access control.
+ * @returns `{ ok: true, payslipId: string, url: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "invalid-argument" if required fields are missing.
+ */
 export const uploadPayslip = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -3375,7 +3518,7 @@ export const uploadPayslip = onCall(async (request) => {
   const staffEmail = (staffSnap.data() as { email?: string })?.email;
   if (staffEmail) {
     const emailProvider = new EmailProvider();
-    await emailProvider.sendPayslipEmail({ email: staffEmail });
+    await emailProvider.sendPayslipEmail(staffEmail);
   }
 
   return { ok: true, payslipId: payslipRef.id, url: fileUrl };

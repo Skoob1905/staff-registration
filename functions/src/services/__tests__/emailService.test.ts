@@ -4,17 +4,25 @@ const { mockSendMail } = vi.hoisted(() => ({
   mockSendMail: vi.fn().mockResolvedValue(true),
 }));
 
+const { mockCreateTransport } = vi.hoisted(() => ({
+  mockCreateTransport: vi.fn(() => ({
+    sendMail: mockSendMail,
+  })),
+}));
+
 const { mockGeneratePasswordResetLink } = vi.hoisted(() => ({
   mockGeneratePasswordResetLink: vi
     .fn()
     .mockResolvedValue("https://mock.link?oobCode=abc123&apiKey=my-api-key"),
 }));
 
+const { mockReadFileSync } = vi.hoisted(() => ({
+  mockReadFileSync: vi.fn(() => '<a href="{{link}}">Click here</a>'),
+}));
+
 vi.mock("nodemailer", () => ({
   default: {
-    createTransport: vi.fn(() => ({
-      sendMail: mockSendMail,
-    })),
+    createTransport: mockCreateTransport,
   },
 }));
 
@@ -32,7 +40,7 @@ vi.mock("firebase-admin/auth", () => ({
 
 vi.mock("node:fs", () => ({
   default: {
-    readFileSync: vi.fn(() => '<a href="{{link}}">Click here</a>'),
+    readFileSync: mockReadFileSync,
   },
 }));
 
@@ -42,13 +50,29 @@ describe("EmailProvider", () => {
   let emailProvider: EmailProvider;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendMail.mockClear();
+    mockCreateTransport.mockClear();
+    mockGeneratePasswordResetLink.mockClear();
+    mockReadFileSync.mockClear();
+
+    mockReadFileSync.mockReturnValue('<a href="{{link}}">Click here</a>');
+    mockSendMail.mockResolvedValue(true);
+    mockGeneratePasswordResetLink.mockResolvedValue(
+      "https://mock.link?oobCode=abc123&apiKey=my-api-key",
+    );
     emailProvider = new EmailProvider();
   });
 
   describe("constructor", () => {
-    it("creates an SMTP transporter", () => {
+    it("creates an EmailProvider instance and configures SMTP transport", () => {
       expect(emailProvider).toBeInstanceOf(EmailProvider);
+
+      expect(mockCreateTransport).toHaveBeenCalledTimes(1);
+      expect(mockCreateTransport).toHaveBeenCalledWith({
+        host: "mock-continue-url",
+        port: NaN,
+        auth: { user: "mock-continue-url", pass: "mock-continue-url" },
+      });
     });
   });
 
@@ -69,6 +93,16 @@ describe("EmailProvider", () => {
       expect(result).toBe(
         "https://mock.link?oobCode=abc123&apiKey=my-api-key",
       );
+    });
+
+    it("throws when Firebase Auth fails", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
+
+      await expect(
+        emailProvider.generatePasswordResetLink("bad@example.com"),
+      ).rejects.toThrow("auth/internal-error");
     });
   });
 
@@ -96,6 +130,16 @@ describe("EmailProvider", () => {
       expect(result).toBe(
         "mock-continue-url/reset-password?mode=resetPassword&oobCode=&apiKey=fallback-key",
       );
+    });
+
+    it("propagates errors from generatePasswordResetLink", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/user-not-found"),
+      );
+
+      await expect(
+        emailProvider.generatePortalResetLink("missing@example.com"),
+      ).rejects.toThrow("auth/user-not-found");
     });
   });
 
@@ -138,7 +182,7 @@ describe("EmailProvider", () => {
       vi.useRealTimers();
     });
 
-    it("calls the callback 100 times with 1-second intervals between each", async () => {
+    it("calls the callback 100 times with 1-second intervals and returns success result", async () => {
       const callback = vi.fn().mockResolvedValue(undefined);
       const emails = Array.from(
         { length: 100 },
@@ -152,8 +196,9 @@ describe("EmailProvider", () => {
         await vi.advanceTimersByTimeAsync(1000);
       }
 
-      await promise;
+      const result = await promise;
 
+      expect(result).toEqual({ sent: 100, failed: 0, failures: [] });
       expect(callback).toHaveBeenCalledTimes(100);
       emails.forEach((email, i) => {
         expect(callback).toHaveBeenNthCalledWith(i + 1, { email });
@@ -171,26 +216,107 @@ describe("EmailProvider", () => {
       setTimeoutSpy.mockRestore();
     });
 
-    it("does not call the callback for an empty array", async () => {
+    it("returns zero counts for an empty array", async () => {
       const callback = vi.fn().mockResolvedValue(undefined);
 
-      await emailProvider.beginBatchEmailSend([], callback);
+      const result = await emailProvider.beginBatchEmailSend([], callback);
 
+      expect(result).toEqual({ sent: 0, failed: 0, failures: [] });
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it("calls once with no timer delay for a single email", async () => {
+    it("calls once with no timer delay and returns success for a single email", async () => {
       const callback = vi.fn().mockResolvedValue(undefined);
       const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-      await emailProvider.beginBatchEmailSend(
+      const result = await emailProvider.beginBatchEmailSend(
         ["single@example.com"],
         callback,
       );
 
+      expect(result).toEqual({ sent: 1, failed: 0, failures: [] });
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({ email: "single@example.com" });
       expect(setTimeoutSpy).not.toHaveBeenCalled();
+
+      setTimeoutSpy.mockRestore();
+    });
+
+    it("collects failures and continues processing remaining emails", async () => {
+      const callback = vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("send failure"))
+        .mockResolvedValue(undefined);
+      const emails = ["a@example.com", "b@example.com", "c@example.com"];
+
+      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+
+      const result = await promise;
+
+      expect(result.sent).toBe(2);
+      expect(result.failed).toBe(1);
+      expect(result.failures).toEqual([
+        { email: "b@example.com", error: "send failure" },
+      ]);
+      expect(callback).toHaveBeenCalledTimes(3);
+    });
+
+    it("returns all failures when every callback fails", async () => {
+      const callback = vi.fn().mockRejectedValue(new Error("down"));
+      const emails = ["a@example.com", "b@example.com"];
+
+      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+
+      for (let i = 0; i < 2; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+
+      const result = await promise;
+
+      expect(result).toEqual({
+        sent: 0,
+        failed: 2,
+        failures: [
+          { email: "a@example.com", error: "down" },
+          { email: "b@example.com", error: "down" },
+        ],
+      });
+      expect(callback).toHaveBeenCalledTimes(2);
+    });
+
+    it("maintains 1-second delay even when callbacks fail", async () => {
+      const callback = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("fail"))
+        .mockRejectedValueOnce(new Error("fail"))
+        .mockResolvedValueOnce(undefined);
+      const emails = ["a@example.com", "b@example.com", "c@example.com"];
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+
+      await promise;
+
+      expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+      expect(setTimeoutSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.any(Function),
+        1000,
+      );
+      expect(setTimeoutSpy).toHaveBeenNthCalledWith(
+        2,
+        expect.any(Function),
+        1000,
+      );
 
       setTimeoutSpy.mockRestore();
     });
@@ -209,6 +335,25 @@ describe("EmailProvider", () => {
         html: '<a href="mock-continue-url/reset-password?mode=resetPassword&oobCode=abc123&apiKey=my-api-key">Click here</a>',
       });
     });
+
+    it("throws when the password reset link generation fails", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
+
+      await expect(
+        emailProvider.sendWorkerRegistrationLink("worker@example.com"),
+      ).rejects.toThrow("auth/internal-error");
+      expect(mockSendMail).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SMTP send fails", async () => {
+      mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
+
+      await expect(
+        emailProvider.sendWorkerRegistrationLink("worker@example.com"),
+      ).rejects.toThrow("SMTP error");
+    });
   });
 
   describe("sendAgencyRegistrationLink", () => {
@@ -223,6 +368,25 @@ describe("EmailProvider", () => {
         subject: "Welcome to MDS",
         html: '<a href="mock-continue-url/reset-password?mode=resetPassword&oobCode=abc123&apiKey=my-api-key">Click here</a>',
       });
+    });
+
+    it("throws when the password reset link generation fails", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
+
+      await expect(
+        emailProvider.sendAgencyRegistrationLink("agency@example.com"),
+      ).rejects.toThrow("auth/internal-error");
+      expect(mockSendMail).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SMTP send fails", async () => {
+      mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
+
+      await expect(
+        emailProvider.sendAgencyRegistrationLink("agency@example.com"),
+      ).rejects.toThrow("SMTP error");
     });
   });
 
@@ -239,13 +403,30 @@ describe("EmailProvider", () => {
         html: '<a href="mock-continue-url/reset-password?mode=resetPassword&oobCode=abc123&apiKey=my-api-key">Click here</a>',
       });
     });
+
+    it("throws when the password reset link generation fails", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
+
+      await expect(
+        emailProvider.sendClientRegistrationLink("client@example.com"),
+      ).rejects.toThrow("auth/internal-error");
+      expect(mockSendMail).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SMTP send fails", async () => {
+      mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
+
+      await expect(
+        emailProvider.sendClientRegistrationLink("client@example.com"),
+      ).rejects.toThrow("SMTP error");
+    });
   });
 
   describe("sendResetPassword", () => {
     it("generates a portal reset link, reads the template, replaces {{link}}, and sends the email", async () => {
-      await emailProvider.sendResetPassword({
-        email: "user@example.com",
-      });
+      await emailProvider.sendResetPassword("user@example.com");
 
       expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledTimes(1);
@@ -257,25 +438,40 @@ describe("EmailProvider", () => {
       });
     });
 
-    it("accepts a custom subject and template name", async () => {
-      await emailProvider.sendResetPassword({
-        email: "user@example.com",
-        subject: "Custom Reset",
-        templateName: "customReset.html",
+    it("throws when the password reset link generation fails", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
+
+      await expect(
+        emailProvider.sendResetPassword("user@example.com"),
+      ).rejects.toThrow("auth/internal-error");
+      expect(mockSendMail).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SMTP send fails", async () => {
+      mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
+
+      await expect(
+        emailProvider.sendResetPassword("user@example.com"),
+      ).rejects.toThrow("SMTP error");
+    });
+
+    it("throws when the template file is missing", async () => {
+      mockReadFileSync.mockImplementationOnce(() => {
+        throw new Error("ENOENT: no such file");
       });
 
-      expect(mockSendMail).toHaveBeenCalledTimes(1);
-      expect(mockSendMail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          subject: "Custom Reset",
-        }),
-      );
+      await expect(
+        emailProvider.sendResetPassword("user@example.com"),
+      ).rejects.toThrow("ENOENT");
+      expect(mockSendMail).not.toHaveBeenCalled();
     });
   });
 
   describe("sendDocumentEmail", () => {
     it("sends a notification with the hardcoded subject and a direct portal link", async () => {
-      await emailProvider.sendDocumentEmail({ email: "staff@example.com" });
+      await emailProvider.sendDocumentEmail("staff@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
@@ -287,15 +483,34 @@ describe("EmailProvider", () => {
     });
 
     it("does not generate a Firebase password reset link", async () => {
-      await emailProvider.sendDocumentEmail({ email: "staff@example.com" });
+      await emailProvider.sendDocumentEmail("staff@example.com");
 
       expect(mockGeneratePasswordResetLink).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SMTP send fails", async () => {
+      mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
+
+      await expect(
+        emailProvider.sendDocumentEmail("staff@example.com"),
+      ).rejects.toThrow("SMTP error");
+    });
+
+    it("throws when the template file is missing", async () => {
+      mockReadFileSync.mockImplementationOnce(() => {
+        throw new Error("ENOENT: no such file");
+      });
+
+      await expect(
+        emailProvider.sendDocumentEmail("staff@example.com"),
+      ).rejects.toThrow("ENOENT");
+      expect(mockSendMail).not.toHaveBeenCalled();
     });
   });
 
   describe("sendPayslipEmail", () => {
     it("sends a notification with the hardcoded subject and a direct portal link", async () => {
-      await emailProvider.sendPayslipEmail({ email: "staff@example.com" });
+      await emailProvider.sendPayslipEmail("staff@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
@@ -307,9 +522,28 @@ describe("EmailProvider", () => {
     });
 
     it("does not generate a Firebase password reset link", async () => {
-      await emailProvider.sendPayslipEmail({ email: "staff@example.com" });
+      await emailProvider.sendPayslipEmail("staff@example.com");
 
       expect(mockGeneratePasswordResetLink).not.toHaveBeenCalled();
+    });
+
+    it("throws when the SMTP send fails", async () => {
+      mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
+
+      await expect(
+        emailProvider.sendPayslipEmail("staff@example.com"),
+      ).rejects.toThrow("SMTP error");
+    });
+
+    it("throws when the template file is missing", async () => {
+      mockReadFileSync.mockImplementationOnce(() => {
+        throw new Error("ENOENT: no such file");
+      });
+
+      await expect(
+        emailProvider.sendPayslipEmail("staff@example.com"),
+      ).rejects.toThrow("ENOENT");
+      expect(mockSendMail).not.toHaveBeenCalled();
     });
   });
 });

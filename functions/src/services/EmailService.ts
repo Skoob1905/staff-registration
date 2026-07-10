@@ -13,10 +13,21 @@ const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 
 const TEMPLATES_DIR = path.resolve(__dirname, "../../templates");
 
+export interface BatchEmailResult {
+  sent: number;
+  failed: number;
+  failures: { email: string; error: string }[];
+}
+
 export class EmailProvider {
   private transporter: nodemailer.Transporter;
 
-  /** Creates an SMTP transporter using environment-configured credentials. */
+  /**
+   * Creates an SMTP transporter using environment-configured credentials.
+   *
+   * Reads SMTP host, port, user, and password from Firebase-defined
+   * parameters. The transporter is reused for all sends in the instance.
+   */
   constructor() {
     this.transporter = nodemailer.createTransport({
       host: SMTP_HOST.value(),
@@ -28,8 +39,14 @@ export class EmailProvider {
   /**
    * Generates a Firebase password reset link for the given email.
    *
+   * Delegates to the Firebase Admin Auth SDK. The generated link includes
+   * an `oobCode` (one-time out-of-band code) and an `apiKey` query parameter
+   * which are later extracted to build the portal-specific reset URL.
+   *
    * @param email - The recipient email address.
    * @returns A Firebase password reset URL with `handleCodeInApp` enabled.
+   * @throws {FirebaseAuthError} If the email is invalid or the Auth service
+   *         is unreachable.
    */
   async generatePasswordResetLink(email: string): Promise<string> {
     return getAuth().generatePasswordResetLink(email, {
@@ -39,12 +56,17 @@ export class EmailProvider {
   }
 
   /**
-   * Generates a portal reset link by extracting the oobCode and apiKey
-   * from a Firebase password reset link and appending them to the
-   * configured continue URL.
+   * Generates a portal-specific reset link.
+   *
+   * 1. Calls {@link generatePasswordResetLink} to obtain a Firebase reset URL.
+   * 2. Extracts the `oobCode` and `apiKey` query parameters.
+   * 3. Reassembles them onto the configured `RESET_CONTINUE_URL` with
+   *    `mode=resetPassword`.
    *
    * @param email - The recipient email address.
-   * @returns A portal reset URL with `mode`, `oobCode`, and `apiKey` query params.
+   * @returns A portal reset URL of the form
+   *          `{continueUrl}/reset-password?mode=resetPassword&oobCode=...&apiKey=...`.
+   * @throws {FirebaseAuthError} Propagated from {@link generatePasswordResetLink}.
    */
   async generatePortalResetLink(email: string): Promise<string> {
     const firebaseLink = await this.generatePasswordResetLink(email);
@@ -57,9 +79,15 @@ export class EmailProvider {
   /**
    * Sends an HTML email via the configured SMTP transporter.
    *
+   * Low-level send primitive — all higher-level methods (registration,
+   * reset, document, payslip) call this method after assembling the
+   * template and link.
+   *
    * @param email    - Recipient email address.
    * @param subject  - Email subject line.
    * @param htmlBody - Rendered HTML body of the email.
+   * @throws {Error} If the SMTP transport fails (connection refused,
+   *         authentication error, etc.).
    */
   async sendEmail({
     email,
@@ -79,28 +107,58 @@ export class EmailProvider {
   }
 
   /**
-   * Sends a batch of emails with a 1-second delay between each send.
+   * Sends a batch of emails with a fixed delay between each send.
+   *
+   * Invokes the provided `emailCallback` once per address, waiting
+   * **1 second** between consecutive invocations. Errors thrown by
+   * individual callbacks are caught, recorded, and reported in the
+   * returned result — a single failure does **not** stop the batch.
    *
    * @param emails        - Array of email addresses to send to.
    * @param emailCallback - Async callback invoked once per email;
    *                        receives `{ email: string }`.
+   * @returns A {@link BatchEmailResult} with sent / failed counts and
+   *          per-failure details.
    */
   async beginBatchEmailSend(
     emails: string[],
     emailCallback: (params: { email: string }) => Promise<void>,
-  ): Promise<void> {
+  ): Promise<BatchEmailResult> {
+    let sent = 0;
+    let failed = 0;
+    const failures: { email: string; error: string }[] = [];
+
     for (let i = 0; i < emails.length; i++) {
-      await emailCallback({ email: emails[i] });
+      try {
+        await emailCallback({ email: emails[i] });
+        sent++;
+      } catch (err) {
+        failed++;
+        failures.push({
+          email: emails[i],
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       if (i < emails.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
+
+    return { sent, failed, failures };
   }
 
   /**
-   * Sends a worker registration / welcome email using the "registration.html" template.
+   * Sends a worker registration / welcome email.
+   *
+   * Pipeline:
+   * 1. Generates a portal reset link via {@link generatePortalResetLink}.
+   * 2. Reads the `registration.html` template from the filesystem.
+   * 3. Replaces all `{{link}}` placeholders with the generated URL.
+   * 4. Dispatches the email via {@link sendEmail}.
    *
    * @param email - Recipient email address.
+   * @throws {FirebaseAuthError} From {@link generatePortalResetLink}.
+   * @throws {Error} If the template file is missing or the SMTP send fails.
    */
   async sendWorkerRegistrationLink(email: string): Promise<void> {
     const customLink = await this.generatePortalResetLink(email);
@@ -115,9 +173,17 @@ export class EmailProvider {
   }
 
   /**
-   * Sends an agency registration / welcome email using the "agencyRegistration.html" template.
+   * Sends an agency registration / welcome email.
+   *
+   * Pipeline:
+   * 1. Generates a portal reset link via {@link generatePortalResetLink}.
+   * 2. Reads the `agencyRegistration.html` template from the filesystem.
+   * 3. Replaces all `{{link}}` placeholders with the generated URL.
+   * 4. Dispatches the email via {@link sendEmail}.
    *
    * @param email - Recipient email address.
+   * @throws {FirebaseAuthError} From {@link generatePortalResetLink}.
+   * @throws {Error} If the template file is missing or the SMTP send fails.
    */
   async sendAgencyRegistrationLink(email: string): Promise<void> {
     const customLink = await this.generatePortalResetLink(email);
@@ -132,9 +198,17 @@ export class EmailProvider {
   }
 
   /**
-   * Sends a client registration / welcome email using the "clientRegistration.html" template.
+   * Sends a client registration / welcome email.
+   *
+   * Pipeline:
+   * 1. Generates a portal reset link via {@link generatePortalResetLink}.
+   * 2. Reads the `clientRegistration.html` template from the filesystem.
+   * 3. Replaces all `{{link}}` placeholders with the generated URL.
+   * 4. Dispatches the email via {@link sendEmail}.
    *
    * @param email - Recipient email address.
+   * @throws {FirebaseAuthError} From {@link generatePortalResetLink}.
+   * @throws {Error} If the template file is missing or the SMTP send fails.
    */
   async sendClientRegistrationLink(email: string): Promise<void> {
     const customLink = await this.generatePortalResetLink(email);
@@ -151,23 +225,21 @@ export class EmailProvider {
   /**
    * Sends a password reset email (forgot password flow).
    *
-   * Reads the supplied HTML template, replaces `{{link}}` placeholders
-   * with a freshly generated portal reset link, and dispatches the email.
+   * Pipeline:
+   * 1. Generates a portal reset link via {@link generatePortalResetLink}.
+   * 2. Reads the `forgotPassword.html` template from the filesystem.
+   * 3. Replaces all `{{link}}` placeholders with the generated URL.
+   * 4. Dispatches the email via {@link sendEmail}.
    *
-   * @param email        - Recipient email address.
-   * @param subject      - Email subject line (defaults to "Reset your password").
-   * @param templateName - HTML template filename located in `functions/templates/`
-   *                       (defaults to "forgotPassword.html").
+   * The subject is always "Reset your password".
+   *
+   * @param email - Recipient email address.
+   * @throws {FirebaseAuthError} From {@link generatePortalResetLink}.
+   * @throws {Error} If the template file is missing or the SMTP send fails.
    */
-  async sendResetPassword({
-    email,
-    subject = "Reset your password",
-    templateName = "forgotPassword.html",
-  }: {
-    email: string;
-    subject?: string;
-    templateName?: string;
-  }): Promise<void> {
+  async sendResetPassword(email: string): Promise<void> {
+    const subject = "Reset your password";
+    const templateName = "forgotPassword.html";
     const customLink = await this.generatePortalResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
@@ -178,12 +250,15 @@ export class EmailProvider {
   /**
    * Sends a document-upload notification email.
    *
-   * Uses the "sendDocument.html" template and a direct portal link
-   * (no password reset code). Subject is always "Document Uploaded!".
+   * Unlike registration/reset emails this method uses a **direct** portal
+   * link (`RESET_CONTINUE_URL`) — no password reset `oobCode` is generated.
+   * The subject is always "Document Uploaded!" and the template is always
+   * `sendDocument.html`.
    *
    * @param email - Recipient email address.
+   * @throws {Error} If the template file is missing or the SMTP send fails.
    */
-  async sendDocumentEmail({ email }: { email: string }): Promise<void> {
+  async sendDocumentEmail(email: string): Promise<void> {
     const subject = "Document Uploaded!";
     const templateName = "sendDocument.html";
     const portalLink = RESET_CONTINUE_URL.value();
@@ -196,12 +271,15 @@ export class EmailProvider {
   /**
    * Sends a payslip-available notification email.
    *
-   * Uses the "sendPayslip.html" template and a direct portal link
-   * (no password reset code). Subject is always "Payslip Received!".
+   * Unlike registration/reset emails this method uses a **direct** portal
+   * link (`RESET_CONTINUE_URL`) — no password reset `oobCode` is generated.
+   * The subject is always "Payslip Received!" and the template is always
+   * `sendPayslip.html`.
    *
    * @param email - Recipient email address.
+   * @throws {Error} If the template file is missing or the SMTP send fails.
    */
-  async sendPayslipEmail({ email }: { email: string }): Promise<void> {
+  async sendPayslipEmail(email: string): Promise<void> {
     const subject = "Payslip Received!";
     const templateName = "sendPayslip.html";
     const portalLink = RESET_CONTINUE_URL.value();
