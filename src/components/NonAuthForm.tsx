@@ -19,6 +19,12 @@ export const NonAuthForm = ({
     document.title = title ?? "";
   }, [title]);
 
+  useEffect(() => {
+    const vp = document.querySelector("[data-toast-viewport]");
+    vp?.classList.add("toast-non-auth");
+    return () => vp?.classList.remove("toast-non-auth");
+  }, []);
+
   const formBody = (
     <>
       {/* <div className="flex flex-col items-center gap-8 mb-6">

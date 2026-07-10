@@ -17,7 +17,7 @@ export interface AppToast {
 export const ToastProviderRoot = ToastPrimitive.Provider;
 
 export const ToastViewport = () => (
-  <ToastPrimitive.Viewport className="fixed left-1/2 top-[10%] z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
+  <ToastPrimitive.Viewport data-toast-viewport className="fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
 );
 
 export const ToastItem = ({
