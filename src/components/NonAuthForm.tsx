@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect } from "react";
 import { Card } from "./ui";
-import { config } from "../config";
 
 interface NonAuthFormProps {
   children: ReactNode;

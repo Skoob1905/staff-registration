@@ -4,7 +4,6 @@ import { countCollection } from "../services/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
 import { Body, BodyMedium, Caption, Muted } from "../config/typography";
-import { config } from "../config";
 import { AssignModal } from "./AssignModal";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";

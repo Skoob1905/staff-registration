@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { config } from "../config";
 
 export const LoadingPage = () => {
   useEffect(() => {
