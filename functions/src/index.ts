@@ -2654,6 +2654,12 @@ export const uploadStaffDocument = onCall(async (request) => {
       "metadata.documents": FieldValue.arrayUnion(entry),
     });
 
+  const staffEmail = (staffSnap.data() as { email?: string })?.email;
+  if (staffEmail) {
+    const emailProvider = new EmailProvider();
+    await emailProvider.sendDocument({ email: staffEmail });
+  }
+
   return { ok: true, staffId, fileName };
 });
 
@@ -3345,6 +3351,12 @@ export const uploadPayslipToStaff = onCall(async (request) => {
     },
     { merge: true },
   );
+
+  const staffEmail = (staffSnap.data() as { email?: string })?.email;
+  if (staffEmail) {
+    const emailProvider = new EmailProvider();
+    await emailProvider.sentPayslip({ email: staffEmail });
+  }
 
   return { ok: true, payslipId: payslipRef.id, url: fileUrl };
 });

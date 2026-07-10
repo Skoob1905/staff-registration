@@ -1,6 +1,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { EmailProvider } from "../services/EmailService";
 
 export const uploadPayslipExternal = onRequest({ region: "europe-west2" }, async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
@@ -157,6 +158,14 @@ export const uploadPayslipExternal = onRequest({ region: "europe-west2" }, async
   );
 
   await keyDoc.ref.update({ lastUsedAt: FieldValue.serverTimestamp() });
+
+  try {
+    const emailProvider = new EmailProvider();
+    await emailProvider.sentPayslip({ email: clientEmail });
+  } catch (emailErr) {
+    // best-effort: log and continue so upload still succeeds
+    console.error("Failed to send payslip email", emailErr);
+  }
 
   res.status(200).json({
     ok: true,

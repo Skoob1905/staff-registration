@@ -48,10 +48,13 @@ export class EmailProvider {
     });
   }
 
+  /**
+   * Send a user the welcome/registration
+   */
   async sendRegistrationLink({
     email,
-    subject = "Set your password",
-    templateName = "registration/invite.html",
+    subject = "Welcome to MDS",
+    templateName = "registration.html",
   }: {
     email: string;
     subject?: string;
@@ -60,7 +63,45 @@ export class EmailProvider {
     const resetLink = await this.generatePasswordResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{resetLink\}\}/g, resetLink);
+    const htmlBody = raw.replace(/\{\{link\}\}/g, resetLink);
+    await this.sendEmail({ email, subject, htmlBody });
+  }
+
+  /**
+   * Send a document notificaiton email
+   */
+  async sendDocument({
+    email,
+    subject = "New document available",
+    templateName = "sendDocument.html",
+  }: {
+    email: string;
+    subject?: string;
+    templateName?: string;
+  }): Promise<void> {
+    const portalLink = RESET_CONTINUE_URL.value();
+    const templatePath = path.join(TEMPLATES_DIR, templateName);
+    const raw = fs.readFileSync(templatePath, "utf-8");
+    const htmlBody = raw.replace(/\{\{link\}\}/g, portalLink);
+    await this.sendEmail({ email, subject, htmlBody });
+  }
+
+  /**
+   * Send a user the payslip notification
+   */
+  async sentPayslip({
+    email,
+    subject = "Payslip received!",
+    templateName = "sendPayslip.html",
+  }: {
+    email: string;
+    subject?: string;
+    templateName?: string;
+  }): Promise<void> {
+    const portalLink = RESET_CONTINUE_URL.value();
+    const templatePath = path.join(TEMPLATES_DIR, templateName);
+    const raw = fs.readFileSync(templatePath, "utf-8");
+    const htmlBody = raw.replace(/\{\{link\}\}/g, portalLink);
     await this.sendEmail({ email, subject, htmlBody });
   }
 }
