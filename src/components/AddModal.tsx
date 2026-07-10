@@ -16,7 +16,7 @@ import { useAppStore } from "../stores/appStore";
 import {
   normalizeKey,
   findValueByNormalizedKey,
-  hasNIColumn,
+  hasWorkerRefColumn,
   hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
 
@@ -203,14 +203,15 @@ export const AddModal = ({
 
       if (csvType === "staff") {
         const normalizedHeaders = parsed.headers.map(normalizeKey);
-        if (!hasNIColumn(parsed.headers)) {
+        if (!hasWorkerRefColumn(parsed.headers)) {
           console.warn(
-            "[AddModal] No NI column found. Headers:",
+            "[AddModal] No Worker Ref column found. Headers:",
             parsed.headers,
           );
           toast({
-            title: "Invalid staff file",
-            description: "The CSV must contain an NI Number column.",
+            title: "No reference column",
+            description:
+              "CSV missing Ref/Reference/Workers Ref column. Staff IDs will be auto-generated.",
             variant: "error",
           });
           return;

@@ -41,7 +41,7 @@ export class EmailProvider {
     htmlBody: string;
   }): Promise<void> {
     await this.transporter.sendMail({
-      from: SMTP_FROM.value(),
+      from: `MDS Payroll <${SMTP_FROM.value()}>`,
       to: email,
       subject,
       html: htmlBody,

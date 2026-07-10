@@ -1,11 +1,5 @@
 import { type ElementType, useEffect, useState } from "react";
-import {
-  Building2,
-  Clock,
-  FolderOpen,
-  Receipt,
-  Users,
-} from "lucide-react";
+import { Building2, Clock, FolderOpen, Receipt, Users } from "lucide-react";
 import { AddModal } from "../components/AddModal";
 import { FileDrop } from "../components/FileDrop";
 import { PreviewModal } from "../components/PreviewModal";
@@ -13,7 +7,7 @@ import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import {
-  hasNIColumn,
+  hasWorkerRefColumn,
   hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
 
@@ -159,11 +153,11 @@ export const Upload = () => {
       const headers = parseCsvHeaders(text);
 
       if (typeId === "staff") {
-        if (!hasNIColumn(headers)) {
+        if (!hasWorkerRefColumn(headers)) {
           toast({
-            title: "Invalid Staff Upload",
+            title: "Missing Worker Ref",
             description:
-              "No NI Number column found. Ensure your CSV has a column like 'NI Number', 'NINO', or 'National Insurance Number'.",
+              "The CSV has no Ref, Reference, or Workers Ref column — staff IDs will be auto-generated.",
             variant: "error",
           });
           return;
