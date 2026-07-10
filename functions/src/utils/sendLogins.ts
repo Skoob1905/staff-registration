@@ -92,14 +92,7 @@ export async function sendLogins(
       }
       await db.collection("users").doc(user.uid).set(userDoc, { merge: true });
 
-      const resetLink = await emailProvider.generatePasswordResetLink(email);
-      const htmlBody = `<p>You have been invited to access the portal.</p><p><a href="${resetLink}">Set your password</a></p>`;
-
-      await emailProvider.sendEmail({
-        email,
-        subject: "Set your password",
-        htmlBody,
-      });
+      await emailProvider.sendRegistrationLink({ email });
 
       created++;
     } catch (err) {

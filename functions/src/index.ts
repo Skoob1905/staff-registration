@@ -208,13 +208,7 @@ export const invitePortalUser = onCall(async (request) => {
   );
 
   const emailProvider = new EmailProvider();
-  const resetLink = await emailProvider.generatePasswordResetLink(email);
-  const htmlBody = `<p>You have been invited to access the portal.</p><p><a href="${resetLink}">Set your password</a></p>`;
-  await emailProvider.sendEmail({
-    email,
-    subject: "Set your password",
-    htmlBody,
-  });
+  await emailProvider.sendRegistrationLink({ email });
 
   return { ok: true, userId: user.uid };
 });
@@ -320,13 +314,7 @@ export const assignClientLogin = onCall(async (request) => {
     );
 
   const emailProvider = new EmailProvider();
-  const resetLink = await emailProvider.generatePasswordResetLink(email);
-  const htmlBody = `<p>You have been granted access to the portal.</p><p><a href="${resetLink}">Set your password</a></p>`;
-  await emailProvider.sendEmail({
-    email,
-    subject: "Set your password",
-    htmlBody,
-  });
+  await emailProvider.sendRegistrationLink({ email });
 
   return { ok: true, userId: user.uid };
 });
@@ -1549,7 +1537,11 @@ export const removeAgencies = onCall(async (request) => {
 
     const loginEmail = data.email;
     if (loginEmail) {
-      await db.collection("logins").doc(loginEmail.toLowerCase()).delete().catch(() => {});
+      await db
+        .collection("logins")
+        .doc(loginEmail.toLowerCase())
+        .delete()
+        .catch(() => {});
     }
   }
 
@@ -1704,7 +1696,11 @@ export const removeClients = onCall(async (request) => {
 
     const loginEmail = data.email;
     if (loginEmail) {
-      await db.collection("logins").doc(loginEmail.toLowerCase()).delete().catch(() => {});
+      await db
+        .collection("logins")
+        .doc(loginEmail.toLowerCase())
+        .delete()
+        .catch(() => {});
     }
   }
 
@@ -1810,7 +1806,11 @@ export const removeStaffImport = onCall(async (request) => {
       await userDoc.ref.delete();
     }
 
-    await db.collection("logins").doc(email.toLowerCase()).delete().catch(() => {});
+    await db
+      .collection("logins")
+      .doc(email.toLowerCase())
+      .delete()
+      .catch(() => {});
   }
 
   for (const [agencyId, staffIds] of agencyUpdates) {
@@ -2047,7 +2047,11 @@ export const removeClientLogin = onCall(async (request) => {
   await userRef.delete();
 
   if (userData.email) {
-    await db.collection("logins").doc(userData.email.toLowerCase()).delete().catch(() => {});
+    await db
+      .collection("logins")
+      .doc(userData.email.toLowerCase())
+      .delete()
+      .catch(() => {});
   }
 
   return { ok: true, uid };
@@ -2770,7 +2774,11 @@ export const removeStaffMember = onCall(async (request) => {
       await userDoc.ref.delete();
     }
 
-    await db.collection("logins").doc(email.toLowerCase()).delete().catch(() => {});
+    await db
+      .collection("logins")
+      .doc(email.toLowerCase())
+      .delete()
+      .catch(() => {});
   }
 
   // Delete staff document
@@ -3381,7 +3389,10 @@ export const deletePayslip = onCall(async (request) => {
     agencyId?: string;
   };
 
-  if (callerData.role !== "super" && payslipData.agencyId !== callerData.agencyId) {
+  if (
+    callerData.role !== "super" &&
+    payslipData.agencyId !== callerData.agencyId
+  ) {
     throw new HttpsError(
       "permission-denied",
       "Cannot delete payslips from another agency.",
