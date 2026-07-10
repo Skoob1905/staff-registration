@@ -26,7 +26,7 @@ export const sendForgotPassword = async (email: string): Promise<void> => {
   const fn = httpsCallable(functions, "sendPasswordReset");
   await fn({
     email,
-    continueUrl: window.location.origin + "/login",
+    continueUrl: window.location.origin + "/reset-password",
     companyName: config.name,
   });
 };

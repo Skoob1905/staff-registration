@@ -1,5 +1,6 @@
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { EmailProvider } from "../services/EmailService";
 
 function normalizeKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
@@ -32,8 +33,6 @@ export interface SendLoginsOptions {
   callerUid: string;
   invitedByAgencyId: string;
   agencyId?: string;
-  webApiKey: string;
-  continueUrl: string;
 }
 
 export interface SendLoginsResult {
@@ -45,17 +44,10 @@ export interface SendLoginsResult {
 export async function sendLogins(
   options: SendLoginsOptions,
 ): Promise<SendLoginsResult> {
-  const {
-    records,
-    role,
-    callerUid,
-    invitedByAgencyId,
-    agencyId,
-    webApiKey,
-    continueUrl,
-  } = options;
+  const { records, role, callerUid, invitedByAgencyId, agencyId } = options;
   const db = getFirestore();
   const adminAuth = getAuth();
+  const emailProvider = new EmailProvider();
 
   let created = 0;
   let skipped = 0;
@@ -100,28 +92,14 @@ export async function sendLogins(
       }
       await db.collection("users").doc(user.uid).set(userDoc, { merge: true });
 
-      const resp = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${webApiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestType: "PASSWORD_RESET",
-            email,
-            continueUrl,
-          }),
-        },
-      );
+      const resetLink = await emailProvider.generatePasswordResetLink(email);
+      const htmlBody = `<p>You have been invited to access the portal.</p><p><a href="${resetLink}">Set your password</a></p>`;
 
-      if (!resp.ok) {
-        const body = await resp.text();
-        console.error("[sendLogins] sendOobCode failed", {
-          email,
-          status: resp.status,
-          body,
-        });
-        throw new Error(`sendOobCode failed: ${resp.status}`);
-      }
+      await emailProvider.sendEmail({
+        email,
+        subject: "Set your password",
+        htmlBody,
+      });
 
       created++;
     } catch (err) {

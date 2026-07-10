@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthProvider";
 import { AppLayout } from "../layouts/AppLayout";
 import { LoadingPage } from "../components/LoadingPage";
 import { Login } from "../pages/Login";
+import { ResetPassword } from "../pages/ResetPassword";
 import { Agencies } from "../pages/Agencies";
 import { ClientAgencies } from "../pages/ClientAgencies";
 import { Clients } from "../pages/Clients";
@@ -86,6 +87,7 @@ export const AppRouter = () => (
   <>
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route element={<RoleGuard role="authenticated" />}>
         <Route element={<AppLayout />}>

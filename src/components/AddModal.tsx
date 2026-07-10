@@ -470,6 +470,25 @@ export const AddModal = ({
           "processImportLogins",
         );
         processLoginCallable({ importId: data.importId })
+          .then((result) => {
+            const { created, failed } = result.data as {
+              created: number;
+              failed: number;
+            };
+            if (failed > 0) {
+              toast({
+                title: `${failed} email(s) failed to send`,
+                description: `${created} created successfully. Contact support if this persists.`,
+                variant: "warning" as const,
+              });
+            } else if (created > 0) {
+              toast({
+                title: `${created} login(s) created`,
+                description: "Password reset emails have been sent.",
+                variant: "success" as const,
+              });
+            }
+          })
           .catch((err) => {
             console.error("[processImportLogins] failed", err);
             toast({

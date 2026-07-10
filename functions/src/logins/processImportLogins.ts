@@ -1,11 +1,8 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { defineString } from "firebase-functions/params";
 import type { LoginDoc } from "../types";
-
-const WEB_API_KEY = defineString("WEB_API_KEY");
-const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
+import { EmailProvider } from "../services/EmailService";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +20,7 @@ export const processImportLogins = onCall(
 
     const db = getFirestore();
     const adminAuth = getAuth();
+    const emailProvider = new EmailProvider();
 
     const importSnap = await db.collection("csv_imports").doc(importId).get();
     if (!importSnap.exists) {
@@ -98,28 +96,14 @@ export const processImportLogins = onCall(
           .doc(user.uid)
           .set(userDoc, { merge: true });
 
-        const resp = await fetch(
-          `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              requestType: "PASSWORD_RESET",
-              email,
-              continueUrl: RESET_CONTINUE_URL.value(),
-            }),
-          },
-        );
+        const resetLink = await emailProvider.generatePasswordResetLink(email);
+        const htmlBody = `<p>You have been invited to ${importData.type === "staff" ? "view your profile" : "access the portal"}.</p><p><a href="${resetLink}">Set your password</a></p>`;
 
-        if (!resp.ok) {
-          const body = await resp.text();
-          console.error("[processImportLogins] sendOobCode failed", {
-            email,
-            status: resp.status,
-            body,
-          });
-          throw new Error(`sendOobCode failed: ${resp.status}`);
-        }
+        await emailProvider.sendEmail({
+          email,
+          subject: "Set your password",
+          htmlBody,
+        });
 
         await doc.ref.update({
           pending: false,

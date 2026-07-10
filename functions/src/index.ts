@@ -37,6 +37,7 @@ import { getStorage } from "firebase-admin/storage";
 import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 import { dedupRecords } from "./utils/dedup";
 import type { LoginDoc } from "./types";
+import { EmailProvider } from "./services/EmailService";
 export { processImportLogins } from "./logins/processImportLogins";
 
 // API Keys for external users using the API
@@ -45,8 +46,6 @@ export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
-const WEB_API_KEY = defineString("WEB_API_KEY");
-const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
 
@@ -208,38 +207,14 @@ export const invitePortalUser = onCall(async (request) => {
     { merge: true },
   );
 
-  // Triggers Firebase password-reset email template
-  // (used as set-password invite).
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
-
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
-    throw new HttpsError(
-      "internal",
-      "Failed to send password reset email. Please try again later.",
-    );
-  }
+  const emailProvider = new EmailProvider();
+  const resetLink = await emailProvider.generatePasswordResetLink(email);
+  const htmlBody = `<p>You have been invited to access the portal.</p><p><a href="${resetLink}">Set your password</a></p>`;
+  await emailProvider.sendEmail({
+    email,
+    subject: "Set your password",
+    htmlBody,
+  });
 
   return { ok: true, userId: user.uid };
 });
@@ -344,36 +319,14 @@ export const assignClientLogin = onCall(async (request) => {
       { merge: true },
     );
 
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
-
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
-    throw new HttpsError(
-      "internal",
-      "Failed to send password reset email. Please try again later.",
-    );
-  }
+  const emailProvider = new EmailProvider();
+  const resetLink = await emailProvider.generatePasswordResetLink(email);
+  const htmlBody = `<p>You have been granted access to the portal.</p><p><a href="${resetLink}">Set your password</a></p>`;
+  await emailProvider.sendEmail({
+    email,
+    subject: "Set your password",
+    htmlBody,
+  });
 
   return { ok: true, userId: user.uid };
 });
@@ -382,36 +335,14 @@ export const sendPasswordReset = onCall(async (request) => {
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
-
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
-    throw new HttpsError(
-      "internal",
-      "Failed to send password reset email. Please try again later.",
-    );
-  }
+  const emailProvider = new EmailProvider();
+  const resetLink = await emailProvider.generatePasswordResetLink(email);
+  const htmlBody = `<p>Use the link below to reset your password.</p><p><a href="${resetLink}">Reset password</a></p>`;
+  await emailProvider.sendEmail({
+    email,
+    subject: "Reset your password",
+    htmlBody,
+  });
 
   return { ok: true };
 });
@@ -1615,6 +1546,11 @@ export const removeAgencies = onCall(async (request) => {
       }
       await userDoc.ref.delete();
     }
+
+    const loginEmail = data.email;
+    if (loginEmail) {
+      await db.collection("logins").doc(loginEmail.toLowerCase()).delete().catch(() => {});
+    }
   }
 
   await importRef.delete();
@@ -1765,6 +1701,11 @@ export const removeClients = onCall(async (request) => {
       }
       await userDoc.ref.delete();
     }
+
+    const loginEmail = data.email;
+    if (loginEmail) {
+      await db.collection("logins").doc(loginEmail.toLowerCase()).delete().catch(() => {});
+    }
   }
 
   await importRef.delete();
@@ -1868,6 +1809,8 @@ export const removeStaffImport = onCall(async (request) => {
       }
       await userDoc.ref.delete();
     }
+
+    await db.collection("logins").doc(email.toLowerCase()).delete().catch(() => {});
   }
 
   for (const [agencyId, staffIds] of agencyUpdates) {
@@ -2085,6 +2028,7 @@ export const removeClientLogin = onCall(async (request) => {
   if (!userSnap.exists) throw new HttpsError("not-found", "User not found.");
 
   const userData = userSnap.data() as {
+    email?: string;
     agencyId?: string;
     role?: string;
     invitedByAgencyId?: string;
@@ -2101,6 +2045,10 @@ export const removeClientLogin = onCall(async (request) => {
   }
 
   await userRef.delete();
+
+  if (userData.email) {
+    await db.collection("logins").doc(userData.email.toLowerCase()).delete().catch(() => {});
+  }
 
   return { ok: true, uid };
 });
@@ -2821,6 +2769,8 @@ export const removeStaffMember = onCall(async (request) => {
       }
       await userDoc.ref.delete();
     }
+
+    await db.collection("logins").doc(email.toLowerCase()).delete().catch(() => {});
   }
 
   // Delete staff document
