@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect } from "react";
 import { Card } from "./ui";
+import { H1 } from "../config/typography";
 
 interface NonAuthFormProps {
   children: ReactNode;
@@ -27,6 +28,10 @@ export const NonAuthForm = ({
           className="w-auto h-auto max-h-[20vh] object-contain"
         />
       </div> */}
+
+      {title ? (
+        <H1 className="mb-4">{title}</H1>
+      ) : null}
 
       <div className="space-y-3">
         {children}
