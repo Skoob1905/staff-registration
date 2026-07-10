@@ -77,6 +77,25 @@ export class EmailProvider {
   }
 
   /**
+   * Send a user a password reset email (forgot password flow)
+   */
+  async sendResetPassword({
+    email,
+    subject = "Reset your password",
+    templateName = "forgotPassword.html",
+  }: {
+    email: string;
+    subject?: string;
+    templateName?: string;
+  }): Promise<void> {
+    const customLink = await this.generatePortalResetLink(email);
+    const templatePath = path.join(TEMPLATES_DIR, templateName);
+    const raw = fs.readFileSync(templatePath, "utf-8");
+    const htmlBody = raw.replace(/\{\{link\}\}/g, customLink);
+    await this.sendEmail({ email, subject, htmlBody });
+  }
+
+  /**
    * Send a document notificaiton email
    */
   async sendDocument({
