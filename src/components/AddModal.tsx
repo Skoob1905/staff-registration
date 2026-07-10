@@ -341,7 +341,7 @@ export const AddModal = ({
 
         toast({
           title: "Timesheet uploaded",
-          description: `${config.name} has received your timesheet. We will process this as soon as possible.`,
+          description: `We have received your timesheet and will process it as soon as possible.`,
           variant: "success",
         });
         setUploadProgress(0);

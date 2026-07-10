@@ -21,13 +21,13 @@ export const NonAuthForm = ({
 
   const formBody = (
     <>
-      <div className="flex flex-col items-center gap-8 mb-6">
+      {/* <div className="flex flex-col items-center gap-8 mb-6">
         <img
           src={config.login}
           alt={config.name}
           className="w-auto h-auto max-h-[20vh] object-contain"
         />
-      </div>
+      </div> */}
 
       <div className="space-y-3">
         {children}

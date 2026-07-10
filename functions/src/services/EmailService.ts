@@ -100,7 +100,7 @@ export class EmailProvider {
    */
   async sendDocument({
     email,
-    subject = "New document available",
+    subject = "Document Uploaded!",
     templateName = "sendDocument.html",
   }: {
     email: string;
@@ -119,7 +119,7 @@ export class EmailProvider {
    */
   async sentPayslip({
     email,
-    subject = "Payslip received!",
+    subject = "Payslip Received!",
     templateName = "sendPayslip.html",
   }: {
     email: string;

@@ -29,11 +29,11 @@ export const Navbar = () => {
             rel="noopener noreferrer"
             className="md:justify-self-start"
           >
-            <img
+            {/* <img
               src={config.navbar}
               alt={config.name}
               className="max-h-5 w-auto shrink-0 object-contain md:max-h-6 lg:max-h-7"
-            />
+            /> */}
           </a>
           <nav className="order-last flex basis-full flex-wrap justify-center gap-1 pt-2 md:order-none md:basis-auto md:max-w-full md:pt-0 md:gap-2">
             <NavbarItems
