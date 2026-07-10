@@ -12,7 +12,3 @@ export async function confirmPasswordResetCode(
 ): Promise<void> {
   await confirmPasswordReset(auth, oobCode, newPassword);
 }
-
-export function redirectToLogin(): void {
-  window.location.href = "/login";
-}

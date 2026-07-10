@@ -17,7 +17,7 @@ export interface AppToast {
 export const ToastProviderRoot = ToastPrimitive.Provider;
 
 export const ToastViewport = () => (
-  <ToastPrimitive.Viewport className="fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
+  <ToastPrimitive.Viewport className="fixed left-1/2 top-[10%] z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
 );
 
 export const ToastItem = ({
@@ -61,7 +61,7 @@ export const ToastItem = ({
       open={open}
       onOpenChange={onOpenChange}
       duration={5000}
-      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg transition-opacity duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 ${borderColor}`}
+      className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg ${borderColor} data-[state=open]:animate-[toast-in_250ms_ease-out_forwards] data-[state=closed]:animate-[toast-out_200ms_ease-in_forwards]`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">

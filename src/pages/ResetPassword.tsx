@@ -5,7 +5,6 @@ import { useToast } from "../context/ToastProvider";
 import {
   extractOobCodeFromUrl,
   confirmPasswordResetCode,
-  redirectToLogin,
 } from "../services/emailService";
 
 export const ResetPassword = () => {
@@ -37,8 +36,7 @@ export const ResetPassword = () => {
     setLoading(true);
     try {
       await confirmPasswordResetCode(oobCode!, password);
-      toast({ title: "Password set successfully", variant: "success" });
-      redirectToLogin();
+      window.location.href = "/login?resetSuccess=true";
     } catch {
       toast({
         title: "Failed to reset password. The link may have expired.",
