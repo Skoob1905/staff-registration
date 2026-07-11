@@ -36,6 +36,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 import { dedupRecords } from "./utils/dedup";
+import { createAuthUsers } from "./utils/createAuthUsers";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
 
@@ -893,13 +894,15 @@ export const importAgencyCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
+  const confirmedEmails = await createAuthUsers(emails);
+
   return {
     ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails,
+    emails: confirmedEmails,
   };
 });
 
@@ -1041,13 +1044,15 @@ export const importClientCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
+  const confirmedEmails = await createAuthUsers(emails);
+
   return {
     ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails,
+    emails: confirmedEmails,
   };
 });
 
@@ -1254,20 +1259,22 @@ export const importStaffCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
+  const confirmedEmails = await createAuthUsers(emails);
+
   return {
     ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails,
+    emails: confirmedEmails,
   };
 });
 
 /**
- * Sends registration emails for imported records after the import
- * modal has closed. Called separately from the import functions so
- * the user isn't blocked waiting for the 1-second-per-email batch.
+ * Sends registration emails for imported records. Auth users are created
+ * during the import step by {@link createAuthUsers}; only emails with
+ * confirmed Auth accounts should be passed here.
  *
  * @param request.data.emails - Array of email addresses to send to.
  * @param request.data.type   - "worker", "agency", or "client".
@@ -1289,20 +1296,6 @@ export const sendImportEmails = onCall(async (request) => {
       "invalid-argument",
       "emails array and type are required.",
     );
-  }
-
-  const adminAuth = getAuth();
-  for (const email of emails) {
-    try {
-      await adminAuth.getUserByEmail(email);
-    } catch (err: unknown) {
-      const authErr = err as { code?: string };
-      if (authErr.code === "auth/user-not-found") {
-        await adminAuth.createUser({ email });
-      } else {
-        throw err;
-      }
-    }
   }
 
   const emailProvider = new EmailProvider();

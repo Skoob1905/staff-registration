@@ -1,8 +1,8 @@
 import nodemailer from "nodemailer";
-import { GoogleAuth } from "google-auth-library";
 import { defineString } from "firebase-functions/params";
 import fs from "node:fs";
 import path from "node:path";
+import { getAuth } from "firebase-admin/auth";
 
 const SMTP_HOST = defineString("SMTP_HOST");
 const SMTP_PORT = defineString("SMTP_PORT");
@@ -50,45 +50,10 @@ export class EmailProvider {
    */
   async generatePasswordResetLink(email: string): Promise<string> {
     console.log("[EmailProvider] generatePasswordResetLink", { email });
-
-    const auth = new GoogleAuth({
-      scopes: ["https://www.googleapis.com/auth/identitytoolkit"],
+    return getAuth().generatePasswordResetLink(email, {
+      url: RESET_CONTINUE_URL.value(),
+      handleCodeInApp: true,
     });
-    const client = await auth.getClient();
-    const accessToken = await client.getAccessToken();
-
-    const response = await fetch(
-      "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken.token}`,
-        },
-        body: JSON.stringify({
-          requestType: "PASSWORD_RESET",
-          email,
-          returnOobLink: true,
-          continueUrl: RESET_CONTINUE_URL.value(),
-        }),
-      },
-    );
-
-    const data = (await response.json()) as {
-      oobLink?: string;
-      error?: { message: string };
-    };
-
-    if (!response.ok || !data.oobLink) {
-      const msg = data.error?.message ?? "Unknown error from Identity Toolkit";
-      throw new Error(msg);
-    }
-
-    console.log("[EmailProvider] generatePasswordResetLink success", {
-      email,
-      link: data.oobLink,
-    });
-    return data.oobLink;
   }
 
   /**
