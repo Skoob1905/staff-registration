@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button, Input, Label } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { useToast } from "../context/ToastProvider";
@@ -9,6 +10,7 @@ import {
 
 export const ResetPassword = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,8 @@ export const ResetPassword = () => {
     setLoading(true);
     try {
       await confirmPasswordResetCode(oobCode!, password);
-      window.location.href = "/login?resetSuccess=true";
+      toast({ title: "Password set successfully", variant: "success" });
+      setTimeout(() => navigate("/login"), 3000);
     } catch {
       toast({
         title: "Failed to reset password. The link may have expired.",

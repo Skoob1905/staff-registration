@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Input, Label, SecondaryButton } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
@@ -13,17 +13,9 @@ export const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const shownRef = useRef(false);
 
   useEffect(() => {
     document.title = "Login";
-  }, []);
-
-  useEffect(() => {
-    if (!shownRef.current && searchParams.get("resetSuccess") === "true") {
-      shownRef.current = true;
-      toast({ title: "Password set successfully", variant: "success" });
-    }
   }, []);
 
   const onSubmit = async (event: React.FormEvent) => {
