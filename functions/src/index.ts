@@ -893,26 +893,13 @@ export const importAgencyCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  let emailResult:
-    | { sent: number; failed: number; failures: { email: string; error: string }[] }
-    | undefined;
-
-  if (emails.length > 0) {
-    const emailProvider = new EmailProvider();
-    emailResult = await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
-      emailProvider.sendAgencyRegistrationLink(email),
-    );
-  }
-
-  const allSent = !emailResult || emailResult.failed === 0;
-
   return {
-    ok: allSent,
+    ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails: emailResult ?? { sent: 0, failed: 0, failures: [] },
+    emails,
   };
 });
 
@@ -1054,26 +1041,13 @@ export const importClientCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  let emailResult:
-    | { sent: number; failed: number; failures: { email: string; error: string }[] }
-    | undefined;
-
-  if (emails.length > 0) {
-    const emailProvider = new EmailProvider();
-    emailResult = await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
-      emailProvider.sendClientRegistrationLink(email),
-    );
-  }
-
-  const allSent = !emailResult || emailResult.failed === 0;
-
   return {
-    ok: allSent,
+    ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails: emailResult ?? { sent: 0, failed: 0, failures: [] },
+    emails,
   };
 });
 
@@ -1280,27 +1254,61 @@ export const importStaffCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  let emailResult:
-    | { sent: number; failed: number; failures: { email: string; error: string }[] }
-    | undefined;
-
-  if (emails.length > 0) {
-    const emailProvider = new EmailProvider();
-    emailResult = await emailProvider.beginBatchEmailSend(emails, ({ email }) =>
-      emailProvider.sendWorkerRegistrationLink(email),
-    );
-  }
-
-  const allSent = !emailResult || emailResult.failed === 0;
-
   return {
-    ok: allSent,
+    ok: true,
     added: writtenCount,
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails: emailResult ?? { sent: 0, failed: 0, failures: [] },
+    emails,
   };
+});
+
+/**
+ * Sends registration emails for imported records after the import
+ * modal has closed. Called separately from the import functions so
+ * the user isn't blocked waiting for the 1-second-per-email batch.
+ *
+ * @param request.data.emails - Array of email addresses to send to.
+ * @param request.data.type   - "worker", "agency", or "client".
+ * @returns A {@link BatchEmailResult} with sent / failed counts.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "invalid-argument" if emails or type are invalid.
+ */
+export const sendImportEmails = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const { emails, type } = request.data as {
+    emails: string[];
+    type: "worker" | "agency" | "client";
+  };
+
+  if (!Array.isArray(emails) || emails.length === 0 || !type) {
+    throw new HttpsError(
+      "invalid-argument",
+      "emails array and type are required.",
+    );
+  }
+
+  const emailProvider = new EmailProvider();
+
+  let callback: (params: { email: string }) => Promise<void>;
+  switch (type) {
+    case "worker":
+      callback = ({ email }) => emailProvider.sendWorkerRegistrationLink(email);
+      break;
+    case "agency":
+      callback = ({ email }) => emailProvider.sendAgencyRegistrationLink(email);
+      break;
+    case "client":
+      callback = ({ email }) => emailProvider.sendClientRegistrationLink(email);
+      break;
+  }
+
+  const result = await emailProvider.beginBatchEmailSend(emails, callback);
+
+  return result;
 });
 
 export const assignStaffToAgency = onCall(async (request) => {

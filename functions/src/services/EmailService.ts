@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { getAuth } from "firebase-admin/auth";
+import { GoogleAuth } from "google-auth-library";
 import { defineString } from "firebase-functions/params";
 import fs from "node:fs";
 import path from "node:path";
@@ -39,20 +39,56 @@ export class EmailProvider {
   /**
    * Generates a Firebase password reset link for the given email.
    *
-   * Delegates to the Firebase Admin Auth SDK. The generated link includes
-   * an `oobCode` (one-time out-of-band code) and an `apiKey` query parameter
-   * which are later extracted to build the portal-specific reset URL.
+   * Calls the Identity Toolkit REST API directly with service account
+   * credentials. This bypasses the Admin SDK's `generatePasswordResetLink`
+   * which hits an INTERNAL ASSERT bug in some Firebase projects.
    *
    * @param email - The recipient email address.
-   * @returns A Firebase password reset URL with `handleCodeInApp` enabled.
-   * @throws {FirebaseAuthError} If the email is invalid or the Auth service
-   *         is unreachable.
+   * @returns A Firebase password reset URL containing `oobCode` and `apiKey`
+   *          query parameters.
+   * @throws {Error} If the Identity Toolkit API returns an error.
    */
   async generatePasswordResetLink(email: string): Promise<string> {
-    return getAuth().generatePasswordResetLink(email, {
-      url: RESET_CONTINUE_URL.value(),
-      handleCodeInApp: true,
+    console.log("[EmailProvider] generatePasswordResetLink", { email });
+
+    const auth = new GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/identitytoolkit"],
     });
+    const client = await auth.getClient();
+    const accessToken = await client.getAccessToken();
+
+    const response = await fetch(
+      "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken.token}`,
+        },
+        body: JSON.stringify({
+          requestType: "PASSWORD_RESET",
+          email,
+          returnOobLink: true,
+          continueUrl: RESET_CONTINUE_URL.value(),
+        }),
+      },
+    );
+
+    const data = (await response.json()) as {
+      oobLink?: string;
+      error?: { message: string };
+    };
+
+    if (!response.ok || !data.oobLink) {
+      const msg = data.error?.message ?? "Unknown error from Identity Toolkit";
+      throw new Error(msg);
+    }
+
+    console.log("[EmailProvider] generatePasswordResetLink success", {
+      email,
+      link: data.oobLink,
+    });
+    return data.oobLink;
   }
 
   /**

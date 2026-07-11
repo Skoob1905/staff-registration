@@ -426,15 +426,10 @@ export const AddModal = ({
       setProcessing(false);
 
       const data = result.data as {
-        ok: boolean;
         added: number;
         duplicates: number;
         importId?: string;
-        emails?: {
-          sent: number;
-          failed: number;
-          failures: { email: string; error: string }[];
-        };
+        emails: string[];
       };
 
       if (data.importId && recordsToSend.length > 0) {
@@ -456,25 +451,12 @@ export const AddModal = ({
         });
       }
 
-      if (data.ok) {
-        const emailSent =
-          data.emails && data.emails.sent > 0
-            ? ` — ${data.emails.sent} email(s) sent`
-            : "";
-        toast({
-          title: "Import complete",
-          description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added.${emailSent}`,
-          replaceToast: true,
-        });
-      } else {
-        const failed = data.emails?.failed ?? 0;
-        const sent = data.emails?.sent ?? 0;
-        toast({
-          title: `${failed} email(s) failed`,
-          description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} saved. ${sent} sent, ${failed} failed.`,
-          variant: "error",
-        });
-      }
+      toast({
+        title: "Import complete",
+        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added. Logins will be sent shortly.`,
+        variant: "success",
+        replaceToast: true,
+      });
       setUploadProgress(0);
       setCsvData(null);
       setSelectedClientId(undefined);
@@ -482,7 +464,41 @@ export const AddModal = ({
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      await onSuccess?.(data.importId);
+      try {
+        await onSuccess?.(data.importId);
+      } catch {
+        // onSuccess failure shouldn't block email sending
+      }
+
+      if (data.emails.length > 0) {
+        const emailCallable = httpsCallable(functions, "sendImportEmails");
+        const emailResult = await emailCallable({
+          emails: data.emails,
+          type:
+            csvType === "staff"
+              ? "worker"
+              : csvType === "agency"
+                ? "agency"
+                : "client",
+        });
+        const { sent, failed } = emailResult.data as {
+          sent: number;
+          failed: number;
+        };
+        if (failed > 0) {
+          toast({
+            title: `${failed} email(s) failed`,
+            description: `${sent} sent, ${failed} failed.`,
+            variant: "error",
+          });
+        } else {
+          toast({
+            title: "Emails sent",
+            description: `${sent} login email(s) delivered.`,
+            variant: "success",
+          });
+        }
+      }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (
