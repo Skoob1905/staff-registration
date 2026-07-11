@@ -33,8 +33,12 @@ export const Login = () => {
     setLoading(true);
     try {
       await loginWithEmail(email.trim(), password);
-    } catch {
-      toast({ title: "Login failed. Check your credentials and try again.", variant: "error" });
+    } catch (err) {
+      toast({
+        title: "Login failed",
+        description: err instanceof Error ? err.message : "Check your credentials and try again.",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
