@@ -37,6 +37,7 @@ import { getStorage } from "firebase-admin/storage";
 import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 import { dedupRecords } from "./utils/dedup";
 import { createAuthUsers } from "./utils/createAuthUsers";
+import { removeAuthUser } from "./utils/removeAuthUser";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
 
@@ -1669,24 +1670,17 @@ export const removeAgencies = onCall(async (request) => {
   }
 
   // Delete Auth users + users docs for imported agencies with email
-  const adminAuth = getAuth();
   for (const snap of agencySnaps.docs) {
     const data = snap.data() as { email?: string };
     const email = data.email;
     if (!email || !emailPattern.test(email)) continue;
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
-    }
+    userDocs.forEach((doc) => doc.ref.delete());
 
     const loginEmail = data.email;
     if (loginEmail) {
@@ -1828,24 +1822,17 @@ export const removeClients = onCall(async (request) => {
   }
 
   // Delete Auth users + users docs for imported clients with email
-  const adminAuth = getAuth();
   for (const snap of clientSnaps.docs) {
     const data = snap.data() as { email?: string };
     const email = data.email;
     if (!email || !emailPattern.test(email)) continue;
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
-    }
+    userDocs.forEach((doc) => doc.ref.delete());
 
     const loginEmail = data.email;
     if (loginEmail) {
@@ -1940,24 +1927,17 @@ export const removeStaffImport = onCall(async (request) => {
   }
 
   // Delete Auth users + users docs for staff members with email
-  const adminAuth = getAuth();
   for (const snap of staffSnaps.docs) {
     const data = snap.data() as { email?: string };
     const email = data.email;
     if (!email || !emailPattern.test(email)) continue;
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
-    }
+    userDocs.forEach((doc) => doc.ref.delete());
 
     await db
       .collection("logins")
@@ -2929,21 +2909,13 @@ export const removeStaffMember = onCall(async (request) => {
   // Delete Auth user + users doc by email
   const email = staffData.email;
   if (email && emailPattern.test(email)) {
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-
-    const adminAuth = getAuth();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
-    }
+    userDocs.forEach((doc) => doc.ref.delete());
 
     await db
       .collection("logins")
