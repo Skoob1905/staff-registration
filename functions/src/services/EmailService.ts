@@ -165,7 +165,9 @@ export class EmailProvider {
     const customLink = await this.generatePortalResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "registration.html");
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, customLink);
+    const htmlBody = raw
+      .replace(/\{\{link\}\}/g, customLink)
+      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
     await this.sendEmail({
       email,
       subject: "Welcome to MDS",
@@ -190,7 +192,9 @@ export class EmailProvider {
     const customLink = await this.generatePortalResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "agencyRegistration.html");
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, customLink);
+    const htmlBody = raw
+      .replace(/\{\{link\}\}/g, customLink)
+      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
     await this.sendEmail({
       email,
       subject: "Welcome to MDS",
@@ -215,7 +219,9 @@ export class EmailProvider {
     const customLink = await this.generatePortalResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "clientRegistration.html");
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, customLink);
+    const htmlBody = raw
+      .replace(/\{\{link\}\}/g, customLink)
+      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
     await this.sendEmail({
       email,
       subject: "Welcome to MDS",
@@ -244,7 +250,9 @@ export class EmailProvider {
     const customLink = await this.generatePortalResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, customLink);
+    const htmlBody = raw
+      .replace(/\{\{link\}\}/g, customLink)
+      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
     await this.sendEmail({ email, subject, htmlBody });
   }
 
@@ -265,7 +273,9 @@ export class EmailProvider {
     const portalLink = RESET_CONTINUE_URL.value();
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, portalLink);
+    const htmlBody = raw
+      .replace(/\{\{link\}\}/g, portalLink)
+      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
     await this.sendEmail({ email, subject, htmlBody });
   }
 
@@ -286,7 +296,9 @@ export class EmailProvider {
     const portalLink = RESET_CONTINUE_URL.value();
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
-    const htmlBody = raw.replace(/\{\{link\}\}/g, portalLink);
+    const htmlBody = raw
+      .replace(/\{\{link\}\}/g, portalLink)
+      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
     await this.sendEmail({ email, subject, htmlBody });
   }
 }
