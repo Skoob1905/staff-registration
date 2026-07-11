@@ -1291,6 +1291,20 @@ export const sendImportEmails = onCall(async (request) => {
     );
   }
 
+  const adminAuth = getAuth();
+  for (const email of emails) {
+    try {
+      await adminAuth.getUserByEmail(email);
+    } catch (err: unknown) {
+      const authErr = err as { code?: string };
+      if (authErr.code === "auth/user-not-found") {
+        await adminAuth.createUser({ email });
+      } else {
+        throw err;
+      }
+    }
+  }
+
   const emailProvider = new EmailProvider();
 
   let callback: (params: { email: string }) => Promise<void>;
