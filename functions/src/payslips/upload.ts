@@ -4,6 +4,7 @@ import { getStorage } from "firebase-admin/storage";
 import type { Firestore } from "firebase-admin/firestore";
 import type { Storage } from "firebase-admin/storage";
 import { EmailProvider } from "../services/EmailService";
+import { dedupFileName } from "../utils/dedupFileName";
 
 /**
  * Core logic shared by both the single and bulk payslip upload functions.
@@ -23,7 +24,13 @@ export async function uploadPayslipLogic(
 ): Promise<{ payslipId: string; url: string }> {
   const uid = userId.toUpperCase();
   const bucket = storage.bucket();
-  const filePath = `payslips/${uid}/${fileName}`;
+
+  const { uniqueName, filePath } = await dedupFileName(
+    bucket,
+    `payslips/${uid}`,
+    fileName,
+  );
+
   const fileRef = bucket.file(filePath);
 
   const token =
@@ -42,7 +49,7 @@ export async function uploadPayslipLogic(
   const payslipRef = await db.collection("payslips").add({
     userId: uid,
     agencyId: agencyId ?? "",
-    fileName,
+    fileName: uniqueName,
     fileUrl,
     sentBy,
     timestamp: FieldValue.serverTimestamp(),
@@ -56,9 +63,7 @@ export async function uploadPayslipLogic(
   };
   const existing = staffData?.metadata?.payslipsSent ?? [];
   await staffRef.update({
-    metadata: {
-      payslipsSent: [payslipRef.id, ...existing],
-    },
+    "metadata.payslipsSent": [payslipRef.id, ...existing],
   });
 
   const staffEmail = (staffSnap.data() as { email?: string })?.email;

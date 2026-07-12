@@ -2,6 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { EmailProvider } from "../services/EmailService";
+import { dedupFileName } from "../utils/dedupFileName";
 
 export const uploadPayslipExternal = onRequest(
   { region: "europe-west2" },
@@ -129,7 +130,13 @@ export const uploadPayslipExternal = onRequest(
     const userId = staffDoc.id;
 
     const bucket = getStorage().bucket();
-    const filePath = `payslips/${userId}/${fileName}`;
+
+    const { uniqueName, filePath } = await dedupFileName(
+      bucket,
+      `payslips/${userId}`,
+      fileName,
+    );
+
     const fileRef = bucket.file(filePath);
 
     const token =
@@ -147,7 +154,7 @@ export const uploadPayslipExternal = onRequest(
     const payslipRef = await db.collection("payslips").add({
       userId,
       agencyId: "",
-      fileName,
+      fileName: uniqueName,
       fileUrl,
       sentBy: keyDoc.get("label"),
       timestamp: FieldValue.serverTimestamp(),

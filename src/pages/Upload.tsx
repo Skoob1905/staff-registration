@@ -197,6 +197,10 @@ export const Upload = () => {
     setShowPayslipModal(false);
     setPayslipFiles([]);
 
+    toast({
+      title: `${eligible.length} payslip${eligible.length === 1 ? "" : "s"} will be uploaded`,
+    });
+
     void (async () => {
       for (const f of eligible) {
         try {
