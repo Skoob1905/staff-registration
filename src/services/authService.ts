@@ -32,11 +32,11 @@ export const sendForgotPassword = async (email: string): Promise<void> => {
 };
 
 export const updateLoginStatus = async (
-  workerRef: string,
+  email: string,
   status: "awaiting_login" | "password_set" | "logged_in",
 ): Promise<void> => {
   const fn = httpsCallable(functions, "updateLoginStatus");
-  await fn({ workerRef: workerRef.toUpperCase(), status });
+  await fn({ email, status });
 };
 
 export const onAuthUserChanged = (callback: (user: User | null) => void): (() => void) => {

@@ -3575,15 +3575,15 @@ export const updateLoginStatus = onCall(
     if (!callerUid)
       throw new HttpsError("unauthenticated", "Sign in required.");
 
-    const { workerRef, status } = request.data as {
-      workerRef?: string;
+    const { email, status } = request.data as {
+      email?: string;
       status?: string;
     };
 
-    if (!workerRef || !status) {
+    if (!email || !status) {
       throw new HttpsError(
         "invalid-argument",
-        "workerRef and status are required.",
+        "email and status are required.",
       );
     }
 
@@ -3595,15 +3595,38 @@ export const updateLoginStatus = onCall(
       );
     }
 
-    const normalizedRef = workerRef.toUpperCase();
+    const normalizedEmail = email.trim().toLowerCase();
     console.log(
-      `[updateLoginStatus] Updating staff doc "${normalizedRef}" → loginStatus: "${status}"`,
+      `[updateLoginStatus] Request: email="${normalizedEmail}", status="${status}"`,
+    );
+    console.log(
+      `[updateLoginStatus] Looking up staff by email: "${normalizedEmail}"`,
     );
 
-    await getFirestore()
+    const staffSnaps = await getFirestore()
       .collection("staff")
-      .doc(normalizedRef)
-      .update("metadata.loginStatus", status);
+      .where("email", "==", normalizedEmail)
+      .get();
+
+    console.log(`[updateLoginStatus] Found ${staffSnaps.size} staff docs`);
+
+    if (staffSnaps.empty) {
+      console.warn(
+        `[updateLoginStatus] No staff doc found for email: "${normalizedEmail}"`,
+      );
+    }
+
+    for (const d of staffSnaps.docs) {
+      const docData = d.data();
+      console.log(
+        `[updateLoginStatus] Staff doc ${d.id}: email="${docData.email}", ` +
+          `Forename="${docData.Forename}", Surname="${docData.Surname}"`,
+      );
+      console.log(
+        `[updateLoginStatus] Updating staff doc ${d.id} → loginStatus: "${status}"`,
+      );
+      await d.ref.update("metadata.loginStatus", status);
+    }
 
     return { ok: true, loginStatus: status };
   },
