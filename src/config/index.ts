@@ -22,6 +22,7 @@ import wasLoading from "../assets/was/loading.jpg";
 import sliverNavbar from "../assets/sliver/navbar.jpg";
 import sliverLogin from "../assets/sliver/login.jpg";
 import sliverLoading from "../assets/sliver/loading.jpg";
+import mdsLogo from "../assets/mds/logo.png";
 import type { Config, Theme } from "./types";
 
 const raw = import.meta.env.VITE_COMPANY_NAME ?? "blackrock";
@@ -109,6 +110,14 @@ const images: Record<string, Config> = {
     login: sliverLogin,
     loading: sliverLoading,
     name: "Sliver Ltd",
+    homepage: "",
+    theme: unifiedTheme,
+  },
+  mds: {
+    navbar: mdsLogo,
+    login: mdsLogo,
+    loading: mdsLogo,
+    name: "MDS Consultancy & Engineering",
     homepage: "",
     theme: unifiedTheme,
   },
