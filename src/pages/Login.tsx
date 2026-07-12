@@ -48,9 +48,20 @@ export const Login = () => {
     try {
       await loginWithEmail(email.trim(), password);
     } catch (err) {
+      const code = err instanceof Error && "code" in err ? (err as { code: string }).code : "";
+
+      let description = "Check your credentials and try again.";
+      if (code === "auth/invalid-credential") {
+        description = "Invalid email or password. Please check your username and password and try again.";
+      } else if (code === "auth/too-many-requests") {
+        description = "Too many login attempts. Please wait a moment and try again.";
+      } else if (code === "auth/user-disabled") {
+        description = "This account has been disabled. Please contact your administrator.";
+      }
+
       toast({
         title: "Login failed",
-        description: err instanceof Error ? err.message : "Check your credentials and try again.",
+        description,
         variant: "error",
       });
     } finally {
