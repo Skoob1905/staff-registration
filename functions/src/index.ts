@@ -1342,7 +1342,21 @@ export const sendImportEmails = onCall(async (request) => {
   switch (type) {
     case "worker":
       callback = async ({ email }) => {
-        await emailProvider.sendWorkerRegistrationLink(email);
+        try {
+          await emailProvider.sendWorkerRegistrationLink(email);
+        } catch {
+          await db
+            .collection("staff")
+            .where("email", "==", email)
+            .get()
+            .then((snaps) => {
+              for (const d of snaps.docs) {
+                void d.ref.set({ loginStatus: "failed" }, { merge: true });
+              }
+            })
+            .catch(() => {});
+          throw new Error(`Email failed to send to ${email}`);
+        }
         const staffSnaps = await db
           .collection("staff")
           .where("email", "==", email)
