@@ -77,11 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else if (user && profile) {
             useAppStore.getState().loadTags().catch(() => {});
             if (
-              profile.loginStatus === "password_set" &&
+              profile.workerRef &&
               !sessionStorage.getItem(`loginStatus_logged_in_${user.uid}`)
             ) {
               sessionStorage.setItem(`loginStatus_logged_in_${user.uid}`, "1");
-              updateLoginStatus(profile.email, "logged_in").catch(() => {});
+              updateLoginStatus(profile.workerRef, "logged_in").catch(() => {});
             }
           }
         } catch (err) {

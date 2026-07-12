@@ -2,11 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, Label } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
-import {
-  extractOobCodeFromUrl,
-  confirmPasswordResetCode,
-} from "../services/emailService";
-import { updateLoginStatus } from "../services/authService";
+import { extractOobCodeFromUrl, confirmPasswordResetCode } from "../services/emailService";
 
 export const ResetPassword = () => {
   const navigate = useNavigate();
@@ -40,8 +36,7 @@ export const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const { email } = await confirmPasswordResetCode(oobCode!, password);
-      updateLoginStatus(email, "password_set").catch(() => {});
+      await confirmPasswordResetCode(oobCode!, password);
       navToLogin("success");
     } catch {
       navToLogin("failure");

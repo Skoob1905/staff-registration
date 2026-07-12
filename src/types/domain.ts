@@ -6,6 +6,7 @@ export interface AppUser {
   role: UserRole;
   agencyId: string;
   assignedToId?: string;
+  workerRef?: string;
   registrationStatus?: "awaiting" | "registered";
   loginStatus?: "awaiting_login" | "password_set" | "logged_in";
   contractSigned?: boolean;

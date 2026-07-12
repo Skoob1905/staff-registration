@@ -241,6 +241,10 @@ export const invitePortalUser = onCall(async (request) => {
     .get();
   for (const d of staffSnaps.docs) {
     await d.ref.update("metadata.loginStatus", "awaiting_login");
+    await db
+      .collection("users")
+      .doc(user.uid)
+      .set({ workerRef: d.id }, { merge: true });
   }
 
   return { ok: true, userId: user.uid };
@@ -1336,7 +1340,6 @@ export const sendImportEmails = onCall(async (request) => {
   }
 
   const emailProvider = new EmailProvider();
-  const db = getFirestore();
 
   let callback: (params: { email: string }) => Promise<void>;
   switch (type) {
@@ -1345,19 +1348,16 @@ export const sendImportEmails = onCall(async (request) => {
         try {
           await emailProvider.sendWorkerRegistrationLink(email);
         } catch {
-          await db
+          const snaps = await getFirestore()
             .collection("staff")
             .where("email", "==", email)
-            .get()
-            .then((snaps) => {
-              for (const d of snaps.docs) {
-                void d.ref.update("metadata.loginStatus", "failed");
-              }
-            })
-            .catch(() => {});
+            .get();
+          for (const d of snaps.docs) {
+            void d.ref.update("metadata.loginStatus", "failed");
+          }
           throw new Error(`Email failed to send to ${email}`);
         }
-        const staffSnaps = await db
+        const staffSnaps = await getFirestore()
           .collection("staff")
           .where("email", "==", email)
           .get();
@@ -3568,71 +3568,43 @@ export const deletePayslip = onCall(async (request) => {
   return { ok: true };
 });
 
-export const updateLoginStatus = onCall(async (request) => {
-  const callerUid = request.auth?.uid;
-  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+export const updateLoginStatus = onCall(
+  { region: "europe-west2" },
+  async (request) => {
+    const callerUid = request.auth?.uid;
+    if (!callerUid)
+      throw new HttpsError("unauthenticated", "Sign in required.");
 
-  const { email, status } = request.data as {
-    email: string;
-    status: string;
-  };
+    const { workerRef, status } = request.data as {
+      workerRef?: string;
+      status?: string;
+    };
 
-  if (!email || !status) {
-    throw new HttpsError("invalid-argument", "email and status are required.");
-  }
+    if (!workerRef || !status) {
+      throw new HttpsError(
+        "invalid-argument",
+        "workerRef and status are required.",
+      );
+    }
 
-  const validStatuses = ["awaiting_login", "password_set", "logged_in"];
-  if (!validStatuses.includes(status)) {
-    throw new HttpsError(
-      "invalid-argument",
-      `status must be one of: ${validStatuses.join(", ")}`,
-    );
-  }
+    const validStatuses = ["awaiting_login", "password_set", "logged_in"];
+    if (!validStatuses.includes(status)) {
+      throw new HttpsError(
+        "invalid-argument",
+        `status must be one of: ${validStatuses.join(", ")}`,
+      );
+    }
 
-  const db = getFirestore();
-  const normalizedEmail = email.trim().toLowerCase();
-
-  const userDocs = await db
-    .collection("users")
-    .where("email", "==", normalizedEmail)
-    .limit(1)
-    .get();
-
-  if (userDocs.empty) {
-    throw new HttpsError("not-found", "No user found with that email.");
-  }
-
-  const userDoc = userDocs.docs[0];
-  const currentStatus = userDoc.data().loginStatus as string | undefined;
-
-  if (status === "password_set" && currentStatus !== "awaiting_login") {
-    throw new HttpsError(
-      "failed-precondition",
-      "User must be in 'awaiting_login' state to transition to 'password_set'.",
-    );
-  }
-
-  if (status === "logged_in" && currentStatus !== "password_set") {
-    throw new HttpsError(
-      "failed-precondition",
-      "User must be in 'password_set' state to transition to 'logged_in'.",
-    );
-  }
-
-  await userDoc.ref.set({ loginStatus: status }, { merge: true });
-
-  await db
-    .collection("staff")
-    .where("email", "==", normalizedEmail)
-    .get()
-    .then(async (snaps) => {
-      for (const d of snaps.docs) {
-        await d.ref.update("metadata.loginStatus", status);
-      }
-    })
-    .catch((err) =>
-      console.error("Failed to sync loginStatus to staff docs:", err),
+    const normalizedRef = workerRef.toUpperCase();
+    console.log(
+      `[updateLoginStatus] Updating staff doc "${normalizedRef}" → loginStatus: "${status}"`,
     );
 
-  return { ok: true, loginStatus: status };
-});
+    await getFirestore()
+      .collection("staff")
+      .doc(normalizedRef)
+      .update("metadata.loginStatus", status);
+
+    return { ok: true, loginStatus: status };
+  },
+);
