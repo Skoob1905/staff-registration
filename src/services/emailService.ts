@@ -1,4 +1,4 @@
-import { confirmPasswordReset } from "firebase/auth";
+import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { auth } from "./firebase";
 
 export function extractOobCodeFromUrl(): string | null {
@@ -9,6 +9,8 @@ export function extractOobCodeFromUrl(): string | null {
 export async function confirmPasswordResetCode(
   oobCode: string,
   newPassword: string,
-): Promise<void> {
+): Promise<{ email: string }> {
+  const email = await verifyPasswordResetCode(auth, oobCode);
   await confirmPasswordReset(auth, oobCode, newPassword);
+  return { email };
 }

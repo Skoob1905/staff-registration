@@ -224,6 +224,11 @@ export const invitePortalUser = onCall(async (request) => {
   const emailProvider = new EmailProvider();
   await emailProvider.sendClientRegistrationLink(email);
 
+  await db.collection("users").doc(user.uid).set(
+    { loginStatus: "awaiting_login" },
+    { merge: true },
+  );
+
   return { ok: true, userId: user.uid };
 });
 
@@ -345,6 +350,11 @@ export const assignClientLogin = onCall(async (request) => {
 
   const emailProvider = new EmailProvider();
   await emailProvider.sendClientRegistrationLink(email);
+
+  await db.collection("users").doc(user.uid).set(
+    { loginStatus: "awaiting_login" },
+    { merge: true },
+  );
 
   return { ok: true, userId: user.uid };
 });
@@ -1327,6 +1337,19 @@ export const sendImportEmails = onCall(async (request) => {
   }
 
   const result = await emailProvider.beginBatchEmailSend(emails, callback);
+
+  const db = getFirestore();
+  const failedSet = new Set(result.failures.map((f) => f.email));
+  const loginsBatch = db.batch();
+  for (const email of emails) {
+    if (failedSet.has(email)) continue;
+    loginsBatch.set(
+      db.collection("logins").doc(email.trim().toLowerCase()),
+      { loginStatus: "awaiting_login" },
+      { merge: true },
+    );
+  }
+  await loginsBatch.commit();
 
   return result;
 });
@@ -3599,10 +3622,69 @@ export const deletePayslip = onCall(async (request) => {
         metadata: {
           payslipsSent: existing.filter((id) => id !== payslipId),
         },
-      },
+        },
       { merge: true },
     );
   }
 
   return { ok: true };
+});
+
+export const updateLoginStatus = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const { email, status } = request.data as {
+    email: string;
+    status: string;
+  };
+
+  if (!email || !status) {
+    throw new HttpsError("invalid-argument", "email and status are required.");
+  }
+
+  const validStatuses = ["awaiting_login", "password_set", "logged_in"];
+  if (!validStatuses.includes(status)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `status must be one of: ${validStatuses.join(", ")}`,
+    );
+  }
+
+  const db = getFirestore();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const userDocs = await db
+    .collection("users")
+    .where("email", "==", normalizedEmail)
+    .limit(1)
+    .get();
+
+  if (userDocs.empty) {
+    throw new HttpsError("not-found", "No user found with that email.");
+  }
+
+  const userDoc = userDocs.docs[0];
+  const currentStatus = userDoc.data().loginStatus as string | undefined;
+
+  if (status === "password_set" && currentStatus !== "awaiting_login") {
+    throw new HttpsError(
+      "failed-precondition",
+      "User must be in 'awaiting_login' state to transition to 'password_set'.",
+    );
+  }
+
+  if (status === "logged_in" && currentStatus !== "password_set") {
+    throw new HttpsError(
+      "failed-precondition",
+      "User must be in 'password_set' state to transition to 'logged_in'.",
+    );
+  }
+
+  await userDoc.ref.set(
+    { loginStatus: status },
+    { merge: true },
+  );
+
+  return { ok: true, loginStatus: status };
 });

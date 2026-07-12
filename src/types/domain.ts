@@ -7,6 +7,7 @@ export interface AppUser {
   agencyId: string;
   assignedToId?: string;
   registrationStatus?: "awaiting" | "registered";
+  loginStatus?: "awaiting_login" | "password_set" | "logged_in";
   contractSigned?: boolean;
   contractSignedAt?: Date;
   contractSent?: Date;

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { signOut, type User } from "firebase/auth";
 import type { Agency, AppUser, UserRole } from "../types/domain";
 import { auth } from "../services/firebase";
-import { initAuthPersistence, onAuthUserChanged } from "../services/authService";
+import { initAuthPersistence, onAuthUserChanged, updateLoginStatus } from "../services/authService";
 import { getAgencyProfile, getUserProfile } from "../services/userService";
 import { useToast } from "./ToastProvider";
 import { useAppStore } from "../stores/appStore";
@@ -27,12 +27,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadProfileForUser = async (user: User | null, fromServer = false): Promise<boolean> => {
+  const loadProfileForUser = async (user: User | null, fromServer = false): Promise<{ found: boolean; profile: AppUser | null }> => {
     setFirebaseUser(user);
     if (!user) {
       setAppUser(null);
       setAgency(null);
-      return false;
+      return { found: false, profile: null };
     }
 
     const profile = await getUserProfile(user.uid, { fromServer });
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!profile) {
       setAppUser(null);
       setAgency(null);
-      return false;
+      return { found: false, profile: null };
     }
 
     let agencyProfile = null;
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setAppUser(profile);
     setAgency(agencyProfile);
-    return true;
+    return { found: true, profile };
   };
 
   const refreshProfile = async () => {
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         setLoading(true);
         try {
-          const profileFound = await loadProfileForUser(user);
+          const { found: profileFound, profile } = await loadProfileForUser(user);
           if (user && !profileFound) {
             await signOut(auth);
             toast({
@@ -74,8 +74,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               description: "Profile not found. Contact your administrator.",
               variant: "error",
             });
-          } else if (user) {
+          } else if (user && profile) {
             useAppStore.getState().loadTags().catch(() => {});
+            if (
+              profile.loginStatus === "password_set" &&
+              !sessionStorage.getItem(`loginStatus_logged_in_${user.uid}`)
+            ) {
+              sessionStorage.setItem(`loginStatus_logged_in_${user.uid}`, "1");
+              updateLoginStatus(profile.email, "logged_in").catch(() => {});
+            }
           }
         } catch (err) {
           console.error("Failed to load user profile", err);
