@@ -74,8 +74,7 @@ const payslipColumns: ColumnDef<PayslipFile>[] = [
  * @param type - The upload type.
  * @returns An array of `ColumnDef` objects. Returns an empty array for unknown types.
  */
-export function getColumns(type: "payslip"): ColumnDef<PayslipFile>[];
-export function getColumns(type: string): ColumnDef<Record<string, never>>[] {
+export function getColumns(type: string): ColumnDef<PayslipFile>[] {
   if (type === "payslip") {
     return payslipColumns;
   }
