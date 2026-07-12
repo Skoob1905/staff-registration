@@ -1,8 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { User } from "firebase/auth";
+import { signOut, type User } from "firebase/auth";
 import type { Agency, AppUser, UserRole } from "../types/domain";
+import { auth } from "../services/firebase";
 import { initAuthPersistence, onAuthUserChanged } from "../services/authService";
 import { getAgencyProfile, getUserProfile } from "../services/userService";
 import { useToast } from "./ToastProvider";
@@ -26,23 +27,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadProfileForUser = async (user: User | null, fromServer = false) => {
+  const loadProfileForUser = async (user: User | null, fromServer = false): Promise<boolean> => {
     setFirebaseUser(user);
     if (!user) {
       setAppUser(null);
       setAgency(null);
-      return;
+      return false;
     }
 
     const profile = await getUserProfile(user.uid, { fromServer });
 
+    if (!profile) {
+      setAppUser(null);
+      setAgency(null);
+      return false;
+    }
+
     let agencyProfile = null;
-    if (profile?.agencyId && profile.role !== "client") {
+    if (profile.agencyId && profile.role !== "client") {
       agencyProfile = await getAgencyProfile(profile.agencyId);
     }
 
     setAppUser(profile);
     setAgency(agencyProfile);
+    return true;
   };
 
   const refreshProfile = async () => {
@@ -58,12 +66,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         setLoading(true);
         try {
-          await loadProfileForUser(user);
-          if (user) {
+          const profileFound = await loadProfileForUser(user);
+          if (user && !profileFound) {
+            await signOut(auth);
+            toast({
+              title: "Login failed",
+              description: "Profile not found. Contact your administrator.",
+              variant: "error",
+            });
+          } else if (user) {
             useAppStore.getState().loadTags().catch(() => {});
           }
         } catch (err) {
           console.error("Failed to load user profile", err);
+          if (user) await signOut(auth).catch(() => {});
           toast({
             title: "Login failed",
             description: "Could not load your profile. Check your account or try again later.",

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Button, Input, Label, SecondaryButton } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { loginWithEmail } from "../services/authService";
@@ -7,15 +7,29 @@ import { useToast } from "../context/ToastProvider";
 import { LoadingPage } from "../components/LoadingPage";
 
 export const Login = () => {
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const initialEmail = searchParams.get("email") ?? "";
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const shownRef = useRef(false);
 
   useEffect(() => {
     document.title = "Login";
+  }, []);
+
+  useEffect(() => {
+    if (shownRef.current) return;
+    const state = (location.state as { resetPassword?: string } | null)?.resetPassword;
+    if (state === "success") {
+      shownRef.current = true;
+      toast({ title: "Password set successfully", variant: "success" });
+    } else if (state === "failure") {
+      shownRef.current = true;
+      toast({ title: "Failed to reset password. The link may have expired.", variant: "error" });
+    }
   }, []);
 
   const onSubmit = async (event: React.FormEvent) => {

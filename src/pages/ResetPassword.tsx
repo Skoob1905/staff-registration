@@ -2,14 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, Label } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
-import { useToast } from "../context/ToastProvider";
 import {
   extractOobCodeFromUrl,
   confirmPasswordResetCode,
 } from "../services/emailService";
 
 export const ResetPassword = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,34 +15,34 @@ export const ResetPassword = () => {
 
   const oobCode = extractOobCodeFromUrl();
 
+  const navToLogin = (resetPassword: "success" | "failure") => {
+    navigate("/login", { state: { resetPassword } });
+  };
+
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!password || !confirmPassword) {
-      toast({ title: "Please enter both password fields.", variant: "error" });
+      navToLogin("failure");
       return;
     }
 
     if (password.length < 6) {
-      toast({ title: "Password must be at least 6 characters.", variant: "error" });
+      navToLogin("failure");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({ title: "Passwords do not match.", variant: "error" });
+      navToLogin("failure");
       return;
     }
 
     setLoading(true);
     try {
       await confirmPasswordResetCode(oobCode!, password);
-      toast({ title: "Password set successfully", variant: "success" });
-      setTimeout(() => navigate("/login"), 3000);
+      navToLogin("success");
     } catch {
-      toast({
-        title: "Failed to reset password. The link may have expired.",
-        variant: "error",
-      });
+      navToLogin("failure");
     } finally {
       setLoading(false);
     }
