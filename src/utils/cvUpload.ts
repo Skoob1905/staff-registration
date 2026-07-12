@@ -1,8 +1,7 @@
 import { parseCVFileName } from "./cvFileName";
-import type { CvFile } from "../components/CVUploadModal";
-import type { BulkStaff } from "../types/domain";
+import type { CvFile, BulkStaff } from "../types/domain";
 
-export { type CvFile } from "../components/CVUploadModal";
+export { type CvFile } from "../types/domain";
 
 export const CV_FILE_SIZE_LIMIT = 2 * 1024 * 1024;
 

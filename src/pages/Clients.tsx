@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { FileSignature } from "lucide-react";
-import { AssignAgenciesModal } from "../components/modals/AssignAgencies";
+import { AssignAgenciesModal, DeleteClientModal } from "../components/modals";
 import { ImportHistory } from "../components/ImportHistory";
 import { AccordionItem, DownloadButton } from "../components/ui";
-import { DeleteClientModal } from "../components/modals/DeleteClient";
 import { Pill } from "../components/Pill";
 import { AgencyPill } from "../components/Pills/AgencyPill";
 import { AccordionTitle } from "../components/AccordionTitle";

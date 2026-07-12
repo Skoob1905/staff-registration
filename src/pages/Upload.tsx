@@ -1,19 +1,37 @@
-import { type ElementType, useEffect, useState } from "react";
-import { Building2, Clock, FolderOpen, Receipt, Users } from "lucide-react";
+import { type ElementType, useCallback, useEffect, useState } from "react";
+import {
+  Building2,
+  Clock,
+  FolderOpen,
+  Receipt,
+  ScrollText,
+  Users,
+} from "lucide-react";
 import { AddModal } from "../components/AddModal";
 import { FileDrop } from "../components/FileDrop";
-import { PreviewModal } from "../components/PreviewModal";
+import {
+  MultipleFileUploadModal,
+  PreviewModal,
+  type SummaryItem,
+} from "../components/modals";
 import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
+import { callUploadPayslip } from "../services/payslipService";
+import type { PayslipFile } from "../types/domain";
 import {
   hasWorkerRefColumn,
   hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
+import { readPayslipFile } from "../utils/readPayslipFile";
+import { getColumns } from "../utils/fileUpload/columns";
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const DOCUMENT_UPLOAD_DELAY = Number(import.meta.env.VITE_DOCUMENT_UPLOAD_DELAY ?? 1000);
 
 function parseCsvHeaders(text: string): string[] {
   const firstLine = text.trim().split("\n")[0];
@@ -93,6 +111,16 @@ const SUPER_TYPES: UploadType[] = [
     acceptedFiles: ".pdf,.docx",
     fileLimit: "Max 2MB",
   },
+  {
+    id: "payslips",
+    icon: ScrollText,
+    title: "Payslips",
+    description: "Upload payslip(s) for staff",
+    color: "#E65100",
+    acceptedFiles: ".pdf",
+    fileLimit: "Max 2MB each",
+    multiple: true,
+  },
 ];
 
 const ADMIN_TYPES: UploadType[] = [];
@@ -131,6 +159,66 @@ export const Upload = () => {
     "invoice" | "contract" | "payslip" | "document"
   >("invoice");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const [payslipFiles, setPayslipFiles] = useState<PayslipFile[]>([]);
+  const [showPayslipModal, setShowPayslipModal] = useState(false);
+
+  const handlePayslips = useCallback(
+    async (files: File[]) => {
+      if (files.length === 1) {
+        const file = files[0];
+        if (file.size > MAX_FILE_SIZE) {
+          toast({
+            title: "File too large",
+            description: "Payslip must be 2MB or less.",
+            variant: "error",
+          });
+          return;
+        }
+        setPreviewFile(file);
+        setPreviewMode("payslip");
+        setShowPreviewModal(true);
+        return;
+      }
+
+      const results = await Promise.all(files.map((f) => readPayslipFile(f)));
+      setPayslipFiles(results);
+      setShowPayslipModal(true);
+    },
+    [toast],
+  );
+
+  const handlePayslipUpload = () => {
+    const eligible = payslipFiles.filter(
+      (f) => !f.error && f.status !== "missing" && f.base64,
+    );
+    if (eligible.length === 0) return;
+
+    toast({
+      title: "Payslip upload started",
+      description: `${eligible.length} payslip(s) are being uploaded in the background.`,
+      variant: "info",
+    });
+
+    setShowPayslipModal(false);
+    setPayslipFiles([]);
+
+    void (async () => {
+      for (const f of eligible) {
+        try {
+          await callUploadPayslip(
+            f.base64,
+            f.file.name,
+            f.workerRef.toUpperCase(),
+            f.agencyId ?? "",
+          );
+        } catch {
+          /* continue on individual failures */
+        }
+        await delay(DOCUMENT_UPLOAD_DELAY);
+      }
+    })();
+  };
 
   const handleFileSelect = async (file: File, typeId: string) => {
     if (typeId === "staff" || typeId === "agencies" || typeId === "clients") {
@@ -232,18 +320,6 @@ export const Upload = () => {
       setPreviewFile(file);
       setPreviewMode("invoice");
       setShowPreviewModal(true);
-    } else if (typeId === "payslips") {
-      if (file.size > MAX_FILE_SIZE) {
-        toast({
-          title: "File too large",
-          description: "Payslip must be 2MB or less.",
-          variant: "error",
-        });
-        return;
-      }
-      setPreviewFile(file);
-      setPreviewMode("payslip");
-      setShowPreviewModal(true);
     } else if (typeId === "documents") {
       if (file.size > MAX_FILE_SIZE) {
         toast({
@@ -258,6 +334,27 @@ export const Upload = () => {
       setShowPreviewModal(true);
     }
   };
+
+  const matchedCount = payslipFiles.filter(
+    (f) => f.status === "matched" && !f.error,
+  ).length;
+  const wrongInfoCount = payslipFiles.filter(
+    (f) => f.status === "wrong info" && !f.error,
+  ).length;
+  const missingCount = payslipFiles.filter(
+    (f) => f.status === "missing" && !f.error,
+  ).length;
+  const uploadableCount = matchedCount + wrongInfoCount;
+
+  const payslipSummaryItems: SummaryItem[] = [
+    { label: "Matched", count: matchedCount, className: "text-green-600" },
+    {
+      label: "Wrong Info",
+      count: wrongInfoCount,
+      className: "text-orange-500",
+    },
+    { label: "Missing", count: missingCount, className: "text-red-600" },
+  ];
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -284,7 +381,11 @@ export const Upload = () => {
                     : (file) => handleFileSelect(file, type.id)
                 }
                 onFilesSelect={
-                  type.multiple ? (_files: File[]) => undefined : undefined
+                  type.id === "payslips"
+                    ? handlePayslips
+                    : type.multiple
+                      ? (_files: File[]) => undefined
+                      : undefined
                 }
               />
             </div>
@@ -349,6 +450,20 @@ export const Upload = () => {
           setShowPreviewModal(false);
           setPreviewFile(null);
         }}
+      />
+
+      <MultipleFileUploadModal
+        open={showPayslipModal}
+        onOpenChange={setShowPayslipModal}
+        title="Upload Payslips"
+        itemLabel="Payslip"
+        files={payslipFiles}
+        columns={getColumns("payslip")}
+        summaryItems={payslipSummaryItems}
+        uploadableCount={uploadableCount}
+        getFileName={(f) => f.file.name}
+        isError={(f) => !!(f.error || f.status === "missing")}
+        onUpload={handlePayslipUpload}
       />
     </div>
   );

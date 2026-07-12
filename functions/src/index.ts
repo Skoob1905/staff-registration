@@ -44,9 +44,15 @@ import { EmailProvider } from "./services/EmailService";
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
 
+// Payslip operations
+export { uploadPayslip } from "./payslips";
+
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
+const DOCUMENT_UPLOAD_DELAY = defineString("DOCUMENT_UPLOAD_DELAY");
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
 
@@ -1617,6 +1623,7 @@ export const bulkUploadStaff = onCall(async (request) => {
 
     if (batchCount >= 400) {
       await batch.commit();
+      await delay(Number(DOCUMENT_UPLOAD_DELAY.value()));
       batch = db.batch();
       batchCount = 0;
     }
@@ -3456,94 +3463,6 @@ export const getMaintenanceWindow = onCall(async () => {
     start: data.start?.toMillis() ?? null,
     end: data.end?.toMillis() ?? null,
   };
-});
-
-/**
- * Uploads a payslip for a staff member, stores it in Cloud Storage,
- * updates the staff Firestore document with metadata, and sends a
- * payslip-available notification email.
- *
- * @param request.data.fileBase64 - Base64-encoded PDF content.
- * @param request.data.fileName   - Original filename.
- * @param request.data.userId     - Firestore document ID of the staff record.
- * @param request.data.agencyId   - Agency ID for access control.
- * @returns `{ ok: true, payslipId: string, url: string }` on success.
- * @throws {HttpsError} "unauthenticated" if not signed in.
- * @throws {HttpsError} "invalid-argument" if required fields are missing.
- */
-export const uploadPayslip = onCall(async (request) => {
-  const callerUid = request.auth?.uid;
-  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
-
-  const { fileBase64, fileName, userId, agencyId } = request.data;
-  if (!fileBase64 || !fileName || !userId) {
-    throw new HttpsError(
-      "invalid-argument",
-      "fileBase64, fileName, and userId are required.",
-    );
-  }
-
-  const db = getFirestore();
-  const callerSnap = await db.collection("users").doc(callerUid).get();
-  if (!callerSnap.exists) {
-    throw new HttpsError("permission-denied", "Caller profile missing.");
-  }
-  const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Super only.");
-  }
-
-  const bucket = getStorage().bucket();
-  const filePath = `payslips/${userId}/${fileName}`;
-  const fileRef = bucket.file(filePath);
-
-  const token =
-    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  const buffer = Buffer.from(fileBase64, "base64");
-
-  await fileRef.save(buffer, {
-    metadata: {
-      contentType: "application/pdf",
-      metadata: { firebaseStorageDownloadTokens: token },
-    },
-  });
-
-  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
-
-  const sentBy = caller.email ?? "Unknown";
-
-  const payslipRef = await db.collection("payslips").add({
-    userId,
-    agencyId: agencyId ?? "",
-    fileName,
-    fileUrl,
-    sentBy,
-    timestamp: FieldValue.serverTimestamp(),
-    hasDownloaded: false,
-  });
-
-  const staffRef = db.collection("staff").doc(userId);
-  const staffSnap = await staffRef.get();
-  const staffData = staffSnap.data() as {
-    metadata?: { payslipsSent?: string[] };
-  };
-  const existing = staffData?.metadata?.payslipsSent ?? [];
-  await staffRef.set(
-    {
-      metadata: {
-        payslipsSent: [payslipRef.id, ...existing],
-      },
-    },
-    { merge: true },
-  );
-
-  const staffEmail = (staffSnap.data() as { email?: string })?.email;
-  if (staffEmail) {
-    const emailProvider = new EmailProvider();
-    await emailProvider.sendPayslipEmail(staffEmail);
-  }
-
-  return { ok: true, payslipId: payslipRef.id, url: fileUrl };
 });
 
 export const deletePayslip = onCall(async (request) => {
