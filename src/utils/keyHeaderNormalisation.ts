@@ -52,6 +52,8 @@ const WORKER_REF_NORMALIZED_VARIANTS = new Set([
   "reference",
   "workersref",
   "workerref",
+  "worksno",
+  "worksnumber",
 ]);
 
 export function hasWorkerRefColumn(headers: string[]): boolean {

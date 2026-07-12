@@ -6,6 +6,8 @@ export const STAFF_REF_NORMALIZED_VARIANTS = new Set([
   "reference",
   "workersref",
   "workerref",
+  "worksno",
+  "worksnumber",
 ]);
 
 export const AGENCY_REF_NORMALIZED_VARIANTS = new Set([
