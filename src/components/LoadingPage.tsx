@@ -10,7 +10,7 @@ export const LoadingPage = () => {
 
   return (
     <div className="fixed inset-0 z-10 flex flex-col items-center justify-center">
-      <div className="relative flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center gap-6">
         <img
           src={config.loading}
           alt="Loading"
