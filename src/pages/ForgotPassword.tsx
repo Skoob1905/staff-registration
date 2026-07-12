@@ -43,7 +43,18 @@ export const ForgotPassword = () => {
   return (
     <NonAuthForm
       title="Forgot Password"
+      subtitle="Enter your email and we'll send you a reset link"
       onSubmit={onSubmit}
+      footer={
+        <div className="flex justify-end">
+          <a
+            href={`/login?email=${encodeURIComponent(email)}`}
+            className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Back to login
+          </a>
+        </div>
+      }
       actionButtons={[
         <SecondaryButton
           key="cancel"

@@ -52,7 +52,7 @@ export const ResetPassword = () => {
 
   if (!oobCode) {
     return (
-      <NonAuthForm title="Reset Password">
+      <NonAuthForm title="Reset Password" subtitle="Choose a new password for your account">
         <p className="text-sm text-center text-zinc-500">
           Invalid or expired reset link.
         </p>
@@ -63,6 +63,7 @@ export const ResetPassword = () => {
   return (
     <NonAuthForm
       title="Reset Password"
+      subtitle="Choose a new password for your account"
       onSubmit={onSubmit}
       actionButtons={[
         <Button

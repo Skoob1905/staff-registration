@@ -74,7 +74,15 @@ export const Login = () => {
   return (
     <NonAuthForm
       title="Login"
+      subtitle="Enter your details below to sign in"
       onSubmit={onSubmit}
+      footer={
+        <div className="flex justify-end">
+          <a href="https://mds-ce.com" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+            Back to mds-ce.com
+          </a>
+        </div>
+      }
       actionButtons={[
         <SecondaryButton
           key="forgot"
