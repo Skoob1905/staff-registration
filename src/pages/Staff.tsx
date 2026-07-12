@@ -42,6 +42,12 @@ export const Staff = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
 
+  const STATUS_COLOR: Record<string, string> = {
+    awaiting_login: "bg-amber-400",
+    password_set: "bg-blue-400",
+    logged_in: "bg-emerald-400",
+  };
+
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
 
@@ -291,6 +297,12 @@ export const Staff = () => {
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
               <div className="flex min-w-0 items-center gap-2">
+                {member.loginStatus && (
+                  <span
+                    className={`inline-block w-px h-3 shrink-0 ${STATUS_COLOR[member.loginStatus] ?? "bg-gray-300"}`}
+                    title={member.loginStatus.replace(/_/g, " ")}
+                  />
+                )}
                 <AccordionTitle>{getStaffName(member)}</AccordionTitle>
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
                   <Pill

@@ -152,6 +152,7 @@ export interface BulkStaff {
   assignedBy: string;
   assignedAt?: Date;
   sourceFileName: string;
+  loginStatus?: string;
   typeIds?: string[];
   tags?: string[];
   metadata?: {

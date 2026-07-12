@@ -230,10 +230,18 @@ export const invitePortalUser = onCall(async (request) => {
   const emailProvider = new EmailProvider();
   await emailProvider.sendClientRegistrationLink(email);
 
-  await db.collection("users").doc(user.uid).set(
-    { loginStatus: "awaiting_login" },
-    { merge: true },
-  );
+  await db
+    .collection("users")
+    .doc(user.uid)
+    .set({ loginStatus: "awaiting_login" }, { merge: true });
+
+  const staffSnaps = await db
+    .collection("staff")
+    .where("email", "==", email)
+    .get();
+  for (const d of staffSnaps.docs) {
+    await d.ref.set({ loginStatus: "awaiting_login" }, { merge: true });
+  }
 
   return { ok: true, userId: user.uid };
 });
@@ -357,10 +365,10 @@ export const assignClientLogin = onCall(async (request) => {
   const emailProvider = new EmailProvider();
   await emailProvider.sendClientRegistrationLink(email);
 
-  await db.collection("users").doc(user.uid).set(
-    { loginStatus: "awaiting_login" },
-    { merge: true },
-  );
+  await db
+    .collection("users")
+    .doc(user.uid)
+    .set({ loginStatus: "awaiting_login" }, { merge: true });
 
   return { ok: true, userId: user.uid };
 });
@@ -1328,11 +1336,21 @@ export const sendImportEmails = onCall(async (request) => {
   }
 
   const emailProvider = new EmailProvider();
+  const db = getFirestore();
 
   let callback: (params: { email: string }) => Promise<void>;
   switch (type) {
     case "worker":
-      callback = ({ email }) => emailProvider.sendWorkerRegistrationLink(email);
+      callback = async ({ email }) => {
+        await emailProvider.sendWorkerRegistrationLink(email);
+        const staffSnaps = await db
+          .collection("staff")
+          .where("email", "==", email)
+          .get();
+        for (const d of staffSnaps.docs) {
+          await d.ref.set({ loginStatus: "awaiting_login" }, { merge: true });
+        }
+      };
       break;
     case "agency":
       callback = ({ email }) => emailProvider.sendAgencyRegistrationLink(email);
@@ -1343,19 +1361,6 @@ export const sendImportEmails = onCall(async (request) => {
   }
 
   const result = await emailProvider.beginBatchEmailSend(emails, callback);
-
-  const db = getFirestore();
-  const failedSet = new Set(result.failures.map((f) => f.email));
-  const loginsBatch = db.batch();
-  for (const email of emails) {
-    if (failedSet.has(email)) continue;
-    loginsBatch.set(
-      db.collection("logins").doc(email.trim().toLowerCase()),
-      { loginStatus: "awaiting_login" },
-      { merge: true },
-    );
-  }
-  await loginsBatch.commit();
 
   return result;
 });
@@ -3541,7 +3546,7 @@ export const deletePayslip = onCall(async (request) => {
         metadata: {
           payslipsSent: existing.filter((id) => id !== payslipId),
         },
-        },
+      },
       { merge: true },
     );
   }
@@ -3600,10 +3605,20 @@ export const updateLoginStatus = onCall(async (request) => {
     );
   }
 
-  await userDoc.ref.set(
-    { loginStatus: status },
-    { merge: true },
-  );
+  await userDoc.ref.set({ loginStatus: status }, { merge: true });
+
+  await db
+    .collection("staff")
+    .where("email", "==", normalizedEmail)
+    .get()
+    .then(async (snaps) => {
+      for (const d of snaps.docs) {
+        await d.ref.set({ loginStatus: status }, { merge: true });
+      }
+    })
+    .catch((err) =>
+      console.error("Failed to sync loginStatus to staff docs:", err),
+    );
 
   return { ok: true, loginStatus: status };
 });
