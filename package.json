@@ -12,7 +12,9 @@
     "test": "vitest run",
     "prepare": "husky",
     "deploy:functions:dev": "cd functions && firebase deploy --project development --only functions",
-    "deploy:functions:prod": "cd functions && firebase deploy --project production --only functions"
+    "deploy:functions:prod": "cd functions && firebase deploy --project production --only functions",
+    "deploy:dev": "npm run build:dev && npx firebase deploy --project development --only hosting",
+    "deploy:prod": "npm run build && npx firebase deploy --project production --only hosting"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
