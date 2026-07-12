@@ -302,15 +302,6 @@ export const AddModal = ({
   }, [clients, selectedClientId]);
 
   useEffect(() => {
-    if (loading) {
-      loadingTimerRef.current = setTimeout(() => {
-        toast({
-          title: "Still uploading...",
-          variant: "info",
-          replaceToast: true,
-        });
-      }, 5000);
-    }
     return () => {
       if (loadingTimerRef.current) {
         clearTimeout(loadingTimerRef.current);
