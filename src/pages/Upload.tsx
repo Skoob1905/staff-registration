@@ -194,12 +194,6 @@ export const Upload = () => {
     );
     if (eligible.length === 0) return;
 
-    toast({
-      title: "Payslip upload started",
-      description: `${eligible.length} payslip(s) are being uploaded in the background.`,
-      variant: "info",
-    });
-
     setShowPayslipModal(false);
     setPayslipFiles([]);
 

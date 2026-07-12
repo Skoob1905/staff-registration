@@ -304,9 +304,9 @@ export const Staff = () => {
             title={
               <div className="flex min-w-0 items-center gap-2">
                 <span
-                  className={`inline-block w-[3px] h-3 sm:w-1 sm:h-4 shrink-0 ${getStatusColor(member.loginStatus)}`}
+                  className={`inline-block w-[3px] h-3 sm:w-1 sm:h-4 shrink-0 ${getStatusColor(member.metadata?.loginStatus)}`}
                   title={
-                    member.loginStatus?.replace(/_/g, " ") ?? "No email sent"
+                    member.metadata?.loginStatus?.replace(/_/g, " ") ?? "No email sent"
                   }
                 />
                 <AccordionTitle>{getStaffName(member)}</AccordionTitle>

@@ -240,7 +240,7 @@ export const invitePortalUser = onCall(async (request) => {
     .where("email", "==", email)
     .get();
   for (const d of staffSnaps.docs) {
-    await d.ref.set({ loginStatus: "awaiting_login" }, { merge: true });
+    await d.ref.set({ metadata: { loginStatus: "awaiting_login" } }, { merge: true });
   }
 
   return { ok: true, userId: user.uid };
@@ -1351,7 +1351,7 @@ export const sendImportEmails = onCall(async (request) => {
             .get()
             .then((snaps) => {
               for (const d of snaps.docs) {
-                void d.ref.set({ loginStatus: "failed" }, { merge: true });
+                void d.ref.set({ metadata: { loginStatus: "failed" } }, { merge: true });
               }
             })
             .catch(() => {});
@@ -1362,7 +1362,7 @@ export const sendImportEmails = onCall(async (request) => {
           .where("email", "==", email)
           .get();
         for (const d of staffSnaps.docs) {
-          await d.ref.set({ loginStatus: "awaiting_login" }, { merge: true });
+          await d.ref.set({ metadata: { loginStatus: "awaiting_login" } }, { merge: true });
         }
       };
       break;
@@ -3627,7 +3627,7 @@ export const updateLoginStatus = onCall(async (request) => {
     .get()
     .then(async (snaps) => {
       for (const d of snaps.docs) {
-        await d.ref.set({ loginStatus: status }, { merge: true });
+        await d.ref.set({ metadata: { loginStatus: status } }, { merge: true });
       }
     })
     .catch((err) =>

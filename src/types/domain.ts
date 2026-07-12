@@ -152,7 +152,6 @@ export interface BulkStaff {
   assignedBy: string;
   assignedAt?: Date;
   sourceFileName: string;
-  loginStatus?: string;
   typeIds?: string[];
   tags?: string[];
   metadata?: {
@@ -164,6 +163,7 @@ export interface BulkStaff {
     uploadedInFile?: string;
     uploadedBy?: string;
     importedAt?: Date;
+    loginStatus?: string;
     cv?: StaffCvEntry[];
   };
 }
