@@ -895,7 +895,11 @@ export const importAgencyCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmedEmails = await createAuthUsers(emails);
+  const confirmed = await createAuthUsers(emails, {
+    role: "client",
+    agencyId: caller.agencyId ?? "",
+    invitedByUid: callerUid,
+  });
 
   return {
     ok: true,
@@ -903,7 +907,7 @@ export const importAgencyCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails: confirmedEmails,
+    emails: confirmed.map((c) => c.email),
   };
 });
 
@@ -1045,7 +1049,11 @@ export const importClientCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmedEmails = await createAuthUsers(emails);
+  const confirmed = await createAuthUsers(emails, {
+    role: "admin",
+    agencyId: caller.agencyId ?? "",
+    invitedByUid: callerUid,
+  });
 
   return {
     ok: true,
@@ -1053,7 +1061,7 @@ export const importClientCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails: confirmedEmails,
+    emails: confirmed.map((c) => c.email),
   };
 });
 
@@ -1260,7 +1268,11 @@ export const importStaffCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmedEmails = await createAuthUsers(emails);
+  const confirmed = await createAuthUsers(emails, {
+    role: "worker",
+    agencyId: caller.agencyId ?? "",
+    invitedByUid: callerUid,
+  });
 
   return {
     ok: true,
@@ -1268,7 +1280,7 @@ export const importStaffCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
-    emails: confirmedEmails,
+    emails: confirmed.map((c) => c.email),
   };
 });
 
