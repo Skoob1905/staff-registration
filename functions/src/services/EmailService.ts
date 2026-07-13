@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { defineString } from "firebase-functions/params";
+import { defineString, defineBoolean } from "firebase-functions/params";
 import fs from "node:fs";
 import path from "node:path";
 import { getAuth } from "firebase-admin/auth";
@@ -10,6 +10,7 @@ const SMTP_USER = defineString("SMTP_USER");
 const SMTP_PASS = defineString("SMTP_PASS");
 const SMTP_FROM = defineString("SMTP_FROM");
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
+const EMAIL_ENABLED = defineBoolean("EMAIL_ENABLED", { default: true });
 
 const TEMPLATES_DIR = path.resolve(__dirname, "../../templates");
 
@@ -99,6 +100,9 @@ export class EmailProvider {
     subject: string;
     htmlBody: string;
   }): Promise<void> {
+    if (!EMAIL_ENABLED.value()) {
+      return;
+    }
     await this.transporter.sendMail({
       from: `MDS Payroll <${SMTP_FROM.value()}>`,
       to: email,
@@ -167,7 +171,10 @@ export class EmailProvider {
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
       .replace(/\{\{link\}\}/g, customLink)
-      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
+      .replace(
+        /\{\{logoUrl\}\}/g,
+        `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
+      );
     await this.sendEmail({
       email,
       subject: "Welcome to MDS",
@@ -194,7 +201,10 @@ export class EmailProvider {
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
       .replace(/\{\{link\}\}/g, customLink)
-      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
+      .replace(
+        /\{\{logoUrl\}\}/g,
+        `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
+      );
     await this.sendEmail({
       email,
       subject: "Welcome to MDS",
@@ -221,7 +231,10 @@ export class EmailProvider {
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
       .replace(/\{\{link\}\}/g, customLink)
-      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
+      .replace(
+        /\{\{logoUrl\}\}/g,
+        `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
+      );
     await this.sendEmail({
       email,
       subject: "Welcome to MDS",
@@ -252,7 +265,10 @@ export class EmailProvider {
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
       .replace(/\{\{link\}\}/g, customLink)
-      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
+      .replace(
+        /\{\{logoUrl\}\}/g,
+        `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
+      );
     await this.sendEmail({ email, subject, htmlBody });
   }
 
@@ -275,7 +291,10 @@ export class EmailProvider {
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
       .replace(/\{\{link\}\}/g, portalLink)
-      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
+      .replace(
+        /\{\{logoUrl\}\}/g,
+        `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
+      );
     await this.sendEmail({ email, subject, htmlBody });
   }
 
@@ -298,7 +317,10 @@ export class EmailProvider {
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
       .replace(/\{\{link\}\}/g, portalLink)
-      .replace(/\{\{logoUrl\}\}/g, `${RESET_CONTINUE_URL.value()}/mds/logo.png`);
+      .replace(
+        /\{\{logoUrl\}\}/g,
+        `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
+      );
     await this.sendEmail({ email, subject, htmlBody });
   }
 }
