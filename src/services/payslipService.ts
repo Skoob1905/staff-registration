@@ -48,13 +48,11 @@ export const getPayslipsForUser = async (email: string): Promise<Payslip[]> => {
   const payslipIds = data?.metadata?.payslipsSent ?? [];
   if (!payslipIds.length) return [];
 
-  const payslipDocs = await Promise.all(
-    payslipIds.map((id) => getPayslip(id)),
-  );
+  const payslipDocs = await Promise.all(payslipIds.map((id) => getPayslip(id)));
 
   return payslipDocs
     .filter((d): d is Record<string, unknown> => d !== null)
-    .map((d) => ({ id: d.id as string, ...d } as Payslip))
+    .map((d) => ({ id: d.id as string, ...d }) as Payslip)
     .sort((a, b) => {
       const toMs = (ts: unknown) =>
         (ts as { toDate: () => Date } | null)?.toDate?.()?.getTime() ?? 0;

@@ -31,7 +31,9 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
-const DOCUMENT_UPLOAD_DELAY = Number(import.meta.env.VITE_DOCUMENT_UPLOAD_DELAY ?? 1000);
+const DOCUMENT_UPLOAD_DELAY = Number(
+  import.meta.env.VITE_DOCUMENT_UPLOAD_DELAY ?? 36000,
+);
 
 function parseCsvHeaders(text: string): string[] {
   const firstLine = text.trim().split("\n")[0];

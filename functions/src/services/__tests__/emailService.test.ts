@@ -14,13 +14,17 @@ const { mockFetch } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
 }));
 
-const { mockGetClient } = vi.hoisted(() => ({
-  mockGetClient: vi.fn(() =>
-    Promise.resolve({
-      getAccessToken: () => Promise.resolve({ token: "mock-access-token" }),
-    }),
-  ),
-}));
+const { mockGetAuth, mockGeneratePasswordResetLink } = vi.hoisted(() => {
+  const fn = vi.fn(() =>
+    Promise.resolve("https://mock.link?oobCode=abc123&apiKey=my-api-key"),
+  );
+  return {
+    mockGetAuth: vi.fn(() => ({
+      generatePasswordResetLink: fn,
+    })),
+    mockGeneratePasswordResetLink: fn,
+  };
+});
 
 const { mockReadFileSync } = vi.hoisted(() => ({
   mockReadFileSync: vi.fn(() => '<a href="{{link}}">Click here</a>'),
@@ -36,14 +40,13 @@ vi.mock("firebase-functions/params", () => ({
   defineString: vi.fn(() => ({
     value: vi.fn(() => "mock-continue-url"),
   })),
+  defineBoolean: vi.fn(() => ({
+    value: vi.fn(() => true),
+  })),
 }));
 
-vi.mock("google-auth-library", () => ({
-  GoogleAuth: vi.fn(function () {
-    return {
-      getClient: mockGetClient,
-    };
-  }),
+vi.mock("firebase-admin/auth", () => ({
+  getAuth: mockGetAuth,
 }));
 
 vi.mock("node:fs", () => ({
@@ -61,17 +64,9 @@ describe("EmailProvider", () => {
     vi.clearAllMocks();
     mockReadFileSync.mockReturnValue('<a href="{{link}}">Click here</a>');
     mockSendMail.mockResolvedValue(true);
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          oobLink:
-            "https://mock.link?oobCode=abc123&apiKey=my-api-key",
-        }),
-    });
-    mockGetClient.mockResolvedValue({
-      getAccessToken: () => Promise.resolve({ token: "mock-access-token" }),
-    });
+    mockGeneratePasswordResetLink.mockResolvedValue(
+      "https://mock.link?oobCode=abc123&apiKey=my-api-key",
+    );
     globalThis.fetch = mockFetch;
     emailProvider = new EmailProvider();
   });
@@ -90,56 +85,29 @@ describe("EmailProvider", () => {
   });
 
   describe("generatePasswordResetLink", () => {
-    it("calls Identity Toolkit REST API and returns the oobLink", async () => {
+    it("calls getAuth().generatePasswordResetLink and returns the link", async () => {
       const result = await emailProvider.generatePasswordResetLink(
         "user@example.com",
       );
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer mock-access-token",
-          },
-          body: JSON.stringify({
-            requestType: "PASSWORD_RESET",
-            email: "user@example.com",
-            returnOobLink: true,
-            continueUrl: "mock-continue-url",
-          }),
-        },
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledWith(
+        "user@example.com",
+        { url: "mock-continue-url", handleCodeInApp: true },
       );
       expect(result).toBe(
         "https://mock.link?oobCode=abc123&apiKey=my-api-key",
       );
     });
 
-    it("throws when the API returns an error", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: { message: "EMAIL_NOT_FOUND" },
-          }),
-      });
+    it("throws when getAuth().generatePasswordResetLink rejects", async () => {
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("EMAIL_NOT_FOUND"),
+      );
 
       await expect(
         emailProvider.generatePasswordResetLink("bad@example.com"),
       ).rejects.toThrow("EMAIL_NOT_FOUND");
-    });
-
-    it("throws when the response has no oobLink", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({}),
-      });
-
-      await expect(
-        emailProvider.generatePasswordResetLink("bad@example.com"),
-      ).rejects.toThrow("Unknown error from Identity Toolkit");
     });
   });
 
@@ -149,20 +117,16 @@ describe("EmailProvider", () => {
         "user@example.com",
       );
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
       expect(result).toBe(
         "mock-continue-url/reset-password?mode=resetPassword&oobCode=abc123&apiKey=my-api-key",
       );
     });
 
     it("handles Firebase links with no oobCode gracefully", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            oobLink: "https://mock.link?apiKey=fallback-key",
-          }),
-      });
+      mockGeneratePasswordResetLink.mockResolvedValueOnce(
+        "https://mock.link?apiKey=fallback-key",
+      );
 
       const result = await emailProvider.generatePortalResetLink(
         "user@example.com",
@@ -174,13 +138,9 @@ describe("EmailProvider", () => {
     });
 
     it("propagates errors from generatePasswordResetLink", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: { message: "OPERATION_NOT_ALLOWED" },
-          }),
-      });
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("OPERATION_NOT_ALLOWED"),
+      );
 
       await expect(
         emailProvider.generatePortalResetLink("missing@example.com"),
@@ -371,7 +331,7 @@ describe("EmailProvider", () => {
     it("generates a portal reset link, reads registration.html, replaces {{link}}, and sends the email", async () => {
       await emailProvider.sendWorkerRegistrationLink("worker@example.com");
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
         from: "MDS Payroll <mock-continue-url>",
@@ -382,13 +342,9 @@ describe("EmailProvider", () => {
     });
 
     it("throws when the password reset link generation fails", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: { message: "auth/internal-error" },
-          }),
-      });
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
 
       await expect(
         emailProvider.sendWorkerRegistrationLink("worker@example.com"),
@@ -409,7 +365,7 @@ describe("EmailProvider", () => {
     it("generates a portal reset link, reads agencyRegistration.html, replaces {{link}}, and sends the email", async () => {
       await emailProvider.sendAgencyRegistrationLink("agency@example.com");
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
         from: "MDS Payroll <mock-continue-url>",
@@ -420,13 +376,9 @@ describe("EmailProvider", () => {
     });
 
     it("throws when the password reset link generation fails", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: { message: "auth/internal-error" },
-          }),
-      });
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
 
       await expect(
         emailProvider.sendAgencyRegistrationLink("agency@example.com"),
@@ -447,7 +399,7 @@ describe("EmailProvider", () => {
     it("generates a portal reset link, reads clientRegistration.html, replaces {{link}}, and sends the email", async () => {
       await emailProvider.sendClientRegistrationLink("client@example.com");
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
         from: "MDS Payroll <mock-continue-url>",
@@ -458,13 +410,9 @@ describe("EmailProvider", () => {
     });
 
     it("throws when the password reset link generation fails", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: { message: "auth/internal-error" },
-          }),
-      });
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
 
       await expect(
         emailProvider.sendClientRegistrationLink("client@example.com"),
@@ -485,7 +433,7 @@ describe("EmailProvider", () => {
     it("generates a portal reset link, reads the template, replaces {{link}}, and sends the email", async () => {
       await emailProvider.sendResetPassword("user@example.com");
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
         from: "MDS Payroll <mock-continue-url>",
@@ -496,13 +444,9 @@ describe("EmailProvider", () => {
     });
 
     it("throws when the password reset link generation fails", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: { message: "auth/internal-error" },
-          }),
-      });
+      mockGeneratePasswordResetLink.mockRejectedValueOnce(
+        new Error("auth/internal-error"),
+      );
 
       await expect(
         emailProvider.sendResetPassword("user@example.com"),
@@ -546,7 +490,7 @@ describe("EmailProvider", () => {
     it("does not generate a Firebase password reset link", async () => {
       await emailProvider.sendDocumentEmail("staff@example.com");
 
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockGeneratePasswordResetLink).not.toHaveBeenCalled();
     });
 
     it("throws when the SMTP send fails", async () => {
@@ -585,7 +529,7 @@ describe("EmailProvider", () => {
     it("does not generate a Firebase password reset link", async () => {
       await emailProvider.sendPayslipEmail("staff@example.com");
 
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockGeneratePasswordResetLink).not.toHaveBeenCalled();
     });
 
     it("throws when the SMTP send fails", async () => {
