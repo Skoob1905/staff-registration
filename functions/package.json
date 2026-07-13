@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "scripts": {
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.js .",
+    "lint": "eslint .",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -24,14 +24,13 @@
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/nodemailer": "^8.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.12.0",
-    "@typescript-eslint/parser": "^5.12.0",
-    "eslint": "^8.9.0",
-    "eslint-config-google": "^0.14.0",
-    "eslint-plugin-import": "^2.25.4",
+    "eslint": "^10.3.0",
     "firebase-functions-test": "^3.1.0",
+    "globals": "^17.0.0",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.59.0",
     "vitest": "^4.1.5"
   },
   "private": true
