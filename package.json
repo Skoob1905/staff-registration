@@ -16,7 +16,8 @@
     "deploy:hosting:dev": "npm run build:dev && npx firebase deploy --project development --only hosting",
     "deploy:hosting:prod": "npm run build && npx firebase deploy --project production --only hosting",
     "deploy:dev": "npm run build:dev && npx firebase deploy --project development",
-    "deploy:prod": "npm run build && npx firebase deploy --project production"
+    "deploy:prod": "npm run build && npx firebase deploy --project production",
+    "update-secrets": "gh secret set ENV_FILE_DEV --repo Skoob1905/staff-registration < .env.development && gh secret set ENV_FILE_PROD --repo Skoob1905/staff-registration < .env.production && gh secret set FUNCTIONS_ENV_DEV --repo Skoob1905/staff-registration < functions/.env.mdsce-dev && gh secret set FUNCTIONS_ENV_PROD --repo Skoob1905/staff-registration < functions/.env.mdsce-prod"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
