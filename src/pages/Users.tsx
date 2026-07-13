@@ -35,6 +35,12 @@ import {
   type FilterKeyMap,
 } from "../types/domain";
 
+const STATUS_COLOR: Record<string, string> = {
+  awaiting_login: "bg-amber-400",
+  password_set: "bg-blue-400",
+  logged_in: "bg-emerald-400",
+};
+
 export const Users = () => {
   useEffect(() => {
     document.title = "Users";
@@ -315,6 +321,7 @@ export const Users = () => {
             agencyId?: string;
             invitedByUid?: string;
             invitedAt?: unknown;
+            loginStatus?: string;
           };
           const companyId = userRecord.assignedTo || userRecord.agencyId;
           const company = companyId
@@ -333,9 +340,17 @@ export const Users = () => {
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
-                <AccordionTitle className="pr-4">
-                  {userRecord.email || userRecord.id}
-                </AccordionTitle>
+                <div className="flex min-w-0 items-center gap-2">
+                  {userRecord.loginStatus && (
+                    <span
+                      className={`inline-block w-1 h-4 rounded-full shrink-0 ${STATUS_COLOR[userRecord.loginStatus] ?? "bg-gray-300"}`}
+                      title={userRecord.loginStatus.replace(/_/g, " ")}
+                    />
+                  )}
+                  <AccordionTitle className="pr-4">
+                    {userRecord.email || userRecord.id}
+                  </AccordionTitle>
+                </div>
               }
               actions={
                 <span className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)] whitespace-nowrap">

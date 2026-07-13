@@ -26,9 +26,17 @@ export const sendForgotPassword = async (email: string): Promise<void> => {
   const fn = httpsCallable(functions, "sendPasswordReset");
   await fn({
     email,
-    continueUrl: window.location.origin + "/login",
+    continueUrl: window.location.origin + "/reset-password",
     companyName: config.name,
   });
+};
+
+export const updateLoginStatus = async (
+  email: string,
+  status: "awaiting_login" | "password_set" | "logged_in",
+): Promise<void> => {
+  const fn = httpsCallable(functions, "updateLoginStatus");
+  await fn({ email, status });
 };
 
 export const onAuthUserChanged = (callback: (user: User | null) => void): (() => void) => {

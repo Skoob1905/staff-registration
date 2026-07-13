@@ -7,6 +7,7 @@ export interface AppUser {
   agencyId: string;
   assignedToId?: string;
   registrationStatus?: "awaiting" | "registered";
+  loginStatus?: "awaiting_login" | "password_set" | "logged_in";
   contractSigned?: boolean;
   contractSignedAt?: Date;
   contractSent?: Date;
@@ -116,6 +117,27 @@ export interface StaffCvEntry {
   uploadedAt: string;
 }
 
+export interface UploadableFile {
+  file: File;
+  base64: string;
+  error?: "size" | "format";
+}
+
+export interface CvFile extends UploadableFile {
+  parsedForename: string;
+  parsedSurname: string;
+  match: BulkStaff | null;
+}
+
+export interface PayslipFile extends UploadableFile {
+  parsedFirstname: string;
+  parsedLastname: string;
+  workerRef: string;
+  status: "missing" | "wrong info" | "matched";
+  email?: string;
+  agencyId?: string;
+}
+
 export interface BulkStaff {
   id: string;
   email: string;
@@ -141,6 +163,7 @@ export interface BulkStaff {
     uploadedInFile?: string;
     uploadedBy?: string;
     importedAt?: Date;
+    loginStatus?: string;
     cv?: StaffCvEntry[];
   };
 }

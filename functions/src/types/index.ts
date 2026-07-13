@@ -6,4 +6,5 @@ export interface LoginDoc {
   loginSentAt?: FirebaseFirestore.Timestamp;
   requestedAt: FirebaseFirestore.Timestamp;
   requestedBy: string;
+  loginStatus?: "awaiting_login" | "password_set" | "logged_in";
 }

@@ -1,9 +1,21 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { User } from "firebase/auth";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { signOut, type User } from "firebase/auth";
 import type { Agency, AppUser, UserRole } from "../types/domain";
-import { initAuthPersistence, onAuthUserChanged } from "../services/authService";
+import { auth } from "../services/firebase";
+import {
+  initAuthPersistence,
+  onAuthUserChanged,
+  updateLoginStatus,
+} from "../services/authService";
 import { getAgencyProfile, getUserProfile } from "../services/userService";
 import { useToast } from "./ToastProvider";
 import { useAppStore } from "../stores/appStore";
@@ -26,23 +38,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadProfileForUser = async (user: User | null, fromServer = false) => {
+  const loadProfileForUser = async (
+    user: User | null,
+    fromServer = false,
+  ): Promise<{ found: boolean; profile: AppUser | null }> => {
     setFirebaseUser(user);
     if (!user) {
       setAppUser(null);
       setAgency(null);
-      return;
+      return { found: false, profile: null };
     }
 
     const profile = await getUserProfile(user.uid, { fromServer });
 
+    if (!profile) {
+      setAppUser(null);
+      setAgency(null);
+      return { found: false, profile: null };
+    }
+
     let agencyProfile = null;
-    if (profile?.agencyId && profile.role !== "client") {
+    if (profile.agencyId && profile.role !== "client") {
       agencyProfile = await getAgencyProfile(profile.agencyId);
     }
 
     setAppUser(profile);
     setAgency(agencyProfile);
+    return { found: true, profile };
   };
 
   const refreshProfile = async () => {
@@ -58,15 +80,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         setLoading(true);
         try {
-          await loadProfileForUser(user);
-          if (user) {
-            useAppStore.getState().loadTags().catch(() => {});
+          const { found: profileFound, profile } =
+            await loadProfileForUser(user);
+          console.log({ user, profile });
+          if (user && !profileFound) {
+            await signOut(auth);
+            toast({
+              title: "Login failed",
+              description: "Profile not found. Contact your administrator.",
+              variant: "error",
+            });
+          } else if (user && profile) {
+            useAppStore
+              .getState()
+              .loadTags()
+              .catch(() => {});
+            updateLoginStatus(profile.email, "logged_in").catch(() => {});
+            if (!sessionStorage.getItem(`loginStatus_logged_in_${user.uid}`)) {
+              sessionStorage.setItem(`loginStatus_logged_in_${user.uid}`, "1");
+            }
           }
         } catch (err) {
           console.error("Failed to load user profile", err);
+          if (user) await signOut(auth).catch(() => {});
           toast({
             title: "Login failed",
-            description: "Could not load your profile. Check your account or try again later.",
+            description:
+              "Could not load your profile. Check your account or try again later.",
             variant: "error",
           });
         } finally {
@@ -89,8 +129,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, []);
 
-  /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  const value = useMemo(() => ({ firebaseUser, appUser, agency, role: appUser?.role ?? null, loading, refreshProfile }), [firebaseUser, appUser, agency, loading]);
+  const value = useMemo(
+    () => ({
+      firebaseUser,
+      appUser,
+      agency,
+      role: appUser?.role ?? null,
+      loading,
+      refreshProfile,
+    }),
+    [firebaseUser, appUser, agency, loading],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

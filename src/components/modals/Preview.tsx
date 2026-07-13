@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAllStaff } from "../services/firestore";
+import { getAllStaff } from "../../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
   Button,
@@ -8,16 +8,16 @@ import {
   DialogTitle,
   Label,
   ProgressBar,
-} from "./ui";
-import { ClientsDropdown } from "./ClientsDropdown";
-import { useAuth } from "../context/AuthProvider";
-import { useToast } from "../context/ToastProvider";
-import { uploadInvoice } from "../services/invoiceService";
-import { uploadClientContract } from "../services/contractService";
-import { uploadPayslip } from "../services/payslipService";
-import { functions } from "../services/firebase";
-import type { BulkStaff } from "../types/domain";
-import { H1 } from "../config/typography";
+} from "../ui";
+import { ClientsDropdown } from "../ClientsDropdown";
+import { useAuth } from "../../context/AuthProvider";
+import { useToast } from "../../context/ToastProvider";
+import { uploadInvoice } from "../../services/invoiceService";
+import { uploadClientContract } from "../../services/contractService";
+import { uploadPayslip } from "../../services/payslipService";
+import { functions } from "../../services/firebase";
+import type { BulkStaff } from "../../types/domain";
+import { H1 } from "../../config/typography";
 
 interface PreviewModalProps {
   open: boolean;
@@ -37,13 +37,13 @@ export const PreviewModal = ({
   const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
   const isContract = mode === "contract";
   const isDocument = mode === "document";
+  const isPayslipMode = mode === "payslip";
 
   const [documentType, setDocumentType] = useState<
-    "document" | "payslip" | "cv"
+    "document" | "cv"
   >("document");
-  const isPayslip = isDocument && documentType === "payslip";
   const isCv = isDocument && documentType === "cv";
-  const isStaffUpload = isDocument;
+  const isStaffUpload = isDocument || isPayslipMode;
 
   const [staffList, setStaffList] = useState<BulkStaff[]>([]);
 
@@ -165,7 +165,7 @@ export const PreviewModal = ({
               },
             ],
           });
-        } else if (isPayslip) {
+        } else if (isPayslipMode) {
           await uploadPayslip(file, selectedStaffId, agencyId);
         } else {
           const base64 = await new Promise<string>((resolve, reject) => {
@@ -202,10 +202,10 @@ export const PreviewModal = ({
         description: isDocument
           ? isCv
             ? "CV has been uploaded"
-            : isPayslip
-              ? "Payslip has been uploaded"
-              : "Document has been uploaded"
-          : isContract
+            : "Document has been uploaded"
+          : isPayslipMode
+            ? "Payslip has been uploaded"
+            : isContract
             ? `Contract has been uploaded for ${targetClientName || targetClientId}`
             : `Invoice has been sent to ${targetClientName || targetClientId}`,
         variant: "success",
@@ -226,12 +226,12 @@ export const PreviewModal = ({
           description: isDocument
             ? isCv
               ? "The CV could not be uploaded. Please try again."
-              : isPayslip
-                ? "The payslip could not be uploaded. Please try again."
-                : "The document could not be uploaded. Please try again."
-            : isContract
-              ? "The contract could not be uploaded. Please try again."
-              : "The invoice could not be uploaded. Please try again.",
+              : "The document could not be uploaded. Please try again."
+            : isPayslipMode
+              ? "The payslip could not be uploaded. Please try again."
+              : isContract
+                ? "The contract could not be uploaded. Please try again."
+                : "The invoice could not be uploaded. Please try again.",
           variant: "error",
         });
       }
@@ -251,9 +251,11 @@ export const PreviewModal = ({
           <H1>
             {isDocument
               ? "Document Preview"
-              : isContract
-                ? "Contract Preview"
-                : "Invoice Preview"}
+              : isPayslipMode
+                ? "Payslip Preview"
+                : isContract
+                  ? "Contract Preview"
+                  : "Invoice Preview"}
           </H1>
         </DialogTitle>
 
@@ -284,12 +286,12 @@ export const PreviewModal = ({
               {isDocument
                 ? isCv
                   ? "Uploading CV..."
-                  : isPayslip
-                    ? "Uploading payslip..."
-                    : "Uploading document..."
-                : isContract
-                  ? "Uploading contract..."
-                  : "Uploading invoice..."}
+                  : "Uploading document..."
+                : isPayslipMode
+                  ? "Uploading payslip..."
+                  : isContract
+                    ? "Uploading contract..."
+                    : "Uploading invoice..."}
             </p>
             <ProgressBar value={progress} />
           </div>
@@ -302,12 +304,11 @@ export const PreviewModal = ({
                   <select
                     value={documentType}
                     onChange={(e) =>
-                      setDocumentType(e.target.value as "document" | "payslip")
+                      setDocumentType(e.target.value as "document" | "cv")
                     }
                     className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
                   >
                     <option value="document">Document</option>
-                    <option value="payslip">Payslip</option>
                     <option value="cv">CV</option>
                   </select>
                 </div>
@@ -380,12 +381,12 @@ export const PreviewModal = ({
               {isDocument
                 ? isCv
                   ? "Upload CV"
-                  : isPayslip
-                    ? "Upload Payslip"
-                    : "Upload Document"
-                : isContract
-                  ? "Upload Contract"
-                  : "Upload Invoice"}
+                  : "Upload Document"
+                : isPayslipMode
+                  ? "Upload Payslip"
+                  : isContract
+                    ? "Upload Contract"
+                    : "Upload Invoice"}
             </Button>
           </div>
         )}

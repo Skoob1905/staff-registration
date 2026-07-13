@@ -47,10 +47,24 @@ const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
   "entity",
 ]);
 
+const WORKER_REF_NORMALIZED_VARIANTS = new Set([
+  "ref",
+  "reference",
+  "workersref",
+  "workerref",
+  "worksno",
+  "worksnumber",
+]);
+
+export function hasWorkerRefColumn(headers: string[]): boolean {
+  return headers.some((h) =>
+    WORKER_REF_NORMALIZED_VARIANTS.has(normalizeKey(h)),
+  );
+}
+
 export function hasNIColumn(headers: string[]): boolean {
   return headers.some((h) => NI_NORMALIZED_VARIANTS.has(normalizeKey(h)));
 }
-
 export function getNINumber(row: Record<string, string>): string {
   for (const [key, value] of Object.entries(row)) {
     if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {

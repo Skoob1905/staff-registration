@@ -30,27 +30,8 @@ jobs:
       - run: npm run build
         working-directory: functions
 
-  deploy:
-    name: Deploy to Firebase Production
-    needs: ci
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - uses: w9jds/firebase-action@v13
-        with:
-          args: deploy --only functions,hosting,firestore:rules,storage:rules --project production
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_PROD }}
-
   deploy-dev:
-    name: Deploy to Firebase Development
+    name: Deploy to Development
     needs: ci
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -61,9 +42,46 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - uses: w9jds/firebase-action@v13
+      - run: npm ci
+        working-directory: functions
+
+      - name: Write env files
+        run: |
+          echo "${{ secrets.ENV_FILE_DEV }}" > .env.development
+          mkdir -p functions
+          echo "${{ secrets.FUNCTIONS_ENV_DEV }}" > functions/.env.mdsce-dev
+
+      - name: Authenticate to GCP
+        run: |
+          echo '${{ secrets.GCP_SA_KEY_DEV }}' > /tmp/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json" >> $GITHUB_ENV
+
+      - run: npm run deploy:dev
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          args: deploy --only functions,hosting,firestore:rules,storage:rules --project development
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_DEV }}
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci
+        working-directory: functions
+
+      - name: Write env files
+        run: |
+          echo "${{ secrets.ENV_FILE_PROD }}" > .env.production
+          mkdir -p functions
+          echo "${{ secrets.FUNCTIONS_ENV_PROD }}" > functions/.env.mdsce-prod
+
+      - name: Authenticate to GCP
+        run: |
+          echo '${{ secrets.GCP_SA_KEY_PROD }}' > /tmp/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json" >> $GITHUB_ENV
+
+      - run: npm run deploy:prod

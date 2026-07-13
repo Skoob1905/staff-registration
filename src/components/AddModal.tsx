@@ -4,7 +4,6 @@ import { countCollection } from "../services/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
 import { Body, BodyMedium, Caption, Muted } from "../config/typography";
-import { config } from "../config";
 import { AssignModal } from "./AssignModal";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
@@ -16,7 +15,7 @@ import { useAppStore } from "../stores/appStore";
 import {
   normalizeKey,
   findValueByNormalizedKey,
-  hasNIColumn,
+  hasWorkerRefColumn,
   hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
 
@@ -203,14 +202,15 @@ export const AddModal = ({
 
       if (csvType === "staff") {
         const normalizedHeaders = parsed.headers.map(normalizeKey);
-        if (!hasNIColumn(parsed.headers)) {
+        if (!hasWorkerRefColumn(parsed.headers)) {
           console.warn(
-            "[AddModal] No NI column found. Headers:",
+            "[AddModal] No Worker Ref column found. Headers:",
             parsed.headers,
           );
           toast({
-            title: "Invalid staff file",
-            description: "The CSV must contain an NI Number column.",
+            title: "No reference column",
+            description:
+              "CSV missing Ref/Reference/Workers Ref column. Staff IDs will be auto-generated.",
             variant: "error",
           });
           return;
@@ -302,15 +302,6 @@ export const AddModal = ({
   }, [clients, selectedClientId]);
 
   useEffect(() => {
-    if (loading) {
-      loadingTimerRef.current = setTimeout(() => {
-        toast({
-          title: "Still uploading...",
-          variant: "info",
-          replaceToast: true,
-        });
-      }, 5000);
-    }
     return () => {
       if (loadingTimerRef.current) {
         clearTimeout(loadingTimerRef.current);
@@ -340,7 +331,7 @@ export const AddModal = ({
 
         toast({
           title: "Timesheet uploaded",
-          description: `${config.name} has received your timesheet. We will process this as soon as possible.`,
+          description: `We have received your timesheet and will process it as soon as possible.`,
           variant: "success",
         });
         setUploadProgress(0);
@@ -429,6 +420,7 @@ export const AddModal = ({
         added: number;
         duplicates: number;
         importId?: string;
+        emails: string[];
       };
 
       if (data.importId && recordsToSend.length > 0) {
@@ -453,6 +445,7 @@ export const AddModal = ({
       toast({
         title: "Import complete",
         description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added. Logins will be sent shortly.`,
+        variant: "success",
         replaceToast: true,
       });
       setUploadProgress(0);
@@ -462,23 +455,40 @@ export const AddModal = ({
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      await onSuccess?.(data.importId);
+      try {
+        await onSuccess?.(data.importId);
+      } catch {
+        // onSuccess failure shouldn't block email sending
+      }
 
-      if (data.importId && csvType !== "timesheet") {
-        const processLoginCallable = httpsCallable(
-          functions,
-          "processImportLogins",
-        );
-        processLoginCallable({ importId: data.importId })
-          .catch((err) => {
-            console.error("[processImportLogins] failed", err);
-            toast({
-              title: "Login creation failed",
-              description:
-                "Some logins may not have been sent. Contact support.",
-              variant: "warning" as const,
-            });
+      if (data.emails.length > 0) {
+        const emailCallable = httpsCallable(functions, "sendImportEmails");
+        const emailResult = await emailCallable({
+          emails: data.emails,
+          type:
+            csvType === "staff"
+              ? "worker"
+              : csvType === "agency"
+                ? "agency"
+                : "client",
+        });
+        const { sent, failed } = emailResult.data as {
+          sent: number;
+          failed: number;
+        };
+        if (failed > 0) {
+          toast({
+            title: `${failed} email(s) failed`,
+            description: `${sent} sent, ${failed} failed.`,
+            variant: "error",
           });
+        } else {
+          toast({
+            title: "Emails sent",
+            description: `${sent} login email(s) delivered.`,
+            variant: "success",
+          });
+        }
       }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;

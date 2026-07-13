@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Loader2 } from "lucide-react";
-import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../components/ui";
+import {
+  AccordionItem,
+  AccordionRoot,
+  Button,
+  DeleteButton,
+} from "../components/ui";
 import { Section } from "../components/Section";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { InformationCard } from "../components/InformationCard";
@@ -38,7 +43,9 @@ export const Payslips = () => {
     if (appUser?.role === "admin") {
       const userData = await getUser(appUser.uid);
       if (userData) {
-        const ids = (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ?? [];
+        const ids =
+          (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ??
+          [];
         if (ids.length === 0 && appUser.agencyId) {
           ids.push(appUser.agencyId);
         }
@@ -51,14 +58,9 @@ export const Payslips = () => {
 
   useEffect(() => {
     loadData()
-      .then((data) => {
-        setStaffList(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setStaffList([]);
-        setLoading(false);
-      });
+      .then(setStaffList)
+      .catch(() => setStaffList([]))
+      .finally(() => setLoading(false));
   }, [appUser]);
 
   const onDelete = async () => {
@@ -84,7 +86,10 @@ export const Payslips = () => {
     }
   };
 
-  const totalPayslips = staffList.reduce((sum, s) => sum + s.payslips.length, 0);
+  const totalPayslips = staffList.reduce(
+    (sum, s) => sum + s.payslips.length,
+    0,
+  );
 
   return (
     <div className="mx-auto space-y-4">
@@ -115,7 +120,9 @@ export const Payslips = () => {
                   key={staff.staffId}
                   value={staff.staffId}
                   className="animate-cascade"
-                  style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+                  style={
+                    { animationDelay: `${idx * 5}ms` } as React.CSSProperties
+                  }
                   title={
                     <span className="flex items-center gap-2">
                       <AccordionTitle>{staff.staffName}</AccordionTitle>
@@ -143,7 +150,11 @@ export const Payslips = () => {
                             <Button
                               type="button"
                               onClick={() => {
-                                window.open(payslip.fileUrl, "_blank", "noopener,noreferrer");
+                                window.open(
+                                  payslip.fileUrl,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                );
                               }}
                             >
                               Download

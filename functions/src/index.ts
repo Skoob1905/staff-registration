@@ -36,17 +36,23 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 import { dedupRecords } from "./utils/dedup";
+import { createAuthUsers } from "./utils/createAuthUsers";
+import { removeAuthUser } from "./utils/removeAuthUser";
 import type { LoginDoc } from "./types";
-export { processImportLogins } from "./logins/processImportLogins";
+import { EmailProvider } from "./services/EmailService";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
 
+// Payslip operations
+export { uploadPayslip } from "./payslips";
+
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
-const WEB_API_KEY = defineString("WEB_API_KEY");
-const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
+const DOCUMENT_UPLOAD_DELAY = defineString("DOCUMENT_UPLOAD_DELAY");
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west2" });
 
@@ -106,6 +112,19 @@ const findNormalizedValue = (
   return null;
 };
 
+/**
+ * Invites a portal user by creating a Firebase Auth account and a Firestore
+ * user profile. Sends a client registration email with a password reset link.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.email - The email address to invite.
+ * @returns `{ ok: true, userId: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if email is missing or invalid.
+ * @throws {HttpsError} "already-exists" if email is already registered or awaiting.
+ */
 export const invitePortalUser = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -208,42 +227,45 @@ export const invitePortalUser = onCall(async (request) => {
     { merge: true },
   );
 
-  // Triggers Firebase password-reset email template
-  // (used as set-password invite).
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
+  const emailProvider = new EmailProvider();
+  await emailProvider.sendClientRegistrationLink(email);
 
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
+  await db
+    .collection("users")
+    .doc(user.uid)
+    .set({ loginStatus: "awaiting_login" }, { merge: true });
 
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
-    throw new HttpsError(
-      "internal",
-      "Failed to send password reset email. Please try again later.",
-    );
+  const staffSnaps = await db
+    .collection("staff")
+    .where("email", "==", email)
+    .get();
+  for (const d of staffSnaps.docs) {
+    await d.ref.update("metadata.loginStatus", "awaiting_login");
+    await db
+      .collection("users")
+      .doc(user.uid)
+      .set({ workerRef: d.id }, { merge: true });
   }
 
   return { ok: true, userId: user.uid };
 });
 
+/**
+ * Assigns a client login to a specific agency. Creates a Firebase Auth
+ * account if one does not exist, writes a Firestore user profile with
+ * role `client`, and sends a client registration email.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.email      - The email address to assign.
+ * @param request.data.agencyDocId - The Firestore document ID of the agency.
+ * @returns `{ ok: true, userId: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if email or agencyDocId is missing/invalid.
+ * @throws {HttpsError} "already-exists" if email is already registered or awaiting.
+ * @throws {HttpsError} "failed-precondition" if admin caller has no agencyId.
+ */
 export const assignClientLogin = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -344,74 +366,33 @@ export const assignClientLogin = onCall(async (request) => {
       { merge: true },
     );
 
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
+  const emailProvider = new EmailProvider();
+  await emailProvider.sendClientRegistrationLink(email);
 
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
-    throw new HttpsError(
-      "internal",
-      "Failed to send password reset email. Please try again later.",
-    );
-  }
+  await db
+    .collection("users")
+    .doc(user.uid)
+    .set({ loginStatus: "awaiting_login" }, { merge: true });
 
   return { ok: true, userId: user.uid };
 });
 
+/**
+ * Sends a password reset email to the specified address.
+ *
+ * Does not require authentication — this is the public forgot-password
+ * endpoint.
+ *
+ * @param request.data.email - The email address to send the reset link to.
+ * @returns `{ ok: true }` on success.
+ * @throws {HttpsError} "invalid-argument" if email is missing.
+ */
 export const sendPasswordReset = onCall(async (request) => {
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
-  const continueUrl = String(
-    request.data?.continueUrl || RESET_CONTINUE_URL.value(),
-  );
-
-  const resp = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${WEB_API_KEY.value()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestType: "PASSWORD_RESET",
-        email,
-        continueUrl,
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const errorText = await resp.text();
-    console.error("sendOobCode failed", {
-      status: resp.status,
-      statusText: resp.statusText,
-      body: errorText,
-      email,
-    });
-    throw new HttpsError(
-      "internal",
-      "Failed to send password reset email. Please try again later.",
-    );
-  }
+  const emailProvider = new EmailProvider();
+  await emailProvider.sendResetPassword(email);
 
   return { ok: true };
 });
@@ -804,6 +785,24 @@ export const updatePayslipDownloadedStatus = onCall(async (request) => {
   return { ok: true, payslipId };
 });
 
+/**
+ * Imports agency records from a CSV payload. Performs server-side
+ * duplicate detection scoped to the caller's agency, writes new
+ * records to Firestore, creates pending login documents, records
+ * an entry in the `csv_imports` collection, and batch-sends
+ * agency registration emails at 1-second intervals.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.records      - Array of CSV row objects.
+ * @param request.data.fileName     - Original CSV filename.
+ * @param request.data.fileUrl      - Storage URL of the uploaded CSV.
+ * @param request.data.totalRecords - Total rows before dedup (for logging).
+ * @returns `{ ok: true, added: number, duplicates: number, total: number, importId: string }`.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
+ */
 export const importAgencyCsv = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -904,6 +903,7 @@ export const importAgencyCsv = onCall(async (request) => {
 
   const loginsBatch = db.batch();
   let loginCount = 0;
+  const emails: string[] = [];
   for (const record of newRecords) {
     const rawEmail = findNormalizedValue(record, "email", "emailaddress");
     if (!rawEmail) continue;
@@ -919,8 +919,15 @@ export const importAgencyCsv = onCall(async (request) => {
       requestedBy: callerUid,
     } as LoginDoc);
     loginCount++;
+    emails.push(email);
   }
   if (loginCount > 0) await loginsBatch.commit();
+
+  const confirmed = await createAuthUsers(emails, {
+    role: "client",
+    agencyId: caller.agencyId ?? "",
+    invitedByUid: callerUid,
+  });
 
   return {
     ok: true,
@@ -928,9 +935,28 @@ export const importAgencyCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    emails: confirmed.map((c) => c.email),
   };
 });
 
+/**
+ * Imports client records from a CSV payload. Performs server-side
+ * duplicate detection scoped to the caller's agency, writes new
+ * records to Firestore, creates pending login documents, records
+ * an entry in the `csv_imports` collection, and batch-sends
+ * client registration emails at 1-second intervals.
+ *
+ * Requires caller role: `admin` or `super`.
+ *
+ * @param request.data.records      - Array of CSV row objects.
+ * @param request.data.fileName     - Original CSV filename.
+ * @param request.data.fileUrl      - Storage URL of the uploaded CSV.
+ * @param request.data.totalRecords - Total rows before dedup (for logging).
+ * @returns `{ ok: true, added: number, duplicates: number, total: number, importId: string }`.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not admin/super.
+ * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
+ */
 export const importClientCsv = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -1031,6 +1057,7 @@ export const importClientCsv = onCall(async (request) => {
 
   const loginsBatch = db.batch();
   let loginCount = 0;
+  const emails: string[] = [];
   for (const record of newRecords) {
     const rawEmail = findNormalizedValue(record, "email", "emailaddress");
     if (!rawEmail) continue;
@@ -1046,8 +1073,15 @@ export const importClientCsv = onCall(async (request) => {
       requestedBy: callerUid,
     } as LoginDoc);
     loginCount++;
+    emails.push(email);
   }
   if (loginCount > 0) await loginsBatch.commit();
+
+  const confirmed = await createAuthUsers(emails, {
+    role: "admin",
+    agencyId: caller.agencyId ?? "",
+    invitedByUid: callerUid,
+  });
 
   return {
     ok: true,
@@ -1055,9 +1089,32 @@ export const importClientCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    emails: confirmed.map((c) => c.email),
   };
 });
 
+/**
+ * Imports staff (worker) records from a CSV payload. Performs global
+ * server-side duplicate detection (across all agencies), writes new
+ * records to Firestore with optional tag and assignment metadata,
+ * creates pending login documents, records an entry in the
+ * `csv_imports` collection, and batch-sends worker registration
+ * emails at 1-second intervals.
+ *
+ * Requires caller role: `super` only.
+ *
+ * @param request.data.records        - Array of CSV row objects.
+ * @param request.data.fileName       - Original CSV filename.
+ * @param request.data.fileUrl        - Storage URL of the uploaded CSV.
+ * @param request.data.totalRecords   - Total rows before dedup (for logging).
+ * @param request.data.assignedToId   - (Optional) Agency ID to assign staff to.
+ * @param request.data.assignedToName - (Optional) Agency name for metadata.
+ * @param request.data.tagIds         - (Optional) Array of tag IDs to apply.
+ * @returns `{ ok: true, added: number, duplicates: number, total: number, importId: string }`.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "permission-denied" if caller is not super.
+ * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
+ */
 export const importStaffCsv = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -1219,6 +1276,7 @@ export const importStaffCsv = onCall(async (request) => {
 
   const loginsBatch = db.batch();
   let loginCount = 0;
+  const emails: string[] = [];
   for (const record of newRecords) {
     const rawEmail = findNormalizedValue(record, "email", "emailaddress");
     if (!rawEmail) continue;
@@ -1234,8 +1292,15 @@ export const importStaffCsv = onCall(async (request) => {
       requestedBy: callerUid,
     } as LoginDoc);
     loginCount++;
+    emails.push(email);
   }
   if (loginCount > 0) await loginsBatch.commit();
+
+  const confirmed = await createAuthUsers(emails, {
+    role: "worker",
+    agencyId: caller.agencyId ?? "",
+    invitedByUid: callerUid,
+  });
 
   return {
     ok: true,
@@ -1243,7 +1308,75 @@ export const importStaffCsv = onCall(async (request) => {
     duplicates: duplicateCount,
     total: records.length,
     importId,
+    emails: confirmed.map((c) => c.email),
   };
+});
+
+/**
+ * Sends registration emails for imported records. Auth users are created
+ * during the import step by {@link createAuthUsers}; only emails with
+ * confirmed Auth accounts should be passed here.
+ *
+ * @param request.data.emails - Array of email addresses to send to.
+ * @param request.data.type   - "worker", "agency", or "client".
+ * @returns A {@link BatchEmailResult} with sent / failed counts.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "invalid-argument" if emails or type are invalid.
+ */
+export const sendImportEmails = onCall(async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+  const { emails, type } = request.data as {
+    emails: string[];
+    type: "worker" | "agency" | "client";
+  };
+
+  if (!Array.isArray(emails) || emails.length === 0 || !type) {
+    throw new HttpsError(
+      "invalid-argument",
+      "emails array and type are required.",
+    );
+  }
+
+  const emailProvider = new EmailProvider();
+
+  let callback: (params: { email: string }) => Promise<void>;
+  switch (type) {
+    case "worker":
+      callback = async ({ email }) => {
+        try {
+          await emailProvider.sendWorkerRegistrationLink(email);
+        } catch {
+          const snaps = await getFirestore()
+            .collection("staff")
+            .where("email", "==", email)
+            .get();
+          for (const d of snaps.docs) {
+            void d.ref.update("metadata.loginStatus", "failed");
+          }
+          throw new Error(`Email failed to send to ${email}`);
+        }
+        const staffSnaps = await getFirestore()
+          .collection("staff")
+          .where("email", "==", email)
+          .get();
+        for (const d of staffSnaps.docs) {
+          await d.ref.update("metadata.loginStatus", "awaiting_login");
+        }
+      };
+      break;
+    case "agency":
+      callback = ({ email }) => emailProvider.sendAgencyRegistrationLink(email);
+      break;
+    case "client":
+      callback = ({ email }) => emailProvider.sendClientRegistrationLink(email);
+      break;
+  }
+
+  const result = await emailProvider.beginBatchEmailSend(emails, callback);
+
+  return result;
 });
 
 export const assignStaffToAgency = onCall(async (request) => {
@@ -1509,6 +1642,7 @@ export const bulkUploadStaff = onCall(async (request) => {
 
     if (batchCount >= 400) {
       await batch.commit();
+      await delay(Number(DOCUMENT_UPLOAD_DELAY.value()));
       batch = db.batch();
       batchCount = 0;
     }
@@ -1597,23 +1731,25 @@ export const removeAgencies = onCall(async (request) => {
   }
 
   // Delete Auth users + users docs for imported agencies with email
-  const adminAuth = getAuth();
   for (const snap of agencySnaps.docs) {
     const data = snap.data() as { email?: string };
     const email = data.email;
     if (!email || !emailPattern.test(email)) continue;
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
+    userDocs.forEach((doc) => doc.ref.delete());
+
+    const loginEmail = data.email;
+    if (loginEmail) {
+      await db
+        .collection("logins")
+        .doc(loginEmail.toLowerCase())
+        .delete()
+        .catch(() => {});
     }
   }
 
@@ -1747,23 +1883,25 @@ export const removeClients = onCall(async (request) => {
   }
 
   // Delete Auth users + users docs for imported clients with email
-  const adminAuth = getAuth();
   for (const snap of clientSnaps.docs) {
     const data = snap.data() as { email?: string };
     const email = data.email;
     if (!email || !emailPattern.test(email)) continue;
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
+    userDocs.forEach((doc) => doc.ref.delete());
+
+    const loginEmail = data.email;
+    if (loginEmail) {
+      await db
+        .collection("logins")
+        .doc(loginEmail.toLowerCase())
+        .delete()
+        .catch(() => {});
     }
   }
 
@@ -1850,24 +1988,23 @@ export const removeStaffImport = onCall(async (request) => {
   }
 
   // Delete Auth users + users docs for staff members with email
-  const adminAuth = getAuth();
   for (const snap of staffSnaps.docs) {
     const data = snap.data() as { email?: string };
     const email = data.email;
     if (!email || !emailPattern.test(email)) continue;
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
-    }
+    userDocs.forEach((doc) => doc.ref.delete());
+
+    await db
+      .collection("logins")
+      .doc(email.toLowerCase())
+      .delete()
+      .catch(() => {});
   }
 
   for (const [agencyId, staffIds] of agencyUpdates) {
@@ -2085,6 +2222,7 @@ export const removeClientLogin = onCall(async (request) => {
   if (!userSnap.exists) throw new HttpsError("not-found", "User not found.");
 
   const userData = userSnap.data() as {
+    email?: string;
     agencyId?: string;
     role?: string;
     invitedByAgencyId?: string;
@@ -2101,6 +2239,14 @@ export const removeClientLogin = onCall(async (request) => {
   }
 
   await userRef.delete();
+
+  if (userData.email) {
+    await db
+      .collection("logins")
+      .doc(userData.email.toLowerCase())
+      .delete()
+      .catch(() => {});
+  }
 
   return { ok: true, uid };
 });
@@ -2636,6 +2782,18 @@ export const deleteStaffCv = onCall(async (request) => {
   return { ok: true };
 });
 
+/**
+ * Uploads a document for a staff member, stores it in Cloud Storage,
+ * updates the staff Firestore document, and sends a document-upload
+ * notification email.
+ *
+ * @param request.data.staffId    - Firestore document ID of the staff record.
+ * @param request.data.fileName   - Original filename.
+ * @param request.data.fileBase64 - Base64-encoded file content.
+ * @returns `{ ok: true, staffId: string, fileName: string }` on success.
+ * @throws {HttpsError} "unauthenticated" if not signed in.
+ * @throws {HttpsError} "invalid-argument" if required fields are missing.
+ */
 export const uploadStaffDocument = onCall(async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Sign in required.");
@@ -2701,6 +2859,12 @@ export const uploadStaffDocument = onCall(async (request) => {
     .update({
       "metadata.documents": FieldValue.arrayUnion(entry),
     });
+
+  const staffEmail = (staffSnap.data() as { email?: string })?.email;
+  if (staffEmail) {
+    const emailProvider = new EmailProvider();
+    await emailProvider.sendDocumentEmail(staffEmail);
+  }
 
   return { ok: true, staffId, fileName };
 });
@@ -2806,21 +2970,19 @@ export const removeStaffMember = onCall(async (request) => {
   // Delete Auth user + users doc by email
   const email = staffData.email;
   if (email && emailPattern.test(email)) {
+    await removeAuthUser(email);
+
     const userDocs = await db
       .collection("users")
       .where("email", "==", email.toLowerCase())
       .get();
+    userDocs.forEach((doc) => doc.ref.delete());
 
-    const adminAuth = getAuth();
-    for (const userDoc of userDocs.docs) {
-      try {
-        await adminAuth.deleteUser(userDoc.id);
-      } catch (err: unknown) {
-        const authErr = err as { code?: string };
-        if (authErr.code !== "auth/user-not-found") throw err;
-      }
-      await userDoc.ref.delete();
-    }
+    await db
+      .collection("logins")
+      .doc(email.toLowerCase())
+      .delete()
+      .catch(() => {});
   }
 
   // Delete staff document
@@ -3322,75 +3484,6 @@ export const getMaintenanceWindow = onCall(async () => {
   };
 });
 
-export const uploadPayslipToStaff = onCall(async (request) => {
-  const callerUid = request.auth?.uid;
-  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
-
-  const { fileBase64, fileName, userId, agencyId } = request.data;
-  if (!fileBase64 || !fileName || !userId) {
-    throw new HttpsError(
-      "invalid-argument",
-      "fileBase64, fileName, and userId are required.",
-    );
-  }
-
-  const db = getFirestore();
-  const callerSnap = await db.collection("users").doc(callerUid).get();
-  if (!callerSnap.exists) {
-    throw new HttpsError("permission-denied", "Caller profile missing.");
-  }
-  const caller = callerSnap.data() as { role?: string; email?: string };
-  if (caller.role !== "super") {
-    throw new HttpsError("permission-denied", "Super only.");
-  }
-
-  const bucket = getStorage().bucket();
-  const filePath = `payslips/${userId}/${fileName}`;
-  const fileRef = bucket.file(filePath);
-
-  const token =
-    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  const buffer = Buffer.from(fileBase64, "base64");
-
-  await fileRef.save(buffer, {
-    metadata: {
-      contentType: "application/pdf",
-      metadata: { firebaseStorageDownloadTokens: token },
-    },
-  });
-
-  const fileUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
-
-  const sentBy = caller.email ?? "Unknown";
-
-  const payslipRef = await db.collection("payslips").add({
-    userId,
-    agencyId: agencyId ?? "",
-    fileName,
-    fileUrl,
-    sentBy,
-    timestamp: FieldValue.serverTimestamp(),
-    hasDownloaded: false,
-  });
-
-  const staffRef = db.collection("staff").doc(userId);
-  const staffSnap = await staffRef.get();
-  const staffData = staffSnap.data() as {
-    metadata?: { payslipsSent?: string[] };
-  };
-  const existing = staffData?.metadata?.payslipsSent ?? [];
-  await staffRef.set(
-    {
-      metadata: {
-        payslipsSent: [payslipRef.id, ...existing],
-      },
-    },
-    { merge: true },
-  );
-
-  return { ok: true, payslipId: payslipRef.id, url: fileUrl };
-});
-
 export const deletePayslip = onCall(async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Sign in required.");
@@ -3431,7 +3524,10 @@ export const deletePayslip = onCall(async (request) => {
     agencyId?: string;
   };
 
-  if (callerData.role !== "super" && payslipData.agencyId !== callerData.agencyId) {
+  if (
+    callerData.role !== "super" &&
+    payslipData.agencyId !== callerData.agencyId
+  ) {
     throw new HttpsError(
       "permission-denied",
       "Cannot delete payslips from another agency.",
@@ -3471,3 +3567,67 @@ export const deletePayslip = onCall(async (request) => {
 
   return { ok: true };
 });
+
+export const updateLoginStatus = onCall(
+  { region: "europe-west2" },
+  async (request) => {
+    const callerUid = request.auth?.uid;
+    if (!callerUid)
+      throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const { email, status } = request.data as {
+      email?: string;
+      status?: string;
+    };
+
+    if (!email || !status) {
+      throw new HttpsError(
+        "invalid-argument",
+        "email and status are required.",
+      );
+    }
+
+    const validStatuses = ["awaiting_login", "password_set", "logged_in"];
+    if (!validStatuses.includes(status)) {
+      throw new HttpsError(
+        "invalid-argument",
+        `status must be one of: ${validStatuses.join(", ")}`,
+      );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log(
+      `[updateLoginStatus] Request: email="${normalizedEmail}", status="${status}"`,
+    );
+    console.log(
+      `[updateLoginStatus] Looking up staff by email: "${normalizedEmail}"`,
+    );
+
+    const staffSnaps = await getFirestore()
+      .collection("staff")
+      .where("email", "==", normalizedEmail)
+      .get();
+
+    console.log(`[updateLoginStatus] Found ${staffSnaps.size} staff docs`);
+
+    if (staffSnaps.empty) {
+      console.warn(
+        `[updateLoginStatus] No staff doc found for email: "${normalizedEmail}"`,
+      );
+    }
+
+    for (const d of staffSnaps.docs) {
+      const docData = d.data();
+      console.log(
+        `[updateLoginStatus] Staff doc ${d.id}: email="${docData.email}", ` +
+          `Forename="${docData.Forename}", Surname="${docData.Surname}"`,
+      );
+      console.log(
+        `[updateLoginStatus] Updating staff doc ${d.id} → loginStatus: "${status}"`,
+      );
+      await d.ref.update("metadata.loginStatus", status);
+    }
+
+    return { ok: true, loginStatus: status };
+  },
+);

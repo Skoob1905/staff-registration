@@ -8,6 +8,8 @@ import { ToastProvider } from "./context/ToastProvider";
 import { AppRouter } from "./router/AppRouter";
 import "./index.css";
 
+// document.getElementById("splash")?.remove();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

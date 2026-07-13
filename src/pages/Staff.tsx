@@ -9,8 +9,7 @@ import { Metadata } from "../components/Metadata";
 import { Pill } from "../components/Pill";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
-import { AssignTags } from "../components/modals/AssignTags";
-import { AssignStaff } from "../components/modals/AssignStaff";
+import { AssignTags, AssignStaff } from "../components/modals";
 import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
 import { StaffListSection } from "../components/StaffListSection";
@@ -43,6 +42,16 @@ export const Staff = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
 
+  const STATUS_COLOR: Record<string, string> = {
+    failed: "bg-red-400",
+    awaiting_login: "bg-amber-400",
+    password_set: "bg-blue-400",
+    logged_in: "bg-emerald-400",
+  };
+
+  const getStatusColor = (status?: string) =>
+    STATUS_COLOR[status ?? ""] ?? "bg-red-400";
+
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
 
@@ -64,7 +73,9 @@ export const Staff = () => {
   }, [tags]);
 
   const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
-  const [assignStaffTarget, setAssignStaffTarget] = useState<BulkStaff | null>(null);
+  const [assignStaffTarget, setAssignStaffTarget] = useState<BulkStaff | null>(
+    null,
+  );
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
   const [tagTarget, setTagTarget] = useState<BulkStaff | null>(null);
@@ -292,6 +303,12 @@ export const Staff = () => {
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
               <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className={`inline-block w-[3px] h-3 sm:w-1 sm:h-4 shrink-0 ${getStatusColor(member.metadata?.loginStatus)}`}
+                  title={
+                    member.metadata?.loginStatus?.replace(/_/g, " ") ?? "No email sent"
+                  }
+                />
                 <AccordionTitle>{getStaffName(member)}</AccordionTitle>
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
                   <Pill
@@ -418,65 +435,73 @@ export const Staff = () => {
               </div>
             )}
             {Boolean((member.metadata as Record<string, unknown>)?.documents) &&
-              ((member.metadata as Record<string, unknown>)?.documents as Record<string, unknown>[])?.length > 0 && (
+              (
+                (member.metadata as Record<string, unknown>)
+                  ?.documents as Record<string, unknown>[]
+              )?.length > 0 && (
                 <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                  {((member.metadata as Record<string, unknown>)?.documents as Record<string, unknown>[])?.map(
-                    (entry: Record<string, unknown>, idx: number) => {
-                      const docKey = `${member.id}::${entry.fileName}`;
-                      const isDeleting = deletingDocumentKey === docKey;
-                      return (
-                        <Metadata
-                          key={docKey}
-                          title="Document"
-                          className="flex items-center animate-cascade"
-                          style={
-                            {
-                              animationDelay: `${(idx + 1) * 12}ms`,
-                            } as React.CSSProperties
-                          }
-                          value={
-                            <span className="inline-flex flex-wrap items-center gap-2 align-middle">
-                              <span className="text-[var(--muted-foreground)]">
-                                {entry.fileName as string}
-                              </span>
-                              <FileInteractionButtons
-                                fileUrl={entry.fileUrl as string}
-                                fileName={entry.fileName as string}
-                                name={getStaffName(member)}
-                                interactionKey="document"
-                                size="md"
-                                onDelete={
-                                  isDeleting
-                                    ? undefined
-                                    : () =>
-                                        handleDeleteDocument(
-                                          member.id,
-                                          entry.fileName as string,
-                                        )
-                                }
-                              />
-                              {Boolean(entry.uploadedAt) && (
-                                <span className="text-zinc-400">
-                                  (
-                                  {new Date(
-                                    entry.uploadedAt as string,
-                                  ).toLocaleDateString()}
-                                  )
-                                </span>
-                              )}
-                              {isDeleting && (
-                                <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
-                              )}
+                  {(
+                    (member.metadata as Record<string, unknown>)
+                      ?.documents as Record<string, unknown>[]
+                  )?.map((entry: Record<string, unknown>, idx: number) => {
+                    const docKey = `${member.id}::${entry.fileName}`;
+                    const isDeleting = deletingDocumentKey === docKey;
+                    return (
+                      <Metadata
+                        key={docKey}
+                        title="Document"
+                        className="flex items-center animate-cascade"
+                        style={
+                          {
+                            animationDelay: `${(idx + 1) * 12}ms`,
+                          } as React.CSSProperties
+                        }
+                        value={
+                          <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                            <span className="text-[var(--muted-foreground)]">
+                              {entry.fileName as string}
                             </span>
-                          }
-                        />
-                      );
-                    },
-                  )}
+                            <FileInteractionButtons
+                              fileUrl={entry.fileUrl as string}
+                              fileName={entry.fileName as string}
+                              name={getStaffName(member)}
+                              interactionKey="document"
+                              size="md"
+                              onDelete={
+                                isDeleting
+                                  ? undefined
+                                  : () =>
+                                      handleDeleteDocument(
+                                        member.id,
+                                        entry.fileName as string,
+                                      )
+                              }
+                            />
+                            {Boolean(entry.uploadedAt) && (
+                              <span className="text-zinc-400">
+                                (
+                                {new Date(
+                                  entry.uploadedAt as string,
+                                ).toLocaleDateString()}
+                                )
+                              </span>
+                            )}
+                            {isDeleting && (
+                              <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
+                            )}
+                          </span>
+                        }
+                      />
+                    );
+                  })}
                 </div>
               )}
-            <RecordData data={cleanRecordData(member as unknown as Record<string, unknown>)} />
-             <ActionButtonContainer
+            <RecordData
+              data={cleanRecordData(
+                member as unknown as Record<string, unknown>,
+              )}
+            />
+            <ActionButtonContainer
               handleDelete={() => setDeleteStaffTarget(member)}
               handleUnassign={
                 member.metadata?.assignedToName
