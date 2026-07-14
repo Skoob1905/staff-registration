@@ -85,8 +85,12 @@ export const StaffListSection = ({
     }
 
     // metadata.assignedToName
-    if (targetAgencyNames && targetAgencyNames.length > 0) {
-      ffs.push(targetAgencyNames.map((n) => `${staffKeyMap.agency}:${n}`));
+    if (targetAgencyNames) {
+      if (targetAgencyNames.length === 0) {
+        ffs.push([`${staffKeyMap.agency}:__none__`]);
+      } else {
+        ffs.push(targetAgencyNames.map((n) => `${staffKeyMap.agency}:${n}`));
+      }
       return ffs;
     }
 
@@ -307,7 +311,11 @@ export const StaffListSection = ({
       )}
       enableTagFilter
       emptyMessage={
-        isClient ? "You've not been assigned any staff yet" : undefined
+        isClient
+          ? "You've not been assigned any staff yet"
+          : role === "admin"
+            ? "No staff assigned to your agencies"
+            : undefined
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem ?? defaultRenderItem}

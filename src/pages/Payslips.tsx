@@ -14,9 +14,9 @@ import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { useToast } from "../context/ToastProvider";
 import { useAuth } from "../context/AuthProvider";
 import { functions } from "../services/firebase";
-import { getUser } from "../services/firestore";
 import { formatSentDate } from "../utils/date";
 import { getAllStaffPayslips, type StaffPayslips } from "../utils/payslips";
+import { getUser } from "../services/firestore";
 
 interface DeleteTarget {
   staffId: string;
@@ -32,36 +32,47 @@ export const Payslips = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const isAdmin = appUser?.role === "admin";
+  const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[] | undefined>(undefined);
+  const [agencyIdsLoaded, setAgencyIdsLoaded] = useState(false);
   const [staffList, setStaffList] = useState<StaffPayslips[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const loadData = async (): Promise<StaffPayslips[]> => {
-    let agencyIds: string[] | undefined;
-
-    if (appUser?.role === "admin") {
-      const userData = await getUser(appUser.uid);
-      if (userData) {
-        const ids =
-          (userData as { assignedAgencyIds?: string[] }).assignedAgencyIds ??
-          [];
-        if (ids.length === 0 && appUser.agencyId) {
-          ids.push(appUser.agencyId);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const userData = await getUser(appUser!.uid);
+        if (!cancelled) {
+          const ids = (userData as { assignedAgencyIds?: string[] })
+            ?.assignedAgencyIds ?? [];
+          setAssignedAgencyIds(ids);
         }
-        agencyIds = ids.length > 0 ? ids : undefined;
+      } catch {
+        if (!cancelled) setAssignedAgencyIds([]);
+      } finally {
+        if (!cancelled) setAgencyIdsLoaded(true);
       }
-    }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [isAdmin, appUser]);
 
-    return getAllStaffPayslips(agencyIds);
+  const loadData = async (): Promise<StaffPayslips[]> => {
+    return getAllStaffPayslips(isAdmin ? assignedAgencyIds : undefined);
   };
 
   useEffect(() => {
+    if (!appUser) return;
+    if (isAdmin && !agencyIdsLoaded) return;
     loadData()
       .then(setStaffList)
       .catch(() => setStaffList([]))
       .finally(() => setLoading(false));
-  }, [appUser]);
+  }, [appUser, isAdmin, assignedAgencyIds, agencyIdsLoaded]);
 
   const onDelete = async () => {
     if (!deleteTarget) return;

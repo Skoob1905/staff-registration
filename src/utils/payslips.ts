@@ -15,7 +15,8 @@ export const getAllStaffPayslips = async (
   const results: StaffPayslips[] = [];
 
   for (const data of snaps as Record<string, unknown>[]) {
-    if (assignedAgencyIds && assignedAgencyIds.length > 0) {
+    if (assignedAgencyIds) {
+      if (assignedAgencyIds.length === 0) continue;
       const staffAgencyId = (
         data.metadata as Record<string, unknown> | undefined
       )?.assignedToId as string | undefined;
