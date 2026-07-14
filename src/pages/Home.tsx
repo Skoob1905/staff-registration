@@ -104,8 +104,7 @@ export const Home = () => {
   }, [tags]);
 
   const targetAgencyNames = useMemo(() => {
-    if (agencyNames.length === 0) return undefined;
-    return agencyNames;
+    return agencyNames.length === 0 ? [] : agencyNames;
   }, [agencyNames]);
 
   const renderItem = useCallback(

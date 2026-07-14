@@ -19,6 +19,7 @@ export interface AppUser {
   registeredAt?: Date;
   lastLoginTime?: Date | null;
   payslipsSent?: string[];
+  assignedAgencyIds?: string[];
 }
 
 export interface Agency {
