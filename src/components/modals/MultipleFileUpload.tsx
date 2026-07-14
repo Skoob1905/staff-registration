@@ -11,11 +11,17 @@ export interface ColumnDef<T> {
   cell: (item: T, index: number) => ReactNode;
 }
 
-export interface SummaryItem {
+export interface SummaryItemBase {
   label: string;
   count: number;
   className: string;
 }
+
+export interface SummaryDivider {
+  type: "divider";
+}
+
+export type SummaryItem = SummaryItemBase | SummaryDivider;
 
 interface MultipleFileUploadModalProps<T> {
   open: boolean;
@@ -29,6 +35,7 @@ interface MultipleFileUploadModalProps<T> {
   getFileName: (item: T) => string;
   isError: (item: T) => boolean;
   onUpload: () => void;
+  displayTotal?: number;
 }
 
 export function MultipleFileUploadModal<T>({
@@ -43,8 +50,9 @@ export function MultipleFileUploadModal<T>({
   getFileName,
   isError,
   onUpload,
+  displayTotal: displayTotalProp,
 }: MultipleFileUploadModalProps<T>) {
-  const totalCount = files.length;
+  const totalCount = displayTotalProp ?? files.length;
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
@@ -60,14 +68,21 @@ export function MultipleFileUploadModal<T>({
           <span className="text-sm font-semibold">
             {totalCount} {itemLabel}
             {totalCount !== 1 ? "s" : ""}
-            {summaryItems.map((s) => (
-              <span key={s.label}>
-                {" | "}
-                <span className={s.className}>
-                  {s.count} {s.label}
+            {summaryItems.map((s, i) => {
+              if ("type" in s) {
+                return (
+                  <span key={`divider-${i}`} className="mx-1.5 text-zinc-300 select-none">|</span>
+                );
+              }
+              return (
+                <span key={s.label}>
+                  {" | "}
+                  <span className={s.className}>
+                    {s.count} {s.label}
+                  </span>
                 </span>
-              </span>
-            ))}
+              );
+            })}
           </span>
         </div>
 

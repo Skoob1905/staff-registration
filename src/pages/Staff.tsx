@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Receipt } from "lucide-react";
 import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { ImportHistory } from "../components/ImportHistory";
 import { Metadata } from "../components/Metadata";
 import { Pill } from "../components/Pill";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { AssignTags, AssignStaff } from "../components/modals";
 import { RecordData } from "../components/RecordData";
@@ -15,6 +15,7 @@ import { cleanRecordData } from "../utils/cleanRecordData";
 import { StaffListSection } from "../components/StaffListSection";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
+  AccordionAction,
   AccordionItem,
   ActionButton,
   Button,
@@ -41,16 +42,6 @@ export const Staff = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
-
-  const STATUS_COLOR: Record<string, string> = {
-    failed: "bg-red-400",
-    awaiting_login: "bg-amber-400",
-    password_set: "bg-blue-400",
-    logged_in: "bg-emerald-400",
-  };
-
-  const getStatusColor = (status?: string) =>
-    STATUS_COLOR[status ?? ""] ?? "bg-red-400";
 
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
@@ -302,14 +293,10 @@ export const Staff = () => {
             className="animate-cascade"
             style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
             title={
-              <div className="flex min-w-0 items-center gap-2">
-                <span
-                  className={`inline-block w-[3px] h-3 sm:w-1 sm:h-4 shrink-0 ${getStatusColor(member.metadata?.loginStatus)}`}
-                  title={
-                    member.metadata?.loginStatus?.replace(/_/g, " ") ?? "No email sent"
-                  }
-                />
-                <AccordionTitle>{getStaffName(member)}</AccordionTitle>
+              <StaffAccordionHeader
+                name={getStaffName(member)}
+                loginStatus={member.metadata?.loginStatus}
+              >
                 {member.metadata?.cv && member.metadata.cv.length > 0 && (
                   <Pill
                     status="cv"
@@ -317,18 +304,22 @@ export const Staff = () => {
                     label=""
                   />
                 )}
-              </div>
+                {member.metadata?.payslipsSent &&
+                  member.metadata.payslipsSent.length > 0 && (
+                    <Pill
+                      status="payslip"
+                      icon={<Receipt className="h-4 w-4" />}
+                      count={member.metadata.payslipsSent.length}
+                    />
+                  )}
+              </StaffAccordionHeader>
             }
             actions={
-              <>
-                {member.metadata?.assignedToName ? (
-                  <span className="inline-flex shrink-0 items-center text-xs sm:text-sm text-[var(--muted-foreground)]">
-                    <span className="truncate max-w-[200px]">
-                      {member.metadata.assignedToName}
-                    </span>
-                  </span>
-                ) : null}
-              </>
+              member.metadata?.assignedToName ? (
+                <AccordionAction>
+                  {member.metadata.assignedToName}
+                </AccordionAction>
+              ) : null
             }
           >
             <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">

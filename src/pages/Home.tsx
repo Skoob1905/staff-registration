@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Receipt } from "lucide-react";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { getUser, getAgency, getAgencyByEmail } from "../services/firestore";
 import { StaffListSection } from "../components/StaffListSection";
-import { AccordionItem } from "../components/ui";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { AccordionAction, AccordionItem } from "../components/ui";
+import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
 import { Pill } from "../components/Pill";
 import { Metadata } from "../components/Metadata";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
@@ -117,8 +117,10 @@ export const Home = () => {
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
           title={
-            <div className="flex min-w-0 items-center gap-2">
-              <AccordionTitle>{displayName}</AccordionTitle>
+            <StaffAccordionHeader
+              name={displayName}
+              loginStatus={member.metadata?.loginStatus}
+            >
               {member.metadata?.cv && member.metadata.cv.length > 0 && (
                 <Pill
                   status="cv"
@@ -126,13 +128,21 @@ export const Home = () => {
                   label=""
                 />
               )}
-            </div>
+              {member.metadata?.payslipsSent &&
+                member.metadata.payslipsSent.length > 0 && (
+                    <Pill
+                      status="payslip"
+                      icon={<Receipt className="h-4 w-4" />}
+                      count={member.metadata.payslipsSent.length}
+                    />
+                )}
+            </StaffAccordionHeader>
           }
           actions={
             member.metadata?.assignedToName ? (
-              <span className="shrink-0 text-xs text-[var(--muted-foreground)] truncate max-w-[200px]">
+              <AccordionAction>
                 {member.metadata.assignedToName}
-              </span>
+              </AccordionAction>
             ) : null
           }
         >

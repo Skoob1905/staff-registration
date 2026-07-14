@@ -7,7 +7,12 @@ import { useData } from "../context/DataProvider";
 
 export const Timesheets = () => {
   const { appUser } = useAuth();
-  const { timesheets, timesheetsLoading: loading, markSeen, markDownloaded } = useData();
+  const {
+    timesheets,
+    timesheetsLoading: loading,
+    markSeen,
+    markDownloaded,
+  } = useData();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const myTimesheets = useMemo(() => {
@@ -56,8 +61,14 @@ export const Timesheets = () => {
                     <Button
                       type="button"
                       onClick={() => {
-                        window.open(entry.fileUrl, "_blank", "noopener,noreferrer");
-                        markDownloaded("timesheets", appUser?.agencyId ?? "", [entry.fileName]).catch(() => {});
+                        window.open(
+                          entry.fileUrl,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                        markDownloaded("timesheets", appUser?.agencyId ?? "", [
+                          entry.fileName,
+                        ]).catch(() => {});
                       }}
                     >
                       Download

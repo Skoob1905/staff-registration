@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Loader2 } from "lucide-react";
 import {
+  AccordionAction,
   AccordionItem,
   AccordionRoot,
   Button,
@@ -33,7 +34,9 @@ export const Payslips = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const isAdmin = appUser?.role === "admin";
-  const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[] | undefined>(undefined);
+  const [assignedAgencyIds, setAssignedAgencyIds] = useState<
+    string[] | undefined
+  >(undefined);
   const [agencyIdsLoaded, setAgencyIdsLoaded] = useState(false);
   const [staffList, setStaffList] = useState<StaffPayslips[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,8 +50,9 @@ export const Payslips = () => {
       try {
         const userData = await getUser(appUser!.uid);
         if (!cancelled) {
-          const ids = (userData as { assignedAgencyIds?: string[] })
-            ?.assignedAgencyIds ?? [];
+          const ids =
+            (userData as { assignedAgencyIds?: string[] })?.assignedAgencyIds ??
+            [];
           setAssignedAgencyIds(ids);
         }
       } catch {
@@ -58,7 +62,9 @@ export const Payslips = () => {
       }
     };
     void run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isAdmin, appUser]);
 
   const loadData = async (): Promise<StaffPayslips[]> => {
@@ -140,9 +146,9 @@ export const Payslips = () => {
                     </span>
                   }
                   actions={
-                    <span className="text-xs text-zinc-400">
-                      Latest: {formatSentDate(latestPayslip.timestamp)}
-                    </span>
+                    <AccordionAction>
+                      {"Latest: " + formatSentDate(latestPayslip.timestamp)}
+                    </AccordionAction>
                   }
                 >
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
