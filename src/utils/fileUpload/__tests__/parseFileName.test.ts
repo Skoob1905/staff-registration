@@ -2,39 +2,48 @@ import { describe, it, expect } from "vitest";
 import { parseFileName } from "../parseFileName";
 
 describe("parseFileName (payslip)", () => {
-  it("parses a valid payslip filename", () => {
-    const result = parseFileName("john_smith_ABC123.pdf", "payslip");
+  it("parses a valid payslip filename with prefix", () => {
+    const result = parseFileName("PAYE John Smith (ABC123).pdf", "payslip");
     expect(result).toEqual({
-      firstname: "john",
-      lastname: "smith",
+      firstname: "John",
+      lastname: "Smith",
       workerRef: "ABC123",
     });
   });
 
-  it("parses with mixed case", () => {
-    const result = parseFileName("John_SMITH_xyz-789.pdf", "payslip");
+  it("parses a valid payslip filename without prefix", () => {
+    const result = parseFileName("Jane Doe (ref001).pdf", "payslip");
     expect(result).toEqual({
-      firstname: "John",
-      lastname: "SMITH",
-      workerRef: "xyz-789",
-    });
-  });
-
-  it("parses filename with leading/trailing whitespace", () => {
-    const result = parseFileName("  jane_doe_ref001.pdf  ", "payslip");
-    expect(result).toEqual({
-      firstname: "jane",
-      lastname: "doe",
+      firstname: "Jane",
+      lastname: "Doe",
       workerRef: "ref001",
     });
   });
 
-  it("handles _ in workerRef part", () => {
-    const result = parseFileName("first_last_ref_001.pdf", "payslip");
+  it("parses with multiple prefix words", () => {
+    const result = parseFileName("Monthly Payroll Bob Jones (XYZ-789).pdf", "payslip");
     expect(result).toEqual({
-      firstname: "first",
-      lastname: "last",
-      workerRef: "ref_001",
+      firstname: "Bob",
+      lastname: "Jones",
+      workerRef: "XYZ-789",
+    });
+  });
+
+  it("parses filename with leading/trailing whitespace", () => {
+    const result = parseFileName("  xxxxx firstname lastname (id).pdf  ", "payslip");
+    expect(result).toEqual({
+      firstname: "firstname",
+      lastname: "lastname",
+      workerRef: "id",
+    });
+  });
+
+  it("handles mixed case", () => {
+    const result = parseFileName("payslip John DOE (ABC123).pdf", "payslip");
+    expect(result).toEqual({
+      firstname: "John",
+      lastname: "DOE",
+      workerRef: "ABC123",
     });
   });
 
@@ -47,30 +56,30 @@ describe("parseFileName (payslip)", () => {
   });
 
   it("returns null for non-pdf extension", () => {
-    expect(parseFileName("john_smith_ABC123.docx", "payslip")).toBeNull();
+    expect(parseFileName("John Smith (ABC123).docx", "payslip")).toBeNull();
   });
 
   it("returns null for no extension", () => {
-    expect(parseFileName("john_smith_ABC123", "payslip")).toBeNull();
+    expect(parseFileName("John Smith (ABC123)", "payslip")).toBeNull();
   });
 
-  it("returns null for only two parts", () => {
-    expect(parseFileName("john_smith.pdf", "payslip")).toBeNull();
+  it("returns null when no parenthesised workerRef", () => {
+    expect(parseFileName("John Smith ABC123.pdf", "payslip")).toBeNull();
   });
 
-  it("returns null for only one part", () => {
-    expect(parseFileName("john.pdf", "payslip")).toBeNull();
+  it("returns null when only one name word before parens", () => {
+    expect(parseFileName("Smith (ABC123).pdf", "payslip")).toBeNull();
   });
 
-  it("returns null when firstname is empty", () => {
-    expect(parseFileName("_smith_ABC123.pdf", "payslip")).toBeNull();
+  it("returns null when firstname is empty before parens", () => {
+    expect(parseFileName(" Smith (ABC123).pdf", "payslip")).toBeNull();
   });
 
-  it("returns null when lastname is empty", () => {
-    expect(parseFileName("john__ABC123.pdf", "payslip")).toBeNull();
+  it("returns null when workerRef parens are empty", () => {
+    expect(parseFileName("John Smith ().pdf", "payslip")).toBeNull();
   });
 
-  it("returns null when workerRef is empty", () => {
-    expect(parseFileName("john_smith_.pdf", "payslip")).toBeNull();
+  it("returns null when no name before parens", () => {
+    expect(parseFileName("(ABC123).pdf", "payslip")).toBeNull();
   });
 });
