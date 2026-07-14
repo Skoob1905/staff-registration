@@ -1,10 +1,12 @@
 import {
   CircleCheck,
   CircleX,
+  Copy,
   TriangleAlert,
 } from "lucide-react";
 import type { ColumnDef } from "../../components/modals/MultipleFileUpload";
 import type { PayslipFile } from "../../types/domain";
+import { editFileName } from "./editFileName";
 
 const payslipColumns: ColumnDef<PayslipFile>[] = [
   {
@@ -20,6 +22,12 @@ const payslipColumns: ColumnDef<PayslipFile>[] = [
         return (
           <span className="inline-flex items-center gap-1 text-red-600">
             <CircleX className="h-4 w-4" /> Not PDF
+          </span>
+        );
+      if (file.isDuplicate)
+        return (
+          <span className="inline-flex items-center gap-1 text-purple-600">
+            <Copy className="h-4 w-4" /> Duplicate
           </span>
         );
       if (file.status === "matched")
@@ -45,7 +53,7 @@ const payslipColumns: ColumnDef<PayslipFile>[] = [
     header: "File Name",
     cell: (file) => (
       <span className={file.error || file.status === "missing" ? "text-red-600" : ""}>
-        {file.file.name}
+        {editFileName(file.file.name)}
       </span>
     ),
   },

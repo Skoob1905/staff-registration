@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccordionParams } from "../hooks/useAccordionParams";
 import { httpsCallable } from "firebase/functions";
-import { AccordionItem, AccordionRoot, Button, DeleteButton } from "../components/ui";
+import { AccordionAction, AccordionItem, AccordionRoot, Button, DeleteButton } from "../components/ui";
 import { Section } from "../components/Section";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { InformationCard } from "../components/InformationCard";
@@ -138,10 +138,9 @@ export const AllTimesheets = () => {
                     </span>
                   }
                   actions={
-                    <span className="text-xs text-zinc-400">
-                      Latest upload:{" "}
-                      {formatTimesheetDate(latestUpload.uploadedAt)}
-                    </span>
+                    <AccordionAction>
+                      {"Latest upload: " + formatTimesheetDate(latestUpload.uploadedAt)}
+                    </AccordionAction>
                   }
                 >
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

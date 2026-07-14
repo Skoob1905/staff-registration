@@ -18,10 +18,15 @@ import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { callUploadPayslip } from "../services/payslipService";
+import { editFileName } from "../utils/fileUpload/editFileName";
+import { checkDuplicatePayslip } from "../utils/payslipDuplicateCheck";
+import { db } from "../services/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import type { PayslipFile } from "../types/domain";
 import {
   hasWorkerRefColumn,
-  hasBusinessNameColumn,
+  hasAgencyRefColumn,
+  hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
 import { readPayslipFile } from "../utils/readPayslipFile";
 import { getColumns } from "../utils/fileUpload/columns";
@@ -184,7 +189,34 @@ export const Upload = () => {
       }
 
       const results = await Promise.all(files.map((f) => readPayslipFile(f)));
-      setPayslipFiles(results);
+
+      const fetchExistingNames = async (workerRef: string): Promise<string[]> => {
+        const snapshot = await getDocs(
+          query(collection(db, "payslips"), where("userId", "==", workerRef.toUpperCase())),
+        );
+        return snapshot.docs.map((doc) => (doc.data() as { fileName?: string }).fileName ?? "");
+      };
+
+      const checkItems = results
+        .filter((r) => r.workerRef)
+        .map((r) => ({
+          workerRef: r.workerRef,
+          displayName: editFileName(r.file.name),
+        }));
+
+      const checked = await checkDuplicatePayslip(checkItems, fetchExistingNames);
+
+      const merged = results.map((r) => ({
+        ...r,
+        isDuplicate: checked.some(
+          (c) =>
+            c.workerRef === r.workerRef &&
+            c.displayName === editFileName(r.file.name) &&
+            c.isDuplicate,
+        ),
+      }));
+
+      setPayslipFiles(merged);
       setShowPayslipModal(true);
     },
     [toast],
@@ -192,7 +224,7 @@ export const Upload = () => {
 
   const handlePayslipUpload = () => {
     const eligible = payslipFiles.filter(
-      (f) => !f.error && f.status !== "missing" && f.base64,
+      (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
     );
     if (eligible.length === 0) return;
 
@@ -208,7 +240,7 @@ export const Upload = () => {
         try {
           await callUploadPayslip(
             f.base64,
-            f.file.name,
+            editFileName(f.file.name),
             f.workerRef.toUpperCase(),
             f.agencyId ?? "",
           );
@@ -253,18 +285,31 @@ export const Upload = () => {
         setAddModalFile(file);
         setAddModalCsvType("staff");
         setShowAddModal(true);
-      } else {
-        if (!hasBusinessNameColumn(headers)) {
+      } else if (typeId === "agencies") {
+        if (!hasAgencyRefColumn(headers)) {
           toast({
-            title: `Invalid ${typeLabel} Upload`,
+            title: "Invalid Agency Upload",
             description:
-              "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
+              "No Ref column found. Ensure your CSV has a column like 'Ref' or 'Reference'.",
             variant: "error",
           });
           return;
         }
         setAddModalFile(file);
-        setAddModalCsvType(typeId === "agencies" ? "agency" : "client");
+        setAddModalCsvType("agency");
+        setShowAddModal(true);
+      } else {
+        if (!hasClientRefColumn(headers)) {
+          toast({
+            title: "Invalid Client Upload",
+            description:
+              "No Ref column found. Ensure your CSV has a column like 'Ref' or 'Reference'.",
+            variant: "error",
+          });
+          return;
+        }
+        setAddModalFile(file);
+        setAddModalCsvType("client");
         setShowAddModal(true);
       }
     } else if (typeId === "timesheets") {
@@ -336,15 +381,20 @@ export const Upload = () => {
   };
 
   const matchedCount = payslipFiles.filter(
-    (f) => f.status === "matched" && !f.error,
+    (f) => f.status === "matched" && !f.error && !f.isDuplicate,
   ).length;
   const wrongInfoCount = payslipFiles.filter(
-    (f) => f.status === "wrong info" && !f.error,
+    (f) => f.status === "wrong info" && !f.error && !f.isDuplicate,
+  ).length;
+  const duplicateCount = payslipFiles.filter(
+    (f) => f.isDuplicate && !f.error,
   ).length;
   const missingCount = payslipFiles.filter(
     (f) => f.status === "missing" && !f.error,
   ).length;
-  const uploadableCount = matchedCount + wrongInfoCount;
+  const uploadableCount = payslipFiles.filter(
+    (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
+  ).length;
 
   const payslipSummaryItems: SummaryItem[] = [
     { label: "Matched", count: matchedCount, className: "text-green-600" },
@@ -353,6 +403,9 @@ export const Upload = () => {
       count: wrongInfoCount,
       className: "text-orange-500",
     },
+    ...(duplicateCount > 0
+      ? [{ label: "Duplicates", count: duplicateCount, className: "text-purple-600" }]
+      : []),
     { label: "Missing", count: missingCount, className: "text-red-600" },
   ];
 
@@ -464,6 +517,7 @@ export const Upload = () => {
         getFileName={(f) => f.file.name}
         isError={(f) => !!(f.error || f.status === "missing")}
         onUpload={handlePayslipUpload}
+        displayTotal={payslipFiles.length - duplicateCount}
       />
     </div>
   );

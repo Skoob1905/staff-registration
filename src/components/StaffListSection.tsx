@@ -6,20 +6,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AccordionItem } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
-import { formatInvitedAt } from "../utils/date";
 import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
-import { getStaffName } from "../utils/keyHeaderNormalisation";
-import { FileInteractionButtons } from "./FileInteractionButtons";
-import { Metadata } from "./Metadata";
-import { Pill } from "./Pill";
-import { AccordionTitle } from "./AccordionTitle";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
-import { FileText, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Section } from "./Section";
 import type {
   Agency,
@@ -31,7 +24,7 @@ import type {
 interface StaffListSectionProps {
   action?: ReactNode;
   refreshTrigger?: number;
-  renderItem?: (item: BulkStaff, index: number) => ReactNode;
+  renderItem: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
   targetAgencyNames?: string[];
   namesLoading?: boolean;
@@ -164,113 +157,6 @@ export const StaffListSection = ({
     [setFilters],
   );
 
-  const defaultRenderItem = useCallback(
-    (member: BulkStaff, idx: number) => {
-      const displayName = getStaffName(member);
-      return (
-        <AccordionItem
-          key={member.id}
-          value={member.id}
-          className="animate-cascade"
-          style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-          title={
-            <div className="flex min-w-0 items-center gap-2">
-              <AccordionTitle>{displayName}</AccordionTitle>
-              {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                <Pill
-                  status="cv"
-                  icon={<FileText className="h-4 w-4" />}
-                  label=""
-                />
-              )}
-            </div>
-          }
-        >
-          {member.tags && member.tags.length > 0 && (
-            <Metadata
-              title="Tags"
-              value={member.tags.map((id) => tagsMap[id] || id).join(", ")}
-              className="animate-cascade"
-              style={{ animationDelay: "0ms" }}
-            />
-          )}
-          {member.metadata?.cv && member.metadata.cv.length > 0 && (
-            <div className="mt-2 flex flex-col gap-1 text-xs sm:text-sm">
-              {member.metadata.cv.map((entry, idx) => (
-                <Metadata
-                  key={`${member.id}::${entry.fileName}`}
-                  title="CV"
-                  className="flex items-center animate-cascade"
-                  style={
-                    {
-                      animationDelay: `${(idx + 1) * 12}ms`,
-                    } as React.CSSProperties
-                  }
-                  value={
-                    <span className="inline-flex flex-wrap items-center gap-2 align-middle">
-                      <span className="text-[var(--muted-foreground)]">
-                        {entry.fileName}
-                      </span>
-                      <FileInteractionButtons
-                        fileUrl={entry.fileUrl}
-                        fileName={entry.fileName}
-                        interactionKey="cv"
-                        size="md"
-                      />
-                    </span>
-                  }
-                />
-              ))}
-            </div>
-          )}
-          <div className="overflow-x-auto mt-2">
-            <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-              {Object.entries(member)
-                .filter(
-                  ([key, value]) =>
-                    key !== "id" &&
-                    key !== "uid" &&
-                    key !== "metadata" &&
-                    key !== "agencyId" &&
-                    key !== "importedByAgencyId" &&
-                    key !== "tags" &&
-                    key !== "typeIds" &&
-                    key !== "sortableName" &&
-                    value !== "" &&
-                    value !== null &&
-                    value !== undefined,
-                )
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([key, value], idx) => {
-                  const display =
-                    value instanceof Date
-                      ? formatInvitedAt(value)
-                      : String(value ?? "");
-                  return (
-                    <p
-                      key={key}
-                      className="whitespace-nowrap px-1 animate-cascade"
-                      style={
-                        {
-                          animationDelay: `${idx * 12}ms`,
-                        } as React.CSSProperties
-                      }
-                    >
-                      <span className="font-medium text-[var(--foreground)]">
-                        {key}
-                      </span>
-                      <span className="font-medium">: {display}</span>
-                    </p>
-                  );
-                })}
-            </div>
-          </div>
-        </AccordionItem>
-      );
-    },
-    [tagsMap],
-  );
-
   const sectionTitle =
     isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff";
 
@@ -318,7 +204,7 @@ export const StaffListSection = ({
             : undefined
       }
       action={!isClient ? action : undefined}
-      renderItem={renderItem ?? defaultRenderItem}
+      renderItem={renderItem}
       leftAccordionValue={leftAccordionValue}
       onLeftAccordionChange={onLeftAccordionChange}
       rightAccordionValue={rightAccordionValue}

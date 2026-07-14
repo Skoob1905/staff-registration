@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { Plus } from "lucide-react";
 import {
+  AccordionAction,
   AccordionItem,
   Button,
   DeleteButton,
@@ -353,9 +354,7 @@ export const Users = () => {
                 </div>
               }
               actions={
-                <span className="text-xs sm:text-sm font-medium text-[var(--muted-foreground)] whitespace-nowrap">
-                  {companyName}
-                </span>
+                <AccordionAction>{companyName}</AccordionAction>
               }
             >
               <div>

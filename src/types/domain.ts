@@ -134,7 +134,8 @@ export interface PayslipFile extends UploadableFile {
   parsedFirstname: string;
   parsedLastname: string;
   workerRef: string;
-  status: "missing" | "wrong info" | "matched";
+  status: "missing" | "wrong info" | "matched" | "duplicate";
+  isDuplicate?: boolean;
   email?: string;
   agencyId?: string;
 }
@@ -166,6 +167,7 @@ export interface BulkStaff {
     importedAt?: Date;
     loginStatus?: string;
     cv?: StaffCvEntry[];
+    payslipsSent?: string[];
   };
 }
 

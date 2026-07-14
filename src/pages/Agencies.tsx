@@ -7,7 +7,7 @@ import { AccordionItem, DownloadButton } from "../components/ui";
 import { DeleteClientModal, PreviewModal } from "../components/modals";
 import { Pill } from "../components/Pill";
 import { AssignedStaff } from "../components/Pills/AssignedStaff";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
@@ -157,10 +157,7 @@ export const Agencies = () => {
               className="animate-cascade"
               style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
               title={
-                <div className="flex min-w-0 w-full items-center gap-2">
-                  <AccordionTitle className="leading-none">
-                    {getPrimaryLabel(client)}
-                  </AccordionTitle>
+                <StaffAccordionHeader name={getPrimaryLabel(client)}>
                   {scName && (
                     <Pill
                       status="signed"
@@ -169,7 +166,7 @@ export const Agencies = () => {
                     />
                   )}
                   <AssignedStaff record={client} />
-                </div>
+                </StaffAccordionHeader>
               }
             >
               {scName && scUrl && (

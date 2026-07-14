@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAccordionParams } from "../hooks/useAccordionParams";
 import { Check, Loader2 } from "lucide-react";
 import {
+  AccordionAction,
   AccordionRoot,
   AccordionItem,
   Button,
@@ -94,7 +95,15 @@ export const AllInvoices = () => {
               value={openValues}
               onValueChange={handleAccordionChange}
             >
-              {agencies.map((agency, idx) => (
+              {agencies.map((agency, idx) => {
+                const latestInvoice = agency.invoices.reduce((a, b) =>
+                  new Date(a.uploadedAt) > new Date(b.uploadedAt) ? a : b,
+                );
+                const latestDate = new Date(latestInvoice.uploadedAt).toLocaleDateString(
+                  "en-GB",
+                  { day: "numeric", month: "short", year: "numeric" },
+                );
+                return (
                 <AccordionItem
                   key={agency.agencyId}
                   value={agency.agencyId}
@@ -107,24 +116,9 @@ export const AllInvoices = () => {
                     </span>
                   }
                   actions={
-                    <span className="text-xs text-zinc-400">
-                      Latest upload:{" "}
-                      {(() => {
-                        const latest = agency.invoices.reduce((a, b) =>
-                          new Date(a.uploadedAt) > new Date(b.uploadedAt)
-                            ? a
-                            : b,
-                        );
-                        return new Date(latest.uploadedAt).toLocaleDateString(
-                          "en-GB",
-                          {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          },
-                        );
-                      })()}
-                    </span>
+                    <AccordionAction>
+                      {"Latest upload: " + latestDate}
+                    </AccordionAction>
                   }
                 >
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -219,7 +213,8 @@ export const AllInvoices = () => {
                     })}
                   </div>
                 </AccordionItem>
-              ))}
+              );
+            })}
             </AccordionRoot>
           </div>
         )}

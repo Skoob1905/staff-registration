@@ -299,19 +299,21 @@ export const PreviewModal = ({
           <div className="mt-4 space-y-3">
             {isStaffUpload ? (
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Type</Label>
-                  <select
-                    value={documentType}
-                    onChange={(e) =>
-                      setDocumentType(e.target.value as "document" | "cv")
-                    }
-                    className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-                  >
-                    <option value="document">Document</option>
-                    <option value="cv">CV</option>
-                  </select>
-                </div>
+                {isDocument && (
+                  <div className="space-y-1">
+                    <Label>Type</Label>
+                    <select
+                      value={documentType}
+                      onChange={(e) =>
+                        setDocumentType(e.target.value as "document" | "cv")
+                      }
+                      className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="document">Document</option>
+                      <option value="cv">CV</option>
+                    </select>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label>Staff Member</Label>
                   <select

@@ -7,6 +7,7 @@ import { AssignedStaff } from "../components/Pills/AssignedStaff";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { Metadata } from "../components/Metadata";
 import { Section } from "../components/Section";
+import { Muted } from "../config/typography";
 import { useAuth } from "../context/AuthProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { toDate } from "../utils/date";
@@ -205,9 +206,7 @@ export const ClientAgencies = () => {
     <div className="mx-auto space-y-4">
       {agencies.length === 0 ? (
         <Section title="Agencies">
-          <p className="py-4 text-center text-xs sm:text-sm text-zinc-500">
-            No agencies assigned yet.
-          </p>
+          <Muted>No agencies assigned yet.</Muted>
         </Section>
       ) : (
         <PaginatedFilterSection

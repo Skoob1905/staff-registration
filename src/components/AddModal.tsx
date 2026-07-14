@@ -3,20 +3,18 @@ import { httpsCallable } from "firebase/functions";
 import { countCollection } from "../services/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { Upload } from "lucide-react";
-import { Body, BodyMedium, Caption, Muted } from "../config/typography";
-import { AssignModal } from "./AssignModal";
+import { BodyMedium, Caption, Muted } from "../config/typography";
+import { AgenciesDropdown } from "./AgenciesDropdown";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
 import {
-  normalizeKey,
-  findValueByNormalizedKey,
   hasWorkerRefColumn,
-  hasBusinessNameColumn,
+  hasAgencyRefColumn,
+  hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
@@ -117,25 +115,6 @@ export const AddModal = ({
 }: AddModalProps) => {
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const tags = useAppStore((s) => s.tags);
-  const loadTags = useAppStore((s) => s.loadTags);
-  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
-
-  useEffect(() => {
-    if (open) loadTags(true).catch(() => {});
-  }, [open, loadTags]);
-
-  const clientFacetFilters = useMemo(
-    () => (isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]]),
-    [isAdmin, appUser?.agencyId],
-  );
-
-  const { items: clients } = usePaginatedRecords({
-    indexName: "clients_name_desc",
-    agencyId: isAdmin ? "all" : (appUser?.agencyId ?? ""),
-    facetFilters: clientFacetFilters,
-    hitsPerPage: 1000,
-  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvData, setCsvData] = useState<{
@@ -149,11 +128,8 @@ export const AddModal = ({
   const [dragOver, setDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processing, setProcessing] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState<
-    string | undefined
-  >();
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedAgencyId, setSelectedAgencyId] = useState("");
+  const [selectedAgencyName, setSelectedAgencyName] = useState("");
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
@@ -201,7 +177,6 @@ export const AddModal = ({
       }
 
       if (csvType === "staff") {
-        const normalizedHeaders = parsed.headers.map(normalizeKey);
         if (!hasWorkerRefColumn(parsed.headers)) {
           console.warn(
             "[AddModal] No Worker Ref column found. Headers:",
@@ -215,30 +190,25 @@ export const AddModal = ({
           });
           return;
         }
-        const hasForename = normalizedHeaders.some(
-          (h) => h === "forename" || h === "firstname",
-        );
-        const hasSurname = normalizedHeaders.some(
-          (h) => h === "surname" || h === "lastname",
-        );
-        const hasFullName = normalizedHeaders.some((h) => h === "fullname");
-        if (!(hasForename && hasSurname) && !hasFullName) {
+      }
+
+      if (csvType === "agency") {
+        if (!hasAgencyRefColumn(parsed.headers)) {
           toast({
-            title: "Invalid staff file",
+            title: "Invalid agency file",
             description:
-              "The CSV must contain First Name + Surname columns, or a Full Name column.",
+              "The CSV must contain a Ref or Reference column.",
             variant: "error",
           });
           return;
         }
       }
-
-      if (csvType === "agency" || csvType === "client") {
-        if (!hasBusinessNameColumn(parsed.headers)) {
+      if (csvType === "client") {
+        if (!hasClientRefColumn(parsed.headers)) {
           toast({
             title: "Invalid client file",
             description:
-              "The CSV must contain a Company/Company Name/Business/Business Name column.",
+              "The CSV must contain a Ref or Reference column.",
             variant: "error",
           });
           return;
@@ -266,40 +236,6 @@ export const AddModal = ({
       fileProcessedRef.current = false;
     }
   }, [open, initialFile]);
-
-  const tagsMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const tag of tags) {
-      map[tag.id] = tag.value;
-    }
-    return map;
-  }, [tags]);
-
-  const hasAssignment =
-    selectedClientId !== undefined || selectedTagIds.length > 0;
-
-  const selectedClientName = useMemo(() => {
-    if (!selectedClientId) return "";
-    const c = clients.find((c) => c.id === selectedClientId);
-    if (!c) return "Unknown";
-    return (
-      (c.name as string) ||
-      (c.business_name as string) ||
-      (c.Company_Name as string) ||
-      (c.company_name as string) ||
-      (c.agencyName as string) ||
-      findValueByNormalizedKey(
-        c as Record<string, unknown>,
-        "businessname",
-        "companyname",
-        "name",
-        "agencyname",
-        "organisation",
-        "company",
-      ) ||
-      "Unknown"
-    );
-  }, [clients, selectedClientId]);
 
   useEffect(() => {
     return () => {
@@ -336,8 +272,8 @@ export const AddModal = ({
         });
         setUploadProgress(0);
         setCsvData(null);
-        setSelectedClientId(undefined);
-        setSelectedTagIds([]);
+        setSelectedAgencyId("");
+        setSelectedAgencyName("");
         onOpenChange(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
@@ -384,35 +320,17 @@ export const AddModal = ({
       const recordsToSend = csvData.rows;
 
       const callable = httpsCallable(functions, cloudFunction);
-      const selectedCompany = selectedClientId
-        ? clients.find((c) => c.id === selectedClientId)
-        : null;
       const result = await callable({
         records: recordsToSend,
         totalRecords: csvData.rows.length,
         fileName: csvData.fileName,
         fileUrl,
-        ...(selectedCompany
+        ...(selectedAgencyId
           ? {
-              assignedToId: selectedCompany.id,
-              assignedToName:
-                (selectedCompany.business_name as string) ||
-                (selectedCompany.name as string) ||
-                (selectedCompany.Company_Name as string) ||
-                (selectedCompany.company_name as string) ||
-                (selectedCompany.agencyName as string) ||
-                findValueByNormalizedKey(
-                  selectedCompany as Record<string, unknown>,
-                  "businessname",
-                  "name",
-                  "agencyname",
-                  "organisation",
-                  "company",
-                ) ||
-                "Unknown",
+              assignedToId: selectedAgencyId,
+              assignedToName: selectedAgencyName,
             }
           : {}),
-        ...(selectedTagIds.length > 0 ? { tagIds: selectedTagIds } : {}),
       });
       setProcessing(false);
 
@@ -450,8 +368,8 @@ export const AddModal = ({
       });
       setUploadProgress(0);
       setCsvData(null);
-      setSelectedClientId(undefined);
-      setSelectedTagIds([]);
+      setSelectedAgencyId("");
+      setSelectedAgencyName("");
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
@@ -542,8 +460,8 @@ export const AddModal = ({
             onOpenChange(false);
             setCsvData(null);
             setUploadProgress(0);
-            setSelectedClientId(undefined);
-            setSelectedTagIds([]);
+            setSelectedAgencyId("");
+            setSelectedAgencyName("");
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
           className={`max-w-none flex flex-col overflow-hidden ${
@@ -648,37 +566,23 @@ export const AddModal = ({
                 </div>
               ) : null}
 
-              <div className="mt-4 flex items-center justify-between gap-2">
-                <div>
-                  {csvType === "staff" && hasAssignment && (
-                    <Body as="div">
-                      {selectedTagIds.length > 0 && (
-                        <div>
-                          <span className="font-semibold">Tags:</span>{" "}
-                          {selectedTagIds
-                            .map((id) => tagsMap[id] || id)
-                            .join(", ")}
-                        </div>
-                      )}
-                      {selectedClientId && (
-                        <div>
-                          <span className="font-semibold">Client:</span>{" "}
-                          {selectedClientName}
-                        </div>
-                      )}
-                    </Body>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <div className="flex items-center gap-2">
+                  {csvType === "staff" && (
+                    <>
+                      <BodyMedium>Auto Assign</BodyMedium>
+                      <AgenciesDropdown
+                        value={selectedAgencyId}
+                        onChange={(value, name) => {
+                          setSelectedAgencyId(value);
+                          setSelectedAgencyName(name);
+                        }}
+                        disabled={loading}
+                        className="h-9 w-48 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                        placeholder="Select an agency..."
+                      />
+                    </>
                   )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* {csvType === "staff" && (
-                    <Button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => setShowAssignModal(true)}
-                    >
-                      {hasAssignment ? "Edit" : "Auto-Assign"}
-                    </Button>
-                  )} */}
                   <Button
                     type="button"
                     disabled={loading}
@@ -704,35 +608,6 @@ export const AddModal = ({
         </DialogContent>
       </DialogRoot>
 
-      <AssignModal
-        open={showAssignModal}
-        onOpenChange={setShowAssignModal}
-        clients={clients.map((c) => ({
-          id: c.id as string,
-          name:
-            (c.name as string) ||
-            (c.business_name as string) ||
-            (c.Company_Name as string) ||
-            (c.company_name as string) ||
-            (c.agencyName as string) ||
-            findValueByNormalizedKey(
-              c as Record<string, unknown>,
-              "businessname",
-              "name",
-              "agencyname",
-              "organisation",
-              "company",
-            ) ||
-            "Unknown",
-        }))}
-        tags={tags}
-        selectedClientId={selectedClientId}
-        selectedTagIds={selectedTagIds}
-        onConfirm={(clientId, tagIds) => {
-          setSelectedClientId(clientId);
-          setSelectedTagIds(tagIds);
-        }}
-      />
     </>
   );
 };
