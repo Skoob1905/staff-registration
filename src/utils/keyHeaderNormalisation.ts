@@ -4,16 +4,47 @@ export function normalizeKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
-const AGENCY_REF_NORMALIZED_VARIANTS = new Set([
-  "ref",
-  "reference",
-  "agencyref",
+const NI_NORMALIZED_VARIANTS = new Set([
+  "ninumber",
+  "nino",
+  "nationalinsurancenumber",
+  "nationalinsuranceno",
+  "nationalinsurance",
+  "nin",
+  "ni",
+  "natinsnumber",
+  "natinsno",
+  "natins",
+  "nationalins",
+  "ninsurance",
+  "insurance",
+  "ssn",
+  "socialsecuritynumber",
+  "nidentifier",
+  "nationalid",
+  "natid",
+  "niid",
 ]);
 
-const CLIENT_REF_NORMALIZED_VARIANTS = new Set([
-  "ref",
-  "reference",
-  "clientref",
+const BUSINESS_NAME_NORMALIZED_VARIANTS = new Set([
+  "businessname",
+  "business",
+  "companyname",
+  "company",
+  "organisationname",
+  "organisation",
+  "organizationname",
+  "organization",
+  "agencyname",
+  "agency",
+  "clientname",
+  "client",
+  "firmname",
+  "firm",
+  "employername",
+  "employer",
+  "entityname",
+  "entity",
 ]);
 
 const WORKER_REF_NORMALIZED_VARIANTS = new Set([
@@ -31,16 +62,31 @@ export function hasWorkerRefColumn(headers: string[]): boolean {
   );
 }
 
-export function hasAgencyRefColumn(headers: string[]): boolean {
+export function hasNIColumn(headers: string[]): boolean {
+  return headers.some((h) => NI_NORMALIZED_VARIANTS.has(normalizeKey(h)));
+}
+export function getNINumber(row: Record<string, string>): string {
+  for (const [key, value] of Object.entries(row)) {
+    if (NI_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return value;
+    }
+  }
+  return "";
+}
+
+export function hasBusinessNameColumn(headers: string[]): boolean {
   return headers.some((h) =>
-    AGENCY_REF_NORMALIZED_VARIANTS.has(normalizeKey(h)),
+    BUSINESS_NAME_NORMALIZED_VARIANTS.has(normalizeKey(h)),
   );
 }
 
-export function hasClientRefColumn(headers: string[]): boolean {
-  return headers.some((h) =>
-    CLIENT_REF_NORMALIZED_VARIANTS.has(normalizeKey(h)),
-  );
+export function getBusinessName(row: Record<string, string>): string {
+  for (const [key, value] of Object.entries(row)) {
+    if (BUSINESS_NAME_NORMALIZED_VARIANTS.has(normalizeKey(key))) {
+      return value;
+    }
+  }
+  return "";
 }
 
 export function findValueByNormalizedKey(
