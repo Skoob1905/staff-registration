@@ -16,8 +16,7 @@ import {
   normalizeKey,
   findValueByNormalizedKey,
   hasWorkerRefColumn,
-  hasAgencyRefColumn,
-  hasClientRefColumn,
+  hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
@@ -234,23 +233,12 @@ export const AddModal = ({
         }
       }
 
-      if (csvType === "agency") {
-        if (!hasAgencyRefColumn(parsed.headers)) {
-          toast({
-            title: "Invalid agency file",
-            description:
-              "The CSV must contain a Ref or Reference column.",
-            variant: "error",
-          });
-          return;
-        }
-      }
-      if (csvType === "client") {
-        if (!hasClientRefColumn(parsed.headers)) {
+      if (csvType === "agency" || csvType === "client") {
+        if (!hasBusinessNameColumn(parsed.headers)) {
           toast({
             title: "Invalid client file",
             description:
-              "The CSV must contain a Ref or Reference column.",
+              "The CSV must contain a Company/Company Name/Business/Business Name column.",
             variant: "error",
           });
           return;

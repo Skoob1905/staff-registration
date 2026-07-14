@@ -7,9 +7,8 @@ export interface ParsedPayslipName {
 /**
  * Parses a filename based on the upload type.
  *
- * - `"payslip"` — expects `[prefix...] [firstname] [lastname] ([workerRef]).pdf`.
- *   The prefix is optional; the name is the last two words before the
- *   parenthesised worker reference.
+ * - `"payslip"` — expects `firstname_lastname_workerref.pdf`.
+ *   The worker ref can itself contain underscores (e.g. `ref_001`).
  *
  * @param name - The raw filename string (may include leading/trailing whitespace).
  * @param type - The upload type determining the parse format.
@@ -28,19 +27,14 @@ export function parseFileName(name: string, type: string) {
     const withoutExt = trimmed.replace(/\.pdf$/i, "");
     if (!withoutExt || withoutExt === trimmed) return null;
 
-    const parenMatch = withoutExt.match(/\(([^)]*)\)\s*$/);
-    if (!parenMatch) return null;
+    const parts = withoutExt.split("_");
+    if (parts.length < 3) return null;
 
-    const workerRef = parenMatch[1].trim();
-    if (!workerRef) return null;
+    const firstname = parts[0].trim();
+    const lastname = parts[1].trim();
+    const workerRef = parts.slice(2).join("_").trim();
 
-    const beforeParen = withoutExt.slice(0, parenMatch.index).trim();
-    const words = beforeParen.split(/\s+/);
-    if (words.length < 2) return null;
-
-    const lastname = words[words.length - 1];
-    const firstname = words[words.length - 2];
-    if (!firstname || !lastname) return null;
+    if (!firstname || !lastname || !workerRef) return null;
 
     return { firstname, lastname, workerRef };
   }

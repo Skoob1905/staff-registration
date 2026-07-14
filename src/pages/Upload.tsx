@@ -21,8 +21,7 @@ import { callUploadPayslip } from "../services/payslipService";
 import type { PayslipFile } from "../types/domain";
 import {
   hasWorkerRefColumn,
-  hasAgencyRefColumn,
-  hasClientRefColumn,
+  hasBusinessNameColumn,
 } from "../utils/keyHeaderNormalisation";
 import { readPayslipFile } from "../utils/readPayslipFile";
 import { getColumns } from "../utils/fileUpload/columns";
@@ -254,31 +253,18 @@ export const Upload = () => {
         setAddModalFile(file);
         setAddModalCsvType("staff");
         setShowAddModal(true);
-      } else if (typeId === "agencies") {
-        if (!hasAgencyRefColumn(headers)) {
-          toast({
-            title: "Invalid Agency Upload",
-            description:
-              "No Ref column found. Ensure your CSV has a column like 'Ref' or 'Reference'.",
-            variant: "error",
-          });
-          return;
-        }
-        setAddModalFile(file);
-        setAddModalCsvType("agency");
-        setShowAddModal(true);
       } else {
-        if (!hasClientRefColumn(headers)) {
+        if (!hasBusinessNameColumn(headers)) {
           toast({
-            title: "Invalid Client Upload",
+            title: `Invalid ${typeLabel} Upload`,
             description:
-              "No Ref column found. Ensure your CSV has a column like 'Ref' or 'Reference'.",
+              "No Business Name column found. Ensure your CSV has a column like 'Business Name', 'Company', or 'Client'.",
             variant: "error",
           });
           return;
         }
         setAddModalFile(file);
-        setAddModalCsvType("client");
+        setAddModalCsvType(typeId === "agencies" ? "agency" : "client");
         setShowAddModal(true);
       }
     } else if (typeId === "timesheets") {
