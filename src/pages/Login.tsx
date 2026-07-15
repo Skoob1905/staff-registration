@@ -9,9 +9,7 @@ import { LoadingPage } from "../components/LoadingPage";
 
 export const Login = () => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const initialEmail = searchParams.get("email") ?? "";
-  const [email, setEmail] = useState(initialEmail);
+  const [email, setEmail] = useState(location.state.email);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -27,7 +25,6 @@ export const Login = () => {
     const state = location.state as { email?: string } | null;
     if (state?.email) {
       shownRef.current = true;
-      setEmail(state.email);
       toast(toast_mapper[ToastType.PASSWORD_RESET_SUCCESS]);
       passwordRef.current?.focus();
     }

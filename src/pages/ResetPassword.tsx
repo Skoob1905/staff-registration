@@ -18,8 +18,7 @@ export const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [validating, setValidating] = useState(true);
-  const [tokenValid, setTokenValid] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const token = extractResetTokenFromUrl();
 
@@ -35,22 +34,15 @@ export const ResetPassword = () => {
           toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
           navigate("/login");
         } else {
-          setTokenValid(true);
+          setReady(true);
         }
       })
       .catch(() => {
         navigate("/login");
-      })
-      .finally(() => {
-        setValidating(false);
       });
   }, []);
 
-  if (!token || validating) {
-    return null;
-  }
-
-  if (!tokenValid) {
+  if (!token || !ready) {
     return null;
   }
 
