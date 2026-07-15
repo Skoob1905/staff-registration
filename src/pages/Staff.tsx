@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import { FileText, Loader2, Receipt } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { ImportHistory } from "../components/ImportHistory";
@@ -42,6 +43,7 @@ export const Staff = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
@@ -310,6 +312,9 @@ export const Staff = () => {
                       status="payslip"
                       icon={<Receipt className="h-4 w-4" />}
                       count={member.metadata.payslipsSent.length}
+                      onClick={() =>
+                        navigate(`/payslips?open=${member.id}`)
+                      }
                     />
                   )}
               </StaffAccordionHeader>

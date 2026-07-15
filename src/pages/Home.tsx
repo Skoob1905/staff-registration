@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Receipt } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { getUser, getAgency, getAgencyByEmail } from "../services/firestore";
@@ -43,6 +44,7 @@ export const Home = () => {
   }, []);
 
   const { appUser, agency } = useAuth();
+  const navigate = useNavigate();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const { leftValue, rightValue, onLeftChange, onRightChange } =
@@ -134,6 +136,9 @@ export const Home = () => {
                       status="payslip"
                       icon={<Receipt className="h-4 w-4" />}
                       count={member.metadata.payslipsSent.length}
+                      onClick={() =>
+                        navigate(`/payslips?open=${member.id}`)
+                      }
                     />
                 )}
             </StaffAccordionHeader>

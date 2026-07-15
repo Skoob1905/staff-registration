@@ -8,6 +8,7 @@ export interface StaffPayslips {
 
 export const getAllStaffPayslips = async (
   assignedAgencyIds?: string[],
+  staffIds?: string[],
 ): Promise<StaffPayslips[]> => {
   const { getAllStaff } = await import("../services/firestore");
   const { getPayslip } = await import("../services/firestore");
@@ -21,6 +22,11 @@ export const getAllStaffPayslips = async (
         data.metadata as Record<string, unknown> | undefined
       )?.assignedToId as string | undefined;
       if (!staffAgencyId || !assignedAgencyIds.includes(staffAgencyId)) continue;
+    }
+
+    if (staffIds) {
+      if (staffIds.length === 0) continue;
+      if (!staffIds.includes(data.id as string)) continue;
     }
 
     const payslipIds =
