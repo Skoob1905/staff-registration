@@ -1,21 +1,23 @@
 import type { FirebaseError } from "firebase/app";
 
-export enum ToastType {
-  PASSWORD_RESET_SUCCESS = "PASSWORD_RESET_SUCCESS",
-  INVALID_TOKEN = "INVALID_TOKEN",
-  TOKEN_ALREADY_USED = "TOKEN_ALREADY_USED",
-  TOKEN_EXPIRED = "TOKEN_EXPIRED",
-  INVALID_PASSWORD = "INVALID_PASSWORD",
-  INVALID_CONFIRM_PASSWORD = "INVALID_CONFIRM_PASSWORD",
-  PASSWORDS_DO_NOT_MATCH = "PASSWORDS_DO_NOT_MATCH",
-  INVALID_RESET_TOKEN = "INVALID_RESET_TOKEN",
-  MISSING_CREDENTIALS = "MISSING_CREDENTIALS",
-  INVALID_EMAIL_FORMAT = "INVALID_EMAIL_FORMAT",
-  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
-  TOO_MANY_LOGIN_ATTEMPTS = "TOO_MANY_LOGIN_ATTEMPTS",
-  ACCOUNT_DISABLED = "ACCOUNT_DISABLED",
-  LOGIN_FAILED = "LOGIN_FAILED",
-}
+export const ToastType = {
+  PASSWORD_RESET_SUCCESS: "PASSWORD_RESET_SUCCESS",
+  INVALID_TOKEN: "INVALID_TOKEN",
+  TOKEN_ALREADY_USED: "TOKEN_ALREADY_USED",
+  TOKEN_EXPIRED: "TOKEN_EXPIRED",
+  INVALID_PASSWORD: "INVALID_PASSWORD",
+  INVALID_CONFIRM_PASSWORD: "INVALID_CONFIRM_PASSWORD",
+  PASSWORDS_DO_NOT_MATCH: "PASSWORDS_DO_NOT_MATCH",
+  INVALID_RESET_TOKEN: "INVALID_RESET_TOKEN",
+  MISSING_CREDENTIALS: "MISSING_CREDENTIALS",
+  INVALID_EMAIL_FORMAT: "INVALID_EMAIL_FORMAT",
+  INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  TOO_MANY_LOGIN_ATTEMPTS: "TOO_MANY_LOGIN_ATTEMPTS",
+  ACCOUNT_DISABLED: "ACCOUNT_DISABLED",
+  LOGIN_FAILED: "LOGIN_FAILED",
+} as const;
+
+export type ToastType = (typeof ToastType)[keyof typeof ToastType];
 
 interface ToastConfig {
   title: string;
@@ -62,7 +64,8 @@ export const toast_mapper: Record<ToastType, ToastConfig> = {
   },
   [ToastType.INVALID_RESET_TOKEN]: {
     title: "Invalid reset link",
-    description: "This reset link is invalid, already used, or has expired. Please request a new one.",
+    description:
+      "This reset link is invalid, already used, or has expired. Please request a new one.",
     variant: "error",
   },
   [ToastType.MISSING_CREDENTIALS]: {
@@ -75,17 +78,20 @@ export const toast_mapper: Record<ToastType, ToastConfig> = {
   },
   [ToastType.INVALID_CREDENTIALS]: {
     title: "Login failed",
-    description: "Invalid email or password. Please check your username and password and try again.",
+    description:
+      "Invalid email or password. Please check your username and password and try again.",
     variant: "error",
   },
   [ToastType.TOO_MANY_LOGIN_ATTEMPTS]: {
     title: "Login failed",
-    description: "Too many login attempts. Please wait a moment and try again.",
+    description:
+      "Too many login attempts. Please wait a moment and try again.",
     variant: "error",
   },
   [ToastType.ACCOUNT_DISABLED]: {
     title: "Login failed",
-    description: "This account has been disabled. Please contact your administrator.",
+    description:
+      "This account has been disabled. Please contact your administrator.",
     variant: "error",
   },
   [ToastType.LOGIN_FAILED]: {
@@ -96,8 +102,8 @@ export const toast_mapper: Record<ToastType, ToastConfig> = {
 };
 
 export function parseResetError(error: FirebaseError): ToastType | null {
-  const match = Object.values(ToastType).find((code) =>
+  const match = (Object.values(ToastType) as string[]).find((code) =>
     error.message.startsWith(code),
   );
-  return match ?? null;
+  return (match as ToastType) ?? null;
 }
