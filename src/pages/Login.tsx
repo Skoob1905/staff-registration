@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Button, Input, Label, SecondaryButton } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { loginWithEmail } from "../services/authService";
