@@ -201,5 +201,10 @@ service cloud.firestore {
       allow read: if isSuper();
       allow write: if isSuper();
     }
+
+    // Password reset tokens — Admin SDK only, no client access
+    match /passwordResets/{token} {
+      allow read, write: if false;
+    }
   }
 }

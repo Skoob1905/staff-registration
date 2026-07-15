@@ -40,6 +40,7 @@ import { createAuthUsers } from "./utils/createAuthUsers";
 import { removeAuthUser } from "./utils/removeAuthUser";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
+import { ResetPasswordTokenManager } from "./resetPasswordToken";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
@@ -51,6 +52,7 @@ const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
 const DOCUMENT_UPLOAD_DELAY = defineString("DOCUMENT_UPLOAD_DELAY");
+const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -380,21 +382,127 @@ export const assignClientLogin = onCall(async (request) => {
 /**
  * Sends a password reset email to the specified address.
  *
- * Does not require authentication — this is the public forgot-password
- * endpoint.
+ * Generates a custom Firestore-backed reset token and sends the user an
+ * email containing the reset link. Does not require authentication — this
+ * is the public forgot-password endpoint.
  *
  * @param request.data.email - The email address to send the reset link to.
  * @returns `{ ok: true }` on success.
  * @throws {HttpsError} "invalid-argument" if email is missing.
+ * @throws {HttpsError} "not-found" if the email does not correspond to a
+ *         Firebase Auth user.
  */
 export const sendPasswordReset = onCall(async (request) => {
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
+  const db = getFirestore();
+  const adminAuth = getAuth();
   const emailProvider = new EmailProvider();
-  await emailProvider.sendResetPassword(email);
+
+  const manager = new ResetPasswordTokenManager(
+    db,
+    adminAuth,
+    `${RESET_CONTINUE_URL.value()}/reset-password`,
+  );
+
+  const resetLink = await manager.getResetLink(email);
+
+  await emailProvider.sendResetPassword(email, resetLink);
 
   return { ok: true };
+});
+
+/**
+ * Completes a password reset by validating a custom token and updating the
+ * user's password via the Admin SDK.
+ *
+ * This is the counterpart to `sendPasswordReset` and handles the second
+ * half of the custom reset flow. The token must:
+ * 1. Exist in the `passwordResets` Firestore collection.
+ * 2. Not have been used already.
+ * 3. Not have expired (based on the custom expiry set at creation).
+ * 4. Be accompanied by a password of at least 6 characters.
+ *
+ * Does not require authentication — the token itself is the credential.
+ *
+ * @param request.data.token - The 64-char hex reset token.
+ * @param request.data.newPassword - The new password (min 6 chars).
+ * @returns `{ success: true }` on success.
+ * @throws {HttpsError} "invalid-argument" if token or password is missing
+ *         or the password is too short.
+ * @throws {HttpsError} "not-found" if the token document does not exist.
+ * @throws {HttpsError} "failed-precondition" if the token was already used
+ *         or has expired.
+ */
+export const completePasswordReset = onCall(async (request) => {
+  const token = String(request.data?.token || "").trim();
+  const newPassword = String(request.data?.newPassword || "");
+
+  if (!token) {
+    throw new HttpsError("invalid-argument", "Token is required.");
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new HttpsError("invalid-argument", "Password must be at least 6 characters.");
+  }
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+  const manager = new ResetPasswordTokenManager(
+    db,
+    adminAuth,
+    `${RESET_CONTINUE_URL.value()}/reset-password`,
+  );
+
+  try {
+    const { email } = await manager.completeReset(token, newPassword);
+    return { success: true, email };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    switch (message) {
+      case "INVALID_TOKEN":
+        throw new HttpsError("not-found", "INVALID_TOKEN:Invalid or missing reset token.");
+      case "TOKEN_ALREADY_USED":
+        throw new HttpsError("failed-precondition", "TOKEN_ALREADY_USED:This token has already been used.");
+      case "TOKEN_EXPIRED":
+        throw new HttpsError("failed-precondition", "TOKEN_EXPIRED:This password reset link has expired.");
+      case "INVALID_PASSWORD":
+        throw new HttpsError("invalid-argument", "INVALID_PASSWORD:Password must be at least 6 characters.");
+      default:
+        throw error;
+    }
+  }
+});
+
+/**
+ * Validates a reset token without completing the reset.
+ *
+ * Checks whether the token exists, has not been used, and has not expired.
+ * This is called on the reset page mount so the client can redirect
+ * immediately if the link is stale.
+ *
+ * Does not require authentication — the token itself is the credential.
+ *
+ * @param request.data.token - The 64-char hex reset token.
+ * @returns `{ valid: true }` or `{ valid: false, reason }`.
+ */
+export const validateResetToken = onCall(async (request) => {
+  const token = String(request.data?.token || "").trim();
+  if (!token) {
+    return { valid: false, reason: "INVALID_TOKEN" };
+  }
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+  const manager = new ResetPasswordTokenManager(
+    db,
+    adminAuth,
+    `${RESET_CONTINUE_URL.value()}/reset-password`,
+  );
+
+  return manager.validateToken(token);
 });
 
 export const removeUnregisteredStaffUser = onCall(async (request) => {

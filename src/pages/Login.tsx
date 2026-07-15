@@ -4,6 +4,7 @@ import { Button, Input, Label, SecondaryButton } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { loginWithEmail } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
+import { toast_mapper, ToastType } from "../config/toast";
 import { LoadingPage } from "../components/LoadingPage";
 
 export const Login = () => {
@@ -15,6 +16,7 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const shownRef = useRef(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     document.title = "Login";
@@ -22,13 +24,12 @@ export const Login = () => {
 
   useEffect(() => {
     if (shownRef.current) return;
-    const state = (location.state as { resetPassword?: string } | null)?.resetPassword;
-    if (state === "success") {
+    const state = location.state as { email?: string } | null;
+    if (state?.email) {
       shownRef.current = true;
-      toast({ title: "Password set successfully", variant: "success" });
-    } else if (state === "failure") {
-      shownRef.current = true;
-      toast({ title: "Failed to reset password. The link may have expired.", variant: "error" });
+      setEmail(state.email);
+      toast(toast_mapper[ToastType.PASSWORD_RESET_SUCCESS]);
+      passwordRef.current?.focus();
     }
   }, []);
 
@@ -36,11 +37,11 @@ export const Login = () => {
     event.preventDefault();
 
     if (!email || !password) {
-      toast({ title: "Please enter both email and password.", variant: "error" });
+      toast(toast_mapper[ToastType.MISSING_CREDENTIALS]);
       return;
     }
     if (!/.+@.+\..+/.test(email)) {
-      toast({ title: "Enter a valid email address.", variant: "error" });
+      toast(toast_mapper[ToastType.INVALID_EMAIL_FORMAT]);
       return;
     }
 
@@ -48,22 +49,20 @@ export const Login = () => {
     try {
       await loginWithEmail(email.trim(), password);
     } catch (err) {
-      const code = err instanceof Error && "code" in err ? (err as { code: string }).code : "";
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as { code: string }).code
+          : "";
 
-      let description = "Check your credentials and try again.";
       if (code === "auth/invalid-credential") {
-        description = "Invalid email or password. Please check your username and password and try again.";
+        toast(toast_mapper[ToastType.INVALID_CREDENTIALS]);
       } else if (code === "auth/too-many-requests") {
-        description = "Too many login attempts. Please wait a moment and try again.";
+        toast(toast_mapper[ToastType.TOO_MANY_LOGIN_ATTEMPTS]);
       } else if (code === "auth/user-disabled") {
-        description = "This account has been disabled. Please contact your administrator.";
+        toast(toast_mapper[ToastType.ACCOUNT_DISABLED]);
+      } else {
+        toast(toast_mapper[ToastType.LOGIN_FAILED]);
       }
-
-      toast({
-        title: "Login failed",
-        description,
-        variant: "error",
-      });
     } finally {
       setLoading(false);
     }
@@ -78,7 +77,10 @@ export const Login = () => {
       onSubmit={onSubmit}
       footer={
         <div className="flex justify-end">
-          <a href="https://mds-ce.com" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+          <a
+            href="https://mds-ce.com"
+            className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
             Back to mds-ce.com
           </a>
         </div>
@@ -116,6 +118,7 @@ export const Login = () => {
       <div className="space-y-1">
         <Label htmlFor="password">Password</Label>
         <Input
+          ref={passwordRef}
           id="password"
           type="password"
           value={password}

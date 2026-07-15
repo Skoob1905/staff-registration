@@ -246,25 +246,30 @@ export class EmailProvider {
    * Sends a password reset email (forgot password flow).
    *
    * Pipeline:
-   * 1. Generates a portal reset link via {@link generatePortalResetLink}.
-   * 2. Reads the `forgotPassword.html` template from the filesystem.
-   * 3. Replaces all `{{link}}` placeholders with the generated URL.
-   * 4. Dispatches the email via {@link sendEmail}.
+   * 1. Reads the `forgotPassword.html` template from the filesystem.
+   * 2. Replaces all `{{link}}` placeholders with the provided reset link.
+   * 3. Dispatches the email via {@link sendEmail}.
+   *
+   * If no `resetLink` is provided the email is silently skipped — it does
+   * NOT fall back to the Firebase oobCode flow.
    *
    * The subject is always "Reset your password".
    *
-   * @param email - Recipient email address.
-   * @throws {FirebaseAuthError} From {@link generatePortalResetLink}.
+   * @param email    - Recipient email address.
+   * @param resetLink - The custom reset URL. Email is not sent when empty.
    * @throws {Error} If the template file is missing or the SMTP send fails.
    */
-  async sendResetPassword(email: string): Promise<void> {
+  async sendResetPassword(email: string, resetLink: string): Promise<void> {
+    if (!resetLink) {
+      return;
+    }
+
     const subject = "Reset your password";
     const templateName = "forgotPassword.html";
-    const customLink = await this.generatePortalResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, templateName);
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
-      .replace(/\{\{link\}\}/g, customLink)
+      .replace(/\{\{link\}\}/g, resetLink)
       .replace(
         /\{\{logoUrl\}\}/g,
         `${RESET_CONTINUE_URL.value()}/mds/logo.png`,

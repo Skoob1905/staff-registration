@@ -430,27 +430,25 @@ describe("EmailProvider", () => {
   });
 
   describe("sendResetPassword", () => {
-    it("generates a portal reset link, reads the template, replaces {{link}}, and sends the email", async () => {
-      await emailProvider.sendResetPassword("user@example.com");
+    it("sends the email with the provided reset link in the template", async () => {
+      await emailProvider.sendResetPassword(
+        "user@example.com",
+        "https://portal.com/reset-password?token=abc123",
+      );
 
-      expect(mockGeneratePasswordResetLink).toHaveBeenCalledTimes(1);
+      expect(mockGeneratePasswordResetLink).not.toHaveBeenCalled();
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
         from: "MDS Payroll <mock-continue-url>",
         to: "user@example.com",
         subject: "Reset your password",
-        html: '<a href="mock-continue-url/reset-password?mode=resetPassword&oobCode=abc123&apiKey=my-api-key">Click here</a>',
+        html: '<a href="https://portal.com/reset-password?token=abc123">Click here</a>',
       });
     });
 
-    it("throws when the password reset link generation fails", async () => {
-      mockGeneratePasswordResetLink.mockRejectedValueOnce(
-        new Error("auth/internal-error"),
-      );
+    it("skips sending when resetLink is empty", async () => {
+      await emailProvider.sendResetPassword("user@example.com", "");
 
-      await expect(
-        emailProvider.sendResetPassword("user@example.com"),
-      ).rejects.toThrow("auth/internal-error");
       expect(mockSendMail).not.toHaveBeenCalled();
     });
 
@@ -458,7 +456,10 @@ describe("EmailProvider", () => {
       mockSendMail.mockRejectedValueOnce(new Error("SMTP error"));
 
       await expect(
-        emailProvider.sendResetPassword("user@example.com"),
+        emailProvider.sendResetPassword(
+          "user@example.com",
+          "https://portal.com/reset-password?token=abc123",
+        ),
       ).rejects.toThrow("SMTP error");
     });
 
@@ -468,7 +469,10 @@ describe("EmailProvider", () => {
       });
 
       await expect(
-        emailProvider.sendResetPassword("user@example.com"),
+        emailProvider.sendResetPassword(
+          "user@example.com",
+          "https://portal.com/reset-password?token=abc123",
+        ),
       ).rejects.toThrow("ENOENT");
       expect(mockSendMail).not.toHaveBeenCalled();
     });
