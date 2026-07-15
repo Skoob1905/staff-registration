@@ -13,6 +13,7 @@ import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { AssignTags, AssignStaff } from "../components/modals";
 import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
+import { getTagName } from "../utils/getTagName";
 import { StaffListSection } from "../components/StaffListSection";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
@@ -374,8 +375,8 @@ export const Staff = () => {
                   className="animate-cascade"
                   style={{ animationDelay: "0ms" }}
                   value={
-                    member.tags && member.tags.length > 0
-                      ? member.tags.map((id) => tagsMap[id] || id).join(", ")
+                    member.tags?.length
+                      ? member.tags.map((id) => getTagName(tagsMap, id)).filter(Boolean).join(", ") || "None"
                       : "None"
                   }
                 />

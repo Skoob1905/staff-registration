@@ -72,12 +72,14 @@ export const StaffListSection = ({
   const staffFacetFilters = useMemo(() => {
     const ffs: string[][] = [];
 
-    // Tags
     for (const id of filters.tagIds) {
       ffs.push([`${staffKeyMap.tag}:${id}`]);
     }
 
-    // metadata.assignedToName
+    if (filters.agencyIds.length > 0) {
+      ffs.push(filters.agencyIds.map((n) => `${staffKeyMap.agency}:${n}`));
+    }
+
     if (targetAgencyNames) {
       if (targetAgencyNames.length === 0) {
         ffs.push([`${staffKeyMap.agency}:__none__`]);

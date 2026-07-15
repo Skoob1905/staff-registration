@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FileSignature, Loader2 } from "lucide-react";
 import { getUser, getClientByEmail } from "../services/firestore";
 import { AccordionItem, DownloadButton } from "../components/ui";
@@ -73,6 +74,7 @@ export const ClientAgencies = () => {
   }, []);
 
   const { appUser } = useAuth();
+  const navigate = useNavigate();
   const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [page, setPage] = useState(0);
@@ -243,7 +245,14 @@ export const ClientAgencies = () => {
                         label=""
                       />
                     )}
-                    <AssignedStaff record={record} />
+                    <AssignedStaff
+                      record={record}
+                      onClick={() =>
+                        navigate(
+                          `/staff?agencies=${encodeURIComponent(getPrimaryLabel(record))}`,
+                        )
+                      }
+                    />
                   </div>
                 }
               >

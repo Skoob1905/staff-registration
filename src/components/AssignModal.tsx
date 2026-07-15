@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import type { StaffTag } from "../types/domain";
 import { H1, H2, Muted } from "../config/typography";
+import { getTagName } from "../utils/getTagName";
 
 interface AssignModalProps {
   open: boolean;
@@ -91,7 +92,7 @@ export const AssignModal = ({
                       onChange={() => toggleTag(id)}
                       className="rounded shrink-0"
                     />
-                    <span className="truncate">{tagsMap[id]}</span>
+                    <span className="truncate">{getTagName(tagsMap, id) ?? id}</span>
                   </label>
                 ))}
               </div>

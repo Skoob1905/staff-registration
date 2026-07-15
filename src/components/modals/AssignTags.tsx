@@ -1,4 +1,5 @@
 import { Button, DialogContent, DialogRoot, DialogTitle, Input } from "../ui";
+import { getTagName } from "../../utils/getTagName";
 
 interface AssignTagsProps {
   open: boolean;
@@ -31,7 +32,7 @@ export const AssignTags = ({
       {Object.keys(tagsMap).length > 0 && (
         <div className="mt-4">
           <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
-            {Object.entries(tagsMap).map(([id, value]) => (
+            {Object.keys(tagsMap).map((id) => (
               <label
                 key={id}
                 className="flex cursor-pointer items-center gap-2 text-xs sm:text-sm"
@@ -47,7 +48,7 @@ export const AssignTags = ({
                   }}
                   className="rounded shrink-0"
                 />
-                <span className="truncate">{value}</span>
+                <span className="truncate">{getTagName(tagsMap, id) ?? id}</span>
               </label>
             ))}
           </div>

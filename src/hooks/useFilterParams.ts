@@ -6,7 +6,7 @@ import { emptyFilters } from "../types/domain";
 const filterMemory = new Map<string, StaffFilters>();
 
 function hasParams(searchParams: URLSearchParams): boolean {
-  return !!(searchParams.get("name") || searchParams.get("tags") || searchParams.get("clients") || searchParams.get("types"));
+  return !!(searchParams.get("name") || searchParams.get("tags") || searchParams.get("agencies") || searchParams.get("types"));
 }
 
 function filtersToParams(
@@ -17,8 +17,8 @@ function filtersToParams(
   else params.delete("name");
   if (filters.tagIds.length > 0) params.set("tags", filters.tagIds.join(","));
   else params.delete("tags");
-  if (filters.agencyIds.length > 0) params.set("clients", filters.agencyIds.join(","));
-  else params.delete("clients");
+  if (filters.agencyIds.length > 0) params.set("agencies", filters.agencyIds.join(","));
+  else params.delete("agencies");
   if (filters.typeIds.length > 0) params.set("types", filters.typeIds.join(","));
   else params.delete("types");
   return params;
@@ -27,12 +27,12 @@ function filtersToParams(
 function paramsToFilters(searchParams: URLSearchParams): StaffFilters {
   const name = searchParams.get("name") ?? "";
   const tags = searchParams.get("tags")?.split(",").filter(Boolean) ?? [];
-  const clients = searchParams.get("clients")?.split(",").filter(Boolean) ?? [];
+  const agencies = searchParams.get("agencies")?.split(",").filter(Boolean) ?? [];
   const types = searchParams.get("types")?.split(",").filter(Boolean) ?? [];
-  if (!name && tags.length === 0 && clients.length === 0 && types.length === 0) {
+  if (!name && tags.length === 0 && agencies.length === 0 && types.length === 0) {
     return emptyFilters;
   }
-  return { name, typeIds: types, tagIds: tags, agencyIds: clients };
+  return { name, typeIds: types, tagIds: tags, agencyIds: agencies };
 }
 
 export function useFilterParams(): [StaffFilters, (filters: StaffFilters) => void] {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { httpsCallable } from "firebase/functions";
 import { FileSignature } from "lucide-react";
 import { AddModal } from "../components/AddModal";
@@ -29,6 +30,7 @@ export const Agencies = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<Record<
     string,
     unknown
@@ -165,7 +167,14 @@ export const Agencies = () => {
                       label=""
                     />
                   )}
-                  <AssignedStaff record={client} />
+                  <AssignedStaff
+                    record={client}
+                    onClick={() =>
+                      navigate(
+                        `/staff?agencies=${encodeURIComponent(getPrimaryLabel(client))}`,
+                      )
+                    }
+                  />
                 </StaffAccordionHeader>
               }
             >
