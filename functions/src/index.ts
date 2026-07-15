@@ -975,12 +975,18 @@ export const importAgencyCsv = onCall(async (request) => {
   let writtenCount = 0;
 
   const uploadedBy = caller.agencyId ?? callerUid;
+  const agencyDocIds = new Map<string, string>();
 
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("agencies").doc();
+      const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+      const email = rawEmail ? normalizeEmail(rawEmail) : "";
+      if (email && emailPattern.test(email)) {
+        agencyDocIds.set(email, docRef.id);
+      }
       const meta = {
         uploadedInFile: importId,
         uploadedBy,
@@ -1031,11 +1037,14 @@ export const importAgencyCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmed = await createAuthUsers(emails, {
-    role: "client",
-    agencyId: caller.agencyId ?? "",
-    invitedByUid: callerUid,
-  });
+  const confirmed = await createAuthUsers(
+    emails.map((email) => ({
+      email,
+      role: "client",
+      agencyId: agencyDocIds.get(email) ?? "",
+      invitedByUid: callerUid,
+    })),
+  );
 
   return {
     ok: true,
@@ -1129,12 +1138,18 @@ export const importClientCsv = onCall(async (request) => {
   let writtenCount = 0;
 
   const uploadedBy = caller.agencyId ?? callerUid;
+  const clientDocIds = new Map<string, string>();
 
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("clients").doc();
+      const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+      const email = rawEmail ? normalizeEmail(rawEmail) : "";
+      if (email && emailPattern.test(email)) {
+        clientDocIds.set(email, docRef.id);
+      }
       const meta = {
         uploadedInFile: importId,
         uploadedBy,
@@ -1185,11 +1200,14 @@ export const importClientCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmed = await createAuthUsers(emails, {
-    role: "admin",
-    agencyId: caller.agencyId ?? "",
-    invitedByUid: callerUid,
-  });
+  const confirmed = await createAuthUsers(
+    emails.map((email) => ({
+      email,
+      role: "admin",
+      agencyId: clientDocIds.get(email) ?? "",
+      invitedByUid: callerUid,
+    })),
+  );
 
   return {
     ok: true,
@@ -1404,11 +1422,14 @@ export const importStaffCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmed = await createAuthUsers(emails, {
-    role: "worker",
-    agencyId: caller.agencyId ?? "",
-    invitedByUid: callerUid,
-  });
+  const confirmed = await createAuthUsers(
+    emails.map((email) => ({
+      email,
+      role: "worker",
+      agencyId: caller.agencyId ?? "",
+      invitedByUid: callerUid,
+    })),
+  );
 
   return {
     ok: true,
