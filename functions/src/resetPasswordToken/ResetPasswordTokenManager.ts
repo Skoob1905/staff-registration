@@ -64,7 +64,18 @@ export class ResetPasswordTokenManager {
       uid: userRecord.uid,
     });
 
-    await this.invalidateExistingTokens(userRecord.uid);
+    try {
+      await this.invalidateExistingTokens(userRecord.uid);
+    } catch (err) {
+      logger.error(
+        "[ResetPasswordTokenManager] createToken: invalidateExistingTokens failed",
+        {
+          uid: userRecord.uid,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
+      throw err;
+    }
 
     const token = crypto.randomBytes(TOKEN_BYTES).toString("hex");
     const expiresAt = Timestamp.fromDate(

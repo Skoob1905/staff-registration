@@ -231,7 +231,9 @@ export const invitePortalUser = onCall(async (request) => {
 
   const emailProvider = new EmailProvider();
   try {
-    logger.info("[invitePortalUser] sending client registration email", { email });
+    logger.info("[invitePortalUser] sending client registration email", {
+      email,
+    });
     await emailProvider.sendClientRegistrationLink(email);
   } catch (err) {
     logger.error("[invitePortalUser] failed to send registration email", {
@@ -379,7 +381,9 @@ export const assignClientLogin = onCall(async (request) => {
 
   const emailProvider = new EmailProvider();
   try {
-    logger.info("[assignClientLogin] sending client registration email", { email });
+    logger.info("[assignClientLogin] sending client registration email", {
+      email,
+    });
     await emailProvider.sendClientRegistrationLink(email);
   } catch (err) {
     logger.error("[assignClientLogin] failed to send registration email", {
@@ -469,7 +473,10 @@ export const completePasswordReset = onCall(async (request) => {
   }
 
   if (!newPassword || newPassword.length < 6) {
-    throw new HttpsError("invalid-argument", "Password must be at least 6 characters.");
+    throw new HttpsError(
+      "invalid-argument",
+      "Password must be at least 6 characters.",
+    );
   }
 
   const db = getFirestore();
@@ -488,11 +495,20 @@ export const completePasswordReset = onCall(async (request) => {
 
     switch (message) {
       case "INVALID_TOKEN":
-        throw new HttpsError("not-found", "INVALID_TOKEN:Invalid or missing reset token.");
+        throw new HttpsError(
+          "not-found",
+          "INVALID_TOKEN:Invalid or missing reset token.",
+        );
       case "TOKEN_EXPIRED":
-        throw new HttpsError("failed-precondition", "TOKEN_EXPIRED:This password reset link has expired.");
+        throw new HttpsError(
+          "failed-precondition",
+          "TOKEN_EXPIRED:This password reset link has expired.",
+        );
       case "INVALID_PASSWORD":
-        throw new HttpsError("invalid-argument", "INVALID_PASSWORD:Password must be at least 6 characters.");
+        throw new HttpsError(
+          "invalid-argument",
+          "INVALID_PASSWORD:Password must be at least 6 characters.",
+        );
       default:
         throw error;
     }
@@ -1499,7 +1515,11 @@ export const sendImportEmails = onCall(async (request) => {
       callback = async ({ email }) => {
         try {
           await emailProvider.sendWorkerRegistrationLink(email);
-        } catch {
+        } catch (err) {
+          logger.error("[sendImportEmails] worker registration email failed", {
+            email,
+            error: err instanceof Error ? err.message : String(err),
+          });
           const snaps = await getFirestore()
             .collection("staff")
             .where("email", "==", email)
