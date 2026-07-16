@@ -4,6 +4,5 @@ export interface PasswordResetDoc {
   uid: string;
   email: string;
   expiresAt: Timestamp;
-  used: boolean;
   createdAt: FieldValue;
 }

@@ -230,7 +230,16 @@ export const invitePortalUser = onCall(async (request) => {
   );
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendClientRegistrationLink(email);
+  try {
+    logger.info("[invitePortalUser] sending client registration email", { email });
+    await emailProvider.sendClientRegistrationLink(email);
+  } catch (err) {
+    logger.error("[invitePortalUser] failed to send registration email", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   await db
     .collection("users")
@@ -369,7 +378,16 @@ export const assignClientLogin = onCall(async (request) => {
     );
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendClientRegistrationLink(email);
+  try {
+    logger.info("[assignClientLogin] sending client registration email", { email });
+    await emailProvider.sendClientRegistrationLink(email);
+  } catch (err) {
+    logger.error("[assignClientLogin] failed to send registration email", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   await db
     .collection("users")
@@ -378,6 +396,8 @@ export const assignClientLogin = onCall(async (request) => {
 
   return { ok: true, userId: user.uid };
 });
+
+/**
 
 /**
  * Sends a password reset email to the specified address.
@@ -427,9 +447,8 @@ export const sendPasswordReset = onCall(async (request) => {
  * This is the counterpart to `sendPasswordReset` and handles the second
  * half of the custom reset flow. The token must:
  * 1. Exist in the `passwordResets` Firestore collection.
- * 2. Not have been used already.
- * 3. Not have expired (based on the custom expiry set at creation).
- * 4. Be accompanied by a password of at least 6 characters.
+ * 2. Not have expired (based on the custom expiry set at creation).
+ * 3. Be accompanied by a password of at least 6 characters.
  *
  * Does not require authentication — the token itself is the credential.
  *
@@ -439,8 +458,7 @@ export const sendPasswordReset = onCall(async (request) => {
  * @throws {HttpsError} "invalid-argument" if token or password is missing
  *         or the password is too short.
  * @throws {HttpsError} "not-found" if the token document does not exist.
- * @throws {HttpsError} "failed-precondition" if the token was already used
- *         or has expired.
+ * @throws {HttpsError} "failed-precondition" if the token has expired.
  */
 export const completePasswordReset = onCall(async (request) => {
   const token = String(request.data?.token || "").trim();
@@ -471,8 +489,6 @@ export const completePasswordReset = onCall(async (request) => {
     switch (message) {
       case "INVALID_TOKEN":
         throw new HttpsError("not-found", "INVALID_TOKEN:Invalid or missing reset token.");
-      case "TOKEN_ALREADY_USED":
-        throw new HttpsError("failed-precondition", "TOKEN_ALREADY_USED:This token has already been used.");
       case "TOKEN_EXPIRED":
         throw new HttpsError("failed-precondition", "TOKEN_EXPIRED:This password reset link has expired.");
       case "INVALID_PASSWORD":

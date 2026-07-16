@@ -71,6 +71,9 @@ function createMockFirestore(
             docs[id] = { ...docs[id], ...data };
           }
         },
+        delete: async () => {
+          delete docs[id];
+        },
       }),
       where: (field: string, op: string, value: unknown) => {
         filters.push({ field, op, value });
@@ -196,7 +199,6 @@ describe("ResetPasswordTokenManager", () => {
       expect(doc).toBeDefined();
       expect(doc.uid).toBe("test-uid-123");
       expect(doc.email).toBe("user@example.com");
-      expect(doc.used).toBe(false);
       expect(doc.createdAt).toBe(FieldValue.serverTimestamp());
       expect(doc.expiresAt).toBeInstanceOf(Timestamp);
     });
@@ -221,7 +223,7 @@ describe("ResetPasswordTokenManager", () => {
       expect(expiresAt.seconds).toBe(expected.seconds);
     });
 
-    it("throws EMAIL_NOT_FOUND when auth.getUserByEmail rejects", async () => {
+    it("throws USER_NOT_FOUND when auth.getUserByEmail rejects", async () => {
       await expect(
         manager.createToken("nonexistent@example.com"),
       ).rejects.toThrow("USER_NOT_FOUND");
@@ -236,7 +238,7 @@ describe("ResetPasswordTokenManager", () => {
       expect(mockAuth.getUserByEmail).toHaveBeenCalledWith("user@example.com");
     });
 
-    it("deletes existing active tokens for the same user before creating a new one", async () => {
+    it("deletes existing unexpired tokens for the same user before creating a new one", async () => {
       const futureExpiry = Timestamp.fromDate(
         new Date(referenceTime.getTime() + 24 * 60 * 60 * 1000),
       );
@@ -245,34 +247,13 @@ describe("ResetPasswordTokenManager", () => {
         uid: "test-uid-123",
         email: "user@example.com",
         expiresAt: futureExpiry,
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
 
       const newToken = await manager.createToken("user@example.com");
 
       expect(firestoreResult.docs["old-token"]).toBeUndefined();
-
-      const newDoc = firestoreResult.docs[newToken];
-      expect(newDoc).toBeDefined();
-      expect(newDoc.used).toBe(false);
-    });
-
-    it("does not delete already-used tokens", async () => {
-      firestoreResult.docs["used-token"] = {
-        uid: "test-uid-123",
-        email: "user@example.com",
-        expiresAt: Timestamp.fromDate(
-          new Date(referenceTime.getTime() + 24 * 60 * 60 * 1000),
-        ),
-        used: true,
-        createdAt: FieldValue.serverTimestamp(),
-      };
-
-      await manager.createToken("user@example.com");
-
-      expect(firestoreResult.docs["used-token"]).toBeDefined();
-      expect(firestoreResult.docs["used-token"].used).toBe(true);
+      expect(firestoreResult.docs[newToken]).toBeDefined();
     });
 
     it("does not delete expired tokens", async () => {
@@ -280,14 +261,12 @@ describe("ResetPasswordTokenManager", () => {
         uid: "test-uid-123",
         email: "user@example.com",
         expiresAt: Timestamp.fromDate(new Date(referenceTime.getTime() - 1)),
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
 
       await manager.createToken("user@example.com");
 
       expect(firestoreResult.docs["expired-token"]).toBeDefined();
-      expect(firestoreResult.docs["expired-token"].used).toBe(false);
     });
   });
 
@@ -327,7 +306,6 @@ describe("ResetPasswordTokenManager", () => {
         uid: "test-uid-123",
         email: "user@example.com",
         expiresAt: future,
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
     });
@@ -364,29 +342,11 @@ describe("ResetPasswordTokenManager", () => {
       expect(mockAuth.updateUser).not.toHaveBeenCalled();
     });
 
-    it("throws TOKEN_ALREADY_USED when token is already consumed — does not call updateUser", async () => {
-      firestoreResult.docs["used-token"] = {
-        uid: "test-uid-123",
-        email: "user@example.com",
-        expiresAt: Timestamp.fromDate(
-          new Date(referenceTime.getTime() + 24 * 60 * 60 * 1000),
-        ),
-        used: true,
-        createdAt: FieldValue.serverTimestamp(),
-      };
-
-      await expect(
-        manager.completeReset("used-token", "newPassword123"),
-      ).rejects.toThrow("TOKEN_ALREADY_USED");
-      expect(mockAuth.updateUser).not.toHaveBeenCalled();
-    });
-
     it("throws TOKEN_EXPIRED when token has expired — does not call updateUser", async () => {
       firestoreResult.docs["expired-token"] = {
         uid: "test-uid-123",
         email: "user@example.com",
         expiresAt: Timestamp.fromDate(new Date(referenceTime.getTime() - 1)),
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
 
@@ -410,10 +370,10 @@ describe("ResetPasswordTokenManager", () => {
       expect(mockAuth.revokeRefreshTokens).toHaveBeenCalledWith("test-uid-123");
     });
 
-    it("marks the token doc as used after successful reset", async () => {
+    it("deletes the token doc after successful reset", async () => {
       await manager.completeReset("valid-token", "newPassword123");
 
-      expect(firestoreResult.docs["valid-token"].used).toBe(true);
+      expect(firestoreResult.docs["valid-token"]).toBeUndefined();
     });
 
     it("returns { uid, email } on successful reset", async () => {
@@ -437,7 +397,6 @@ describe("ResetPasswordTokenManager", () => {
         expiresAt: Timestamp.fromDate(
           new Date(referenceTime.getTime() - 60 * 60 * 1000),
         ),
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
       firestoreResult.docs["expired-2"] = {
@@ -446,7 +405,6 @@ describe("ResetPasswordTokenManager", () => {
         expiresAt: Timestamp.fromDate(
           new Date(referenceTime.getTime() - 30 * 60 * 1000),
         ),
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
 
@@ -464,7 +422,6 @@ describe("ResetPasswordTokenManager", () => {
         expiresAt: Timestamp.fromDate(
           new Date(referenceTime.getTime() + 24 * 60 * 60 * 1000),
         ),
-        used: false,
         createdAt: FieldValue.serverTimestamp(),
       };
 

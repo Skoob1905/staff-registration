@@ -1,9 +1,27 @@
 #!/bin/sh
-npm run lint
-npm run build:dev
-npx tsc --noEmit
 
+# ── Main app checks (run in parallel) ──
+npm run lint & pid1=$!
+npm run build:dev & pid2=$!
+npx tsc --noEmit & pid3=$!
+
+# Collect exit codes (blocks until each finishes)
+wait $pid1; code1=$?
+wait $pid2; code2=$?
+wait $pid3; code3=$?
+
+# Fail push if any check failed
+[ $code1 -ne 0 ] && exit 1
+[ $code2 -ne 0 ] && exit 1
+[ $code3 -ne 0 ] && exit 1
+
+# ── Functions checks (only if functions/ changed) ──
 if git diff --name-only "$(git merge-base HEAD @{upstream})" HEAD -- functions/ | grep -q .; then
   echo "→ Functions changed, running checks..."
-  cd functions && npm run lint && npm run build && cd ..
+  (cd functions && npm run lint) & pid4=$!
+  (cd functions && npm run build) & pid5=$!
+  wait $pid4; code4=$?
+  wait $pid5; code5=$?
+  [ $code4 -ne 0 ] && exit 1
+  [ $code5 -ne 0 ] && exit 1
 fi
