@@ -1527,7 +1527,9 @@ export const sendImportEmails = onCall(async (request) => {
           for (const d of snaps.docs) {
             void d.ref.update("metadata.loginStatus", "failed");
           }
-          throw new Error(`Email failed to send to ${email}`);
+          const error = new Error(`Email failed to send to ${email}`);
+          (error as Error & { cause: unknown }).cause = err;
+          throw error;
         }
         const staffSnaps = await getFirestore()
           .collection("staff")
