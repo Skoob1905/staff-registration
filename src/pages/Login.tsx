@@ -9,7 +9,7 @@ import { LoadingPage } from "../components/LoadingPage";
 
 export const Login = () => {
   const location = useLocation();
-  const [email, setEmail] = useState(location.state.email);
+  const [email, setEmail] = useState(location.state?.email ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
