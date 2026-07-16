@@ -49,14 +49,10 @@ export const Payslips = () => {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (role === "super") {
-      setFilterLoaded(true);
-      return;
-    }
     let cancelled = false;
     const run = async () => {
-      try {
-        if (role === "admin") {
+      if (role === "admin") {
+        try {
           const userData = await getUser(appUser!.uid);
           if (!cancelled) {
             const ids =
@@ -64,7 +60,11 @@ export const Payslips = () => {
                 ?.assignedAgencyIds ?? [];
             setAssignedAgencyIds(ids);
           }
-        } else if (role === "client") {
+        } catch {
+          if (!cancelled) setAssignedAgencyIds([]);
+        }
+      } else if (role === "client") {
+        try {
           const agencyData = await getAgency(appUser!.agencyId);
           if (!cancelled) {
             const staffIds = (
@@ -72,15 +72,11 @@ export const Payslips = () => {
             )?.assignedStaff as string[] | undefined;
             setAssignedStaffIds(staffIds ?? []);
           }
+        } catch {
+          if (!cancelled) setAssignedStaffIds([]);
         }
-      } catch {
-        if (!cancelled) {
-          if (role === "admin") setAssignedAgencyIds([]);
-          else if (role === "client") setAssignedStaffIds([]);
-        }
-      } finally {
-        if (!cancelled) setFilterLoaded(true);
       }
+      if (!cancelled) setFilterLoaded(true);
     };
     void run();
     return () => {
