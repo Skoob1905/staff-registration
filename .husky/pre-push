@@ -25,3 +25,5 @@ if git diff --name-only "$(git merge-base HEAD @{upstream})" HEAD -- functions/ 
   [ $code4 -ne 0 ] && exit 1
   [ $code5 -ne 0 ] && exit 1
 fi
+
+exit 0
