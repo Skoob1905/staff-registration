@@ -39,6 +39,7 @@ const ADMIN_ROUTES = [
 
 const CLIENT_ROUTES = [
   { label: "STAFF", to: "/staff" },
+  { label: "PAYSLIPS", to: "/payslips" },
   // hide for the tiem being
   // { label: "UPLOAD", to: "/upload" },
   // { label: "TIMESHEETS", to: "/timesheets" },

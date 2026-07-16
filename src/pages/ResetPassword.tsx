@@ -1,64 +1,90 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import type { FirebaseError } from "firebase/app";
 import { Button, Input, Label } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import {
-  extractOobCodeFromUrl,
-  confirmPasswordResetCode,
+  extractResetTokenFromUrl,
+  callValidateToken,
+  callCompletePasswordReset,
 } from "../services/emailService";
 import { updateLoginStatus } from "../services/authService";
+import { useToast } from "../context/ToastProvider";
+import { toast_mapper, ToastType, parseResetError } from "../config/toast";
 
 export const ResetPassword = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const shownRef = useRef(false);
 
-  const oobCode = extractOobCodeFromUrl();
+  const token = extractResetTokenFromUrl();
 
-  const navToLogin = (resetPassword: "success" | "failure") => {
-    navigate("/login", { state: { resetPassword } });
-  };
+  useEffect(() => {
+    if (shownRef.current) return;
+    shownRef.current = true;
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    callValidateToken(token)
+      .then((result) => {
+        if (!result.valid) {
+          navigate("/login", { state: "reset-password" });
+          toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
+        } else {
+          setReady(true);
+        }
+      })
+      .catch(() => {
+        navigate("/login");
+        toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
+      });
+  }, []);
+
+  if (!token || !ready) {
+    return null;
+  }
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!password || !confirmPassword) {
-      navToLogin("failure");
+      toast(toast_mapper[ToastType.INVALID_CONFIRM_PASSWORD]);
       return;
     }
 
     if (password.length < 6) {
-      navToLogin("failure");
+      toast(toast_mapper[ToastType.INVALID_PASSWORD]);
       return;
     }
 
     if (password !== confirmPassword) {
-      navToLogin("failure");
+      toast(toast_mapper[ToastType.PASSWORDS_DO_NOT_MATCH]);
       return;
     }
 
     setLoading(true);
     try {
-      const { email } = await confirmPasswordResetCode(oobCode!, password);
-      updateLoginStatus(email, "password_set").catch(() => {});
-      navToLogin("success");
-    } catch {
-      navToLogin("failure");
+      const { email } = await callCompletePasswordReset(token, password);
+      updateLoginStatus(email, "password_set");
+      navigate("/login", { state: { email, source: "reset-password" } });
+    } catch (error) {
+      const code = parseResetError(error as FirebaseError);
+      if (code) {
+        toast(toast_mapper[code]);
+      } else {
+        toast(toast_mapper[ToastType.RESET_FAILED]);
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  if (!oobCode) {
-    return (
-      <NonAuthForm title="Reset Password" subtitle="Choose a new password for your account">
-        <p className="text-sm text-center text-zinc-500">
-          Invalid or expired reset link.
-        </p>
-      </NonAuthForm>
-    );
-  }
 
   return (
     <NonAuthForm

@@ -7,7 +7,8 @@ export interface CreateAuthUserEntry {
   uid: string;
 }
 
-export interface CreateAuthUsersMetadata {
+export interface CreateAuthUserInput {
+  email: string;
   role: string;
   agencyId: string;
   invitedByUid: string;
@@ -15,37 +16,34 @@ export interface CreateAuthUsersMetadata {
 
 /**
  * Creates Firebase Auth users for the given emails if they do not already
- * exist, and writes corresponding documents to the `users` and
- * `unregistered_staff` Firestore collections so that the user can
- * complete registration and has a loadable profile on sign-in.
+ * exist, and writes corresponding documents to the `users` Firestore
+ * collection so that the user has a loadable profile on sign-in.
  *
- * @param emails   - Array of email addresses to provision.
- * @param metadata - Role, agency, and inviter context for the new docs.
+ * @param entries - Per-user metadata (email, role, agencyId, inviter).
  * @returns Array of `{ email, uid }` for each successfully confirmed user.
  */
 export async function createAuthUsers(
-  emails: string[],
-  metadata: CreateAuthUsersMetadata,
+  entries: CreateAuthUserInput[],
 ): Promise<CreateAuthUserEntry[]> {
   const adminAuth = getAuth();
   const db = getFirestore();
   const confirmed: CreateAuthUserEntry[] = [];
 
-  for (const email of emails) {
+  for (const entry of entries) {
     let uid: string | undefined;
 
     try {
-      const existing = await adminAuth.getUserByEmail(email);
+      const existing = await adminAuth.getUserByEmail(entry.email);
       uid = existing.uid;
     } catch (err: unknown) {
       const authErr = err as { code?: string };
       if (authErr.code === "auth/user-not-found") {
         try {
-          const created = await adminAuth.createUser({ email });
+          const created = await adminAuth.createUser({ email: entry.email });
           uid = created.uid;
         } catch (createErr: unknown) {
           logger.error("[createAuthUsers] Failed to create user", {
-            email,
+            email: entry.email,
             error:
               createErr instanceof Error
                 ? createErr.message
@@ -55,7 +53,7 @@ export async function createAuthUsers(
         }
       } else {
         logger.error("[createAuthUsers] Failed to look up user", {
-          email,
+          email: entry.email,
           error: err instanceof Error ? err.message : String(err),
         });
         continue;
@@ -66,24 +64,26 @@ export async function createAuthUsers(
 
     const userDoc = {
       uid,
-      email,
-      role: metadata.role,
+      email: entry.email,
+      role: entry.role,
+      agencyId: entry.agencyId,
       registered: true,
       metadata: {
-        invitedByAgencyId: metadata.agencyId,
-        invitedByUid: metadata.invitedByUid,
+        invitedByAgencyId: entry.agencyId,
+        invitedByUid: entry.invitedByUid,
         invitedAt: FieldValue.serverTimestamp(),
       },
     };
 
     try {
       await db.collection("users").doc(uid).set(userDoc, { merge: true });
-      confirmed.push({ email, uid });
+      confirmed.push({ email: entry.email, uid });
     } catch (writeErr: unknown) {
       logger.error("[createAuthUsers] Failed to write Firestore docs", {
-        email,
+        email: entry.email,
         uid,
-        error: writeErr instanceof Error ? writeErr.message : String(writeErr),
+        error:
+          writeErr instanceof Error ? writeErr.message : String(writeErr),
       });
     }
   }

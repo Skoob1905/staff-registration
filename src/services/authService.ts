@@ -8,13 +8,15 @@ import {
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "./firebase";
-import { config } from "../config";
 
 export const initAuthPersistence = async (): Promise<void> => {
   await setPersistence(auth, browserLocalPersistence);
 };
 
-export const loginWithEmail = async (email: string, password: string): Promise<void> => {
+export const loginWithEmail = async (
+  email: string,
+  password: string,
+): Promise<void> => {
   await signInWithEmailAndPassword(auth, email, password);
 };
 
@@ -24,11 +26,7 @@ export const logoutUser = async (): Promise<void> => {
 
 export const sendForgotPassword = async (email: string): Promise<void> => {
   const fn = httpsCallable(functions, "sendPasswordReset");
-  await fn({
-    email,
-    continueUrl: window.location.origin + "/reset-password",
-    companyName: config.name,
-  });
+  await fn({ email });
 };
 
 export const updateLoginStatus = async (
@@ -39,6 +37,8 @@ export const updateLoginStatus = async (
   await fn({ email, status });
 };
 
-export const onAuthUserChanged = (callback: (user: User | null) => void): (() => void) => {
+export const onAuthUserChanged = (
+  callback: (user: User | null) => void,
+): (() => void) => {
   return onAuthStateChanged(auth, callback);
 };

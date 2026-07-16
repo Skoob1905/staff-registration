@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Receipt } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { getUser, getAgency, getAgencyByEmail } from "../services/firestore";
@@ -15,7 +16,8 @@ import {
   findValueByNormalizedKey,
 } from "../utils/keyHeaderNormalisation";
 import { formatInvitedAt } from "../utils/date";
-import type { BulkStaff } from "../types/domain";
+import { getTagName } from "../utils/getTagName";
+import type { Agency, BulkStaff } from "../types/domain";
 
 function getAgencyName(
   agencyDoc: Record<string, unknown>,
@@ -43,12 +45,14 @@ export const Home = () => {
   }, []);
 
   const { appUser, agency } = useAuth();
+  const navigate = useNavigate();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
 
   const [agencyNames, setAgencyNames] = useState<string[]>([]);
+  const [agencyList, setAgencyList] = useState<Agency[]>([]);
   const [agencyNamesLoaded, setAgencyNamesLoaded] = useState(false);
 
   useEffect(() => {
@@ -66,13 +70,24 @@ export const Home = () => {
             ids.push(appUser.agencyId);
           }
           const names: string[] = [];
+          const agenciesArr: Agency[] = [];
           for (const id of ids) {
             const data = await getAgency(id);
             if (data) {
-              names.push(getAgencyName(data, id));
+              const name = getAgencyName(data, id);
+              names.push(name);
+              agenciesArr.push({
+                id,
+                name,
+                slug: (data.slug as string) ?? "",
+                assignedStaff:
+                  ((data.metadata as Record<string, unknown> | undefined)
+                    ?.assignedStaff as string[]) ?? [],
+              });
             }
           }
           setAgencyNames(names);
+          setAgencyList(agenciesArr);
         } else {
           try {
             const agencies = await getAgencyByEmail(appUser.email ?? "");
@@ -134,6 +149,9 @@ export const Home = () => {
                       status="payslip"
                       icon={<Receipt className="h-4 w-4" />}
                       count={member.metadata.payslipsSent.length}
+                      onClick={() =>
+                        navigate(`/payslips?open=${member.id}`)
+                      }
                     />
                 )}
             </StaffAccordionHeader>
@@ -152,8 +170,8 @@ export const Home = () => {
               className="animate-cascade"
               style={{ animationDelay: "0ms" }}
               value={
-                member.tags && member.tags.length > 0
-                  ? member.tags.map((id) => tagsMap[id] || id).join(", ")
+                member.tags?.length
+                  ? member.tags.map((id) => getTagName(tagsMap, id)).filter(Boolean).join(", ") || "None"
                   : "None"
               }
             />
@@ -269,6 +287,7 @@ export const Home = () => {
     <div className="mx-auto space-y-4">
       <StaffListSection
         targetAgencyNames={targetAgencyNames}
+        agencies={agencyList}
         namesLoading={!agencyNamesLoaded}
         renderItem={renderItem}
         leftAccordionValue={leftValue}

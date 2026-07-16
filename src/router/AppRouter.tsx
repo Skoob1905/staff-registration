@@ -73,7 +73,7 @@ const TimesheetsSwitch = () => {
 const PayslipsSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role === "super" || appUser.role === "admin") return <Payslips />;
+  if (appUser.role === "super" || appUser.role === "admin" || appUser.role === "client") return <Payslips />;
   return <Navigate to="/staff" replace />;
 };
 

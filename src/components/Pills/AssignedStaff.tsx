@@ -3,9 +3,10 @@ import { Pill } from "../Pill";
 
 interface AssignedStaffProps {
   record: Record<string, unknown>;
+  onClick?: () => void;
 }
 
-export const AssignedStaff = ({ record }: AssignedStaffProps) => {
+export const AssignedStaff = ({ record, onClick }: AssignedStaffProps) => {
   const meta = record.metadata as Record<string, unknown> | undefined;
   const staffArr = meta?.assignedStaff as unknown[] | undefined;
   const count = Array.isArray(staffArr) ? staffArr.length : 0;
@@ -18,6 +19,7 @@ export const AssignedStaff = ({ record }: AssignedStaffProps) => {
       icon={<Users className="h-3.5 w-3.5" />}
       count={count}
       label=""
+      onClick={onClick}
     />
   );
 };

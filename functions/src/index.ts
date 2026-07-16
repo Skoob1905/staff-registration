@@ -40,6 +40,7 @@ import { createAuthUsers } from "./utils/createAuthUsers";
 import { removeAuthUser } from "./utils/removeAuthUser";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
+import { ResetPasswordTokenManager } from "./resetPasswordToken";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
@@ -51,6 +52,7 @@ const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
 const DOCUMENT_UPLOAD_DELAY = defineString("DOCUMENT_UPLOAD_DELAY");
+const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -228,7 +230,18 @@ export const invitePortalUser = onCall(async (request) => {
   );
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendClientRegistrationLink(email);
+  try {
+    logger.info("[invitePortalUser] sending client registration email", {
+      email,
+    });
+    await emailProvider.sendClientRegistrationLink(email);
+  } catch (err) {
+    logger.error("[invitePortalUser] failed to send registration email", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   await db
     .collection("users")
@@ -367,7 +380,18 @@ export const assignClientLogin = onCall(async (request) => {
     );
 
   const emailProvider = new EmailProvider();
-  await emailProvider.sendClientRegistrationLink(email);
+  try {
+    logger.info("[assignClientLogin] sending client registration email", {
+      email,
+    });
+    await emailProvider.sendClientRegistrationLink(email);
+  } catch (err) {
+    logger.error("[assignClientLogin] failed to send registration email", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   await db
     .collection("users")
@@ -378,23 +402,146 @@ export const assignClientLogin = onCall(async (request) => {
 });
 
 /**
+
+/**
  * Sends a password reset email to the specified address.
  *
- * Does not require authentication — this is the public forgot-password
- * endpoint.
+ * Generates a custom Firestore-backed reset token and sends the user an
+ * email containing the reset link. Does not require authentication — this
+ * is the public forgot-password endpoint.
  *
  * @param request.data.email - The email address to send the reset link to.
  * @returns `{ ok: true }` on success.
  * @throws {HttpsError} "invalid-argument" if email is missing.
+ * @throws {HttpsError} "not-found" if the email does not correspond to a
+ *         Firebase Auth user.
  */
 export const sendPasswordReset = onCall(async (request) => {
   const email = normalizeEmail(request.data?.email);
   if (!email) throw new HttpsError("invalid-argument", "Email is required.");
 
+  const db = getFirestore();
+  const adminAuth = getAuth();
   const emailProvider = new EmailProvider();
-  await emailProvider.sendResetPassword(email);
+
+  const manager = new ResetPasswordTokenManager(
+    db,
+    adminAuth,
+    `${RESET_CONTINUE_URL.value()}/reset-password`,
+  );
+
+  try {
+    const resetLink = await manager.getResetLink(email);
+    await emailProvider.sendResetPassword(email, resetLink);
+  } catch (err) {
+    logger.error("[sendPasswordReset] failed", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   return { ok: true };
+});
+
+/**
+ * Completes a password reset by validating a custom token and updating the
+ * user's password via the Admin SDK.
+ *
+ * This is the counterpart to `sendPasswordReset` and handles the second
+ * half of the custom reset flow. The token must:
+ * 1. Exist in the `passwordResets` Firestore collection.
+ * 2. Not have expired (based on the custom expiry set at creation).
+ * 3. Be accompanied by a password of at least 6 characters.
+ *
+ * Does not require authentication — the token itself is the credential.
+ *
+ * @param request.data.token - The 64-char hex reset token.
+ * @param request.data.newPassword - The new password (min 6 chars).
+ * @returns `{ success: true }` on success.
+ * @throws {HttpsError} "invalid-argument" if token or password is missing
+ *         or the password is too short.
+ * @throws {HttpsError} "not-found" if the token document does not exist.
+ * @throws {HttpsError} "failed-precondition" if the token has expired.
+ */
+export const completePasswordReset = onCall(async (request) => {
+  const token = String(request.data?.token || "").trim();
+  const newPassword = String(request.data?.newPassword || "");
+
+  if (!token) {
+    throw new HttpsError("invalid-argument", "Token is required.");
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Password must be at least 6 characters.",
+    );
+  }
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+  const manager = new ResetPasswordTokenManager(
+    db,
+    adminAuth,
+    `${RESET_CONTINUE_URL.value()}/reset-password`,
+  );
+
+  try {
+    const { email } = await manager.completeReset(token, newPassword);
+    return { success: true, email };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    switch (message) {
+      case "INVALID_TOKEN":
+        throw new HttpsError(
+          "not-found",
+          "INVALID_TOKEN:Invalid or missing reset token.",
+        );
+      case "TOKEN_EXPIRED":
+        throw new HttpsError(
+          "failed-precondition",
+          "TOKEN_EXPIRED:This password reset link has expired.",
+        );
+      case "INVALID_PASSWORD":
+        throw new HttpsError(
+          "invalid-argument",
+          "INVALID_PASSWORD:Password must be at least 6 characters.",
+        );
+      default:
+        throw error;
+    }
+  }
+});
+
+/**
+ * Validates a reset token without completing the reset.
+ *
+ * Checks whether the token exists, has not been used, and has not expired.
+ * This is called on the reset page mount so the client can redirect
+ * immediately if the link is stale.
+ *
+ * Does not require authentication — the token itself is the credential.
+ *
+ * @param request.data.token - The 64-char hex reset token.
+ * @returns `{ valid: true }` or `{ valid: false, reason }`.
+ */
+export const validateResetToken = onCall(async (request) => {
+  const token = String(request.data?.token || "").trim();
+  if (!token) {
+    return { valid: false, reason: "INVALID_TOKEN" };
+  }
+
+  const db = getFirestore();
+  const adminAuth = getAuth();
+  const manager = new ResetPasswordTokenManager(
+    db,
+    adminAuth,
+    `${RESET_CONTINUE_URL.value()}/reset-password`,
+  );
+
+  return manager.validateToken(token);
 });
 
 export const removeUnregisteredStaffUser = onCall(async (request) => {
@@ -867,12 +1014,18 @@ export const importAgencyCsv = onCall(async (request) => {
   let writtenCount = 0;
 
   const uploadedBy = caller.agencyId ?? callerUid;
+  const agencyDocIds = new Map<string, string>();
 
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("agencies").doc();
+      const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+      const email = rawEmail ? normalizeEmail(rawEmail) : "";
+      if (email && emailPattern.test(email)) {
+        agencyDocIds.set(email, docRef.id);
+      }
       const meta = {
         uploadedInFile: importId,
         uploadedBy,
@@ -923,11 +1076,14 @@ export const importAgencyCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmed = await createAuthUsers(emails, {
-    role: "client",
-    agencyId: caller.agencyId ?? "",
-    invitedByUid: callerUid,
-  });
+  const confirmed = await createAuthUsers(
+    emails.map((email) => ({
+      email,
+      role: "client",
+      agencyId: agencyDocIds.get(email) ?? "",
+      invitedByUid: callerUid,
+    })),
+  );
 
   return {
     ok: true,
@@ -1021,12 +1177,18 @@ export const importClientCsv = onCall(async (request) => {
   let writtenCount = 0;
 
   const uploadedBy = caller.agencyId ?? callerUid;
+  const clientDocIds = new Map<string, string>();
 
   for (let i = 0; i < newRecords.length; i += BATCH_LIMIT) {
     const batch = db.batch();
     const chunk = newRecords.slice(i, i + BATCH_LIMIT);
     for (const record of chunk) {
       const docRef = db.collection("clients").doc();
+      const rawEmail = findNormalizedValue(record, "email", "emailaddress");
+      const email = rawEmail ? normalizeEmail(rawEmail) : "";
+      if (email && emailPattern.test(email)) {
+        clientDocIds.set(email, docRef.id);
+      }
       const meta = {
         uploadedInFile: importId,
         uploadedBy,
@@ -1077,11 +1239,14 @@ export const importClientCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmed = await createAuthUsers(emails, {
-    role: "admin",
-    agencyId: caller.agencyId ?? "",
-    invitedByUid: callerUid,
-  });
+  const confirmed = await createAuthUsers(
+    emails.map((email) => ({
+      email,
+      role: "admin",
+      agencyId: clientDocIds.get(email) ?? "",
+      invitedByUid: callerUid,
+    })),
+  );
 
   return {
     ok: true,
@@ -1296,11 +1461,14 @@ export const importStaffCsv = onCall(async (request) => {
   }
   if (loginCount > 0) await loginsBatch.commit();
 
-  const confirmed = await createAuthUsers(emails, {
-    role: "worker",
-    agencyId: caller.agencyId ?? "",
-    invitedByUid: callerUid,
-  });
+  const confirmed = await createAuthUsers(
+    emails.map((email) => ({
+      email,
+      role: "worker",
+      agencyId: caller.agencyId ?? "",
+      invitedByUid: callerUid,
+    })),
+  );
 
   return {
     ok: true,
@@ -1347,7 +1515,11 @@ export const sendImportEmails = onCall(async (request) => {
       callback = async ({ email }) => {
         try {
           await emailProvider.sendWorkerRegistrationLink(email);
-        } catch {
+        } catch (err) {
+          logger.error("[sendImportEmails] worker registration email failed", {
+            email,
+            error: err instanceof Error ? err.message : String(err),
+          });
           const snaps = await getFirestore()
             .collection("staff")
             .where("email", "==", email)
@@ -1355,7 +1527,9 @@ export const sendImportEmails = onCall(async (request) => {
           for (const d of snaps.docs) {
             void d.ref.update("metadata.loginStatus", "failed");
           }
-          throw new Error(`Email failed to send to ${email}`);
+          const error = new Error(`Email failed to send to ${email}`);
+          (error as Error & { cause: unknown }).cause = err;
+          throw error;
         }
         const staffSnaps = await getFirestore()
           .collection("staff")

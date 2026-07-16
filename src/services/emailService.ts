@@ -1,16 +1,30 @@
-import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
-import { auth } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "./firebase";
 
-export function extractOobCodeFromUrl(): string | null {
+export function extractResetTokenFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search);
-  return params.get("oobCode");
+  return params.get("token");
 }
 
-export async function confirmPasswordResetCode(
-  oobCode: string,
+export async function callValidateToken(
+  token: string,
+): Promise<{ valid: boolean; reason?: string }> {
+  const fn = httpsCallable<
+    { token: string },
+    { valid: boolean; reason?: string }
+  >(functions, "validateResetToken");
+  const result = await fn({ token });
+  return result.data;
+}
+
+export async function callCompletePasswordReset(
+  token: string,
   newPassword: string,
 ): Promise<{ email: string }> {
-  const email = await verifyPasswordResetCode(auth, oobCode);
-  await confirmPasswordReset(auth, oobCode, newPassword);
-  return { email };
+  const fn = httpsCallable<
+    { token: string; newPassword: string },
+    { success: boolean; email: string }
+  >(functions, "completePasswordReset");
+  const result = await fn({ token, newPassword });
+  return { email: result.data.email };
 }

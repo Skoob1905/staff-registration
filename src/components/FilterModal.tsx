@@ -9,6 +9,7 @@ import {
 } from "./ui";
 import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { getTagName } from "../utils/getTagName";
 import { H1, H2, Muted } from "../config/typography";
 
 interface FilterModalProps {
@@ -43,7 +44,7 @@ export const FilterModal = ({
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
     new Set(filters.tagIds),
   );
-  const [selectedAgencyIds, setSelectedAgencyIds] = useState<Set<string>>(
+  const [selectedAgencyNames, setSelectedAgencyNames] = useState<Set<string>>(
     new Set(filters.agencyIds),
   );
 
@@ -52,7 +53,7 @@ export const FilterModal = ({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(filters.name);
       setSelectedTagIds(new Set(filters.tagIds));
-      setSelectedAgencyIds(new Set(filters.agencyIds));
+      setSelectedAgencyNames(new Set(filters.agencyIds));
     }
   }, [open, filters]);
 
@@ -64,12 +65,11 @@ export const FilterModal = ({
     [tags, tagCounts],
   );
 
-  const agencyList = useMemo(() => {
+  const agencyEntries = useMemo(() => {
     if (!agencies) return [];
-    const map: Record<string, string> = {};
-    for (const a of agencies) {
+    return agencies.map((a) => {
       const r = a as unknown as Record<string, string>;
-      map[a.id] =
+      const name =
         a.name ||
         r.business_name ||
         r.Company_Name ||
@@ -84,8 +84,8 @@ export const FilterModal = ({
           "company",
         ) ||
         "Unknown";
-    }
-    return map;
+      return { id: a.id, name };
+    });
   }, [agencies]);
 
   const toggleTag = (id: string) => {
@@ -95,11 +95,11 @@ export const FilterModal = ({
     setSelectedTagIds(next);
   };
 
-  const toggleAgency = (id: string) => {
-    const next = new Set(selectedAgencyIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedAgencyIds(next);
+  const toggleAgency = (name: string) => {
+    const next = new Set(selectedAgencyNames);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    setSelectedAgencyNames(next);
   };
 
   const handleApply = () => {
@@ -107,7 +107,7 @@ export const FilterModal = ({
       name: enableName ? name.trim() : "",
       typeIds: [],
       tagIds: enableTag ? Array.from(selectedTagIds) : [],
-      agencyIds: enableAgency ? Array.from(selectedAgencyIds) : [],
+      agencyIds: enableAgency ? Array.from(selectedAgencyNames) : [],
     });
     onOpenChange(false);
   };
@@ -146,7 +146,7 @@ export const FilterModal = ({
                       <Checkbox
                         key={id}
                         id={id}
-                        label={tags[id]}
+                        label={getTagName(tags, id) ?? id}
                         count={tagCounts?.[id]}
                         checked={selectedTagIds.has(id)}
                         onChange={() => toggleTag(id)}
@@ -160,19 +160,19 @@ export const FilterModal = ({
 
           {enableAgency && (
             <div>
-              <H2 as="label">Clients</H2>
-              {Object.keys(agencyList).length === 0 ? (
-                <Muted className="mt-1">No clients have been assigned</Muted>
+              <H2 as="label">Agencies</H2>
+              {agencyEntries.length === 0 ? (
+                <Muted className="mt-1">No agencies have been assigned</Muted>
               ) : (
                 <div className="mt-1 max-h-40 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 overflow-y-auto">
-                  {Object.entries(agencyList).map(([id, name]) => (
+                  {agencyEntries.map(({ id, name }) => (
                     <Checkbox
                       key={id}
                       id={id}
                       label={name}
-                      count={agencyCounts?.[id]}
-                      checked={selectedAgencyIds.has(id)}
-                      onChange={() => toggleAgency(id)}
+                      count={agencyCounts?.[name]}
+                      checked={selectedAgencyNames.has(name)}
+                      onChange={() => toggleAgency(name)}
                     />
                   ))}
                 </div>

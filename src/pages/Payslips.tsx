@@ -14,10 +14,11 @@ import { InformationCard } from "../components/InformationCard";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { useToast } from "../context/ToastProvider";
 import { useAuth } from "../context/AuthProvider";
+import { useAccordionParams } from "../hooks/useAccordionParams";
 import { functions } from "../services/firebase";
 import { formatSentDate } from "../utils/date";
 import { getAllStaffPayslips, type StaffPayslips } from "../utils/payslips";
-import { getUser } from "../services/firestore";
+import { getAgency, getUser } from "../services/firestore";
 
 interface DeleteTarget {
   staffId: string;
@@ -33,52 +34,71 @@ export const Payslips = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
-  const isAdmin = appUser?.role === "admin";
+  const { openValues, handleAccordionChange } = useAccordionParams();
+  const role = appUser?.role;
   const [assignedAgencyIds, setAssignedAgencyIds] = useState<
     string[] | undefined
   >(undefined);
-  const [agencyIdsLoaded, setAgencyIdsLoaded] = useState(false);
+  const [assignedStaffIds, setAssignedStaffIds] = useState<
+    string[] | undefined
+  >(undefined);
+  const [filterLoaded, setFilterLoaded] = useState(false);
   const [staffList, setStaffList] = useState<StaffPayslips[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) return;
     let cancelled = false;
     const run = async () => {
-      try {
-        const userData = await getUser(appUser!.uid);
-        if (!cancelled) {
-          const ids =
-            (userData as { assignedAgencyIds?: string[] })?.assignedAgencyIds ??
-            [];
-          setAssignedAgencyIds(ids);
+      if (role === "admin") {
+        try {
+          const userData = await getUser(appUser!.uid);
+          if (!cancelled) {
+            const ids =
+              (userData as { assignedAgencyIds?: string[] })
+                ?.assignedAgencyIds ?? [];
+            setAssignedAgencyIds(ids);
+          }
+        } catch {
+          if (!cancelled) setAssignedAgencyIds([]);
         }
-      } catch {
-        if (!cancelled) setAssignedAgencyIds([]);
-      } finally {
-        if (!cancelled) setAgencyIdsLoaded(true);
+      } else if (role === "client") {
+        try {
+          const agencyData = await getAgency(appUser!.agencyId);
+          if (!cancelled) {
+            const staffIds = (
+              agencyData?.metadata as Record<string, unknown> | undefined
+            )?.assignedStaff as string[] | undefined;
+            setAssignedStaffIds(staffIds ?? []);
+          }
+        } catch {
+          if (!cancelled) setAssignedStaffIds([]);
+        }
       }
+      if (!cancelled) setFilterLoaded(true);
     };
     void run();
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, appUser]);
+  }, [role, appUser]);
 
   const loadData = async (): Promise<StaffPayslips[]> => {
-    return getAllStaffPayslips(isAdmin ? assignedAgencyIds : undefined);
+    if (role === "admin") return getAllStaffPayslips(assignedAgencyIds);
+    if (role === "client")
+      return getAllStaffPayslips(undefined, assignedStaffIds);
+    return getAllStaffPayslips();
   };
 
   useEffect(() => {
     if (!appUser) return;
-    if (isAdmin && !agencyIdsLoaded) return;
+    if ((role === "admin" || role === "client") && !filterLoaded) return;
     loadData()
       .then(setStaffList)
       .catch(() => setStaffList([]))
       .finally(() => setLoading(false));
-  }, [appUser, isAdmin, assignedAgencyIds, agencyIdsLoaded]);
+  }, [appUser, role, assignedAgencyIds, assignedStaffIds, filterLoaded]);
 
   const onDelete = async () => {
     if (!deleteTarget) return;
@@ -118,7 +138,12 @@ export const Payslips = () => {
         ) : staffList.length === 0 ? (
           <p className="text-sm text-zinc-500">No payslips uploaded yet.</p>
         ) : (
-          <AccordionRoot className="mt-1.5 sm:mt-3 space-y-3" type="multiple">
+          <AccordionRoot
+            className="mt-1.5 sm:mt-3 space-y-3"
+            type="multiple"
+            value={openValues}
+            onValueChange={handleAccordionChange}
+          >
             {staffList.map((staff, idx) => {
               const latestPayslip = staff.payslips.reduce((latest, p) => {
                 const t =
@@ -176,16 +201,18 @@ export const Payslips = () => {
                             >
                               Download
                             </Button>
-                            <DeleteButton
-                              onClick={() => {
-                                setDeleteTarget({
-                                  staffId: staff.staffId,
-                                  staffName: staff.staffName,
-                                  payslipId: payslip.id,
-                                  payslipName: payslip.fileName,
-                                });
-                              }}
-                            />
+                            {(role === "admin" || role === "super") && (
+                              <DeleteButton
+                                onClick={() => {
+                                  setDeleteTarget({
+                                    staffId: staff.staffId,
+                                    staffName: staff.staffName,
+                                    payslipId: payslip.id,
+                                    payslipName: payslip.fileName,
+                                  });
+                                }}
+                              />
+                            )}
                           </div>
                         }
                       />
