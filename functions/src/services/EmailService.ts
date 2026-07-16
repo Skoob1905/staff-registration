@@ -3,6 +3,8 @@ import { defineString, defineBoolean } from "firebase-functions/params";
 import fs from "node:fs";
 import path from "node:path";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { ResetPasswordTokenManager } from "../resetPasswordToken";
 
 const SMTP_HOST = defineString("SMTP_HOST");
 const SMTP_PORT = defineString("SMTP_PORT");
@@ -37,45 +39,12 @@ export class EmailProvider {
     });
   }
 
-  /**
-   * Generates a Firebase password reset link for the given email.
-   *
-   * Calls the Identity Toolkit REST API directly with service account
-   * credentials. This bypasses the Admin SDK's `generatePasswordResetLink`
-   * which hits an INTERNAL ASSERT bug in some Firebase projects.
-   *
-   * @param email - The recipient email address.
-   * @returns A Firebase password reset URL containing `oobCode` and `apiKey`
-   *          query parameters.
-   * @throws {Error} If the Identity Toolkit API returns an error.
-   */
-  async generatePasswordResetLink(email: string): Promise<string> {
-    console.log("[EmailProvider] generatePasswordResetLink", { email });
-    return getAuth().generatePasswordResetLink(email, {
-      url: RESET_CONTINUE_URL.value(),
-      handleCodeInApp: true,
-    });
-  }
-
-  /**
-   * Generates a portal-specific reset link.
-   *
-   * 1. Calls {@link generatePasswordResetLink} to obtain a Firebase reset URL.
-   * 2. Extracts the `oobCode` and `apiKey` query parameters.
-   * 3. Reassembles them onto the configured `RESET_CONTINUE_URL` with
-   *    `mode=resetPassword`.
-   *
-   * @param email - The recipient email address.
-   * @returns A portal reset URL of the form
-   *          `{continueUrl}/reset-password?mode=resetPassword&oobCode=...&apiKey=...`.
-   * @throws {FirebaseAuthError} Propagated from {@link generatePasswordResetLink}.
-   */
-  async generatePortalResetLink(email: string): Promise<string> {
-    const firebaseLink = await this.generatePasswordResetLink(email);
-    const url = new URL(firebaseLink);
-    const oobCode = url.searchParams.get("oobCode") ?? "";
-    const apiKey = url.searchParams.get("apiKey") ?? "";
-    return `${RESET_CONTINUE_URL.value()}/reset-password?mode=resetPassword&oobCode=${oobCode}&apiKey=${apiKey}`;
+  private tokenManager(): ResetPasswordTokenManager {
+    return new ResetPasswordTokenManager(
+      getFirestore(),
+      getAuth(),
+      `${RESET_CONTINUE_URL.value()}/reset-password`,
+    );
   }
 
   /**
@@ -166,7 +135,7 @@ export class EmailProvider {
    * @throws {Error} If the template file is missing or the SMTP send fails.
    */
   async sendWorkerRegistrationLink(email: string): Promise<void> {
-    const customLink = await this.generatePortalResetLink(email);
+    const customLink = await this.tokenManager().getResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "registration.html");
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
@@ -196,7 +165,7 @@ export class EmailProvider {
    * @throws {Error} If the template file is missing or the SMTP send fails.
    */
   async sendAgencyRegistrationLink(email: string): Promise<void> {
-    const customLink = await this.generatePortalResetLink(email);
+    const customLink = await this.tokenManager().getResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "agencyRegistration.html");
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw
@@ -226,7 +195,7 @@ export class EmailProvider {
    * @throws {Error} If the template file is missing or the SMTP send fails.
    */
   async sendClientRegistrationLink(email: string): Promise<void> {
-    const customLink = await this.generatePortalResetLink(email);
+    const customLink = await this.tokenManager().getResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "clientRegistration.html");
     const raw = fs.readFileSync(templatePath, "utf-8");
     const htmlBody = raw

@@ -406,9 +406,16 @@ export const sendPasswordReset = onCall(async (request) => {
     `${RESET_CONTINUE_URL.value()}/reset-password`,
   );
 
-  const resetLink = await manager.getResetLink(email);
-
-  await emailProvider.sendResetPassword(email, resetLink);
+  try {
+    const resetLink = await manager.getResetLink(email);
+    await emailProvider.sendResetPassword(email, resetLink);
+  } catch (err) {
+    logger.error("[sendPasswordReset] failed", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   return { ok: true };
 });
