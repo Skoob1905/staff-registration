@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { FirebaseError } from "firebase/app";
 import { Button, Input, Label } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
@@ -19,10 +19,14 @@ export const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const shownRef = useRef(false);
 
   const token = extractResetTokenFromUrl();
 
   useEffect(() => {
+    if (shownRef.current) return;
+    shownRef.current = true;
+
     if (!token) {
       navigate("/login");
       return;
@@ -31,14 +35,15 @@ export const ResetPassword = () => {
     callValidateToken(token)
       .then((result) => {
         if (!result.valid) {
+          navigate("/login", { state: "reset-password" });
           toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
-          navigate("/login");
         } else {
           setReady(true);
         }
       })
       .catch(() => {
         navigate("/login");
+        toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
       });
   }, []);
 
@@ -67,14 +72,15 @@ export const ResetPassword = () => {
     setLoading(true);
     try {
       const { email } = await callCompletePasswordReset(token, password);
-      updateLoginStatus(email, "password_set").catch(() => {});
-      navigate("/login", { state: { email } });
+      updateLoginStatus(email, "password_set");
+      navigate("/login", { state: { email, source: "reset-password" } });
     } catch (error) {
       const code = parseResetError(error as FirebaseError);
       if (code) {
         toast(toast_mapper[code]);
+      } else {
+        toast(toast_mapper[ToastType.RESET_FAILED]);
       }
-      navigate("/login");
     } finally {
       setLoading(false);
     }

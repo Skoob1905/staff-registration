@@ -9,10 +9,10 @@ export function extractResetTokenFromUrl(): string | null {
 export async function callValidateToken(
   token: string,
 ): Promise<{ valid: boolean; reason?: string }> {
-  const fn = httpsCallable<{ token: string }, { valid: boolean; reason?: string }>(
-    functions,
-    "validateResetToken",
-  );
+  const fn = httpsCallable<
+    { token: string },
+    { valid: boolean; reason?: string }
+  >(functions, "validateResetToken");
   const result = await fn({ token });
   return result.data;
 }

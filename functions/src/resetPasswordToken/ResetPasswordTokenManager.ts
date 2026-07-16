@@ -3,7 +3,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import type { Firestore } from "firebase-admin/firestore";
 import type { Auth } from "firebase-admin/auth";
 import type { PasswordResetDoc } from "./types";
-import * as logger from "firebase-functions/logger";
+import { logger } from "firebase-functions";
 
 const MIN_PASSWORD_LENGTH = 6;
 const DEFAULT_EXPIRY_HOURS = 24;
@@ -197,6 +197,7 @@ export class ResetPasswordTokenManager {
         uid: data.uid,
         email: data.email,
       });
+      await tokenRef.delete();
       throw new Error("TOKEN_EXPIRED");
     }
 
@@ -210,6 +211,7 @@ export class ResetPasswordTokenManager {
 
     try {
       await this.auth.updateUser(data.uid, { password: newPassword });
+      await tokenRef.delete();
     } catch (err) {
       logger.error(
         "[ResetPasswordTokenManager] completeReset: updateUser failed",
@@ -297,6 +299,11 @@ export class ResetPasswordTokenManager {
         uid: data.uid,
         email: data.email,
       });
+      try {
+        await this.db.collection("passwordResets").doc(token).delete();
+      } catch {
+        // best-effort cleanup
+      }
       return { valid: false, reason: "TOKEN_EXPIRED" };
     }
 

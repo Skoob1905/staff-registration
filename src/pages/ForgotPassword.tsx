@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { Button, Input, Label, SecondaryButton } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
+import { toast_mapper, ToastType } from "../config/toast";
 
 const emailSchema = z.string().email("Enter a valid email address.");
 
 export const ForgotPassword = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialEmail = searchParams.get("email") ?? "";
+  const initialEmail = location.state?.email ?? searchParams.get("email") ?? "";
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -20,24 +23,18 @@ export const ForgotPassword = () => {
 
     const result = emailSchema.safeParse(email.trim());
     if (!result.success) {
-      toast({ title: "Enter a valid email address.", variant: "error" });
+      toast(toast_mapper[ToastType.INVALID_EMAIL_FORMAT]);
       return;
     }
-
-    toast({
-      title: "Reset email sent",
-      description:
-        "If an account with that email exists, instructions have been sent.",
-      variant: "info",
-    });
 
     setLoading(true);
     try {
       await sendForgotPassword(result.data);
-    } catch {
-      // Silently ignore — user already saw the info toast
+    } finally {
+      navigate("/login", {
+        state: { email: result.data, source: "forgot-password" },
+      });
     }
-    window.location.href = `/login?email=${encodeURIComponent(result.data)}`;
   };
 
   return (
@@ -60,7 +57,7 @@ export const ForgotPassword = () => {
           key="cancel"
           type="button"
           onClick={() => {
-            window.location.href = `/login?email=${encodeURIComponent(email)}`;
+            navigate("/login", { state: { email } });
           }}
         >
           Cancel

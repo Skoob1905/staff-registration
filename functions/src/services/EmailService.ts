@@ -9,9 +9,20 @@ import * as logger from "firebase-functions/logger";
 
 const SMTP_HOST = defineString("SMTP_HOST");
 const SMTP_PORT = defineString("SMTP_PORT");
-const SMTP_USER = defineString("SMTP_USER");
 const SMTP_PASS = defineString("SMTP_PASS");
-const SMTP_FROM = defineString("SMTP_FROM");
+
+// Registration User
+const REGISTRATION_SMTP_USER = defineString("REGISTRATION_SMTP_USER");
+const REGISTRATION_SMTP_FROM = defineString("REGISTRATION_SMTP_FROM");
+
+// Payslips User
+const PAYSLIPS_SMTP_USER = defineString("PAYSLIPS_SMTP_USER");
+const PAYSLIPS_SMTP_FROM = defineString("PAYSLIPS_SMTP_FROM");
+
+// Documents User
+const DOCUMENTS_SMTP_USER = defineString("DOCUMENTS_SMTP_USER");
+const DOCUMENTS_SMTP_FROM = defineString("DOCUMENTS_SMTP_FROM");
+
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 const EMAIL_ENABLED = defineBoolean("EMAIL_ENABLED", { default: true });
 
@@ -24,13 +35,25 @@ export interface BatchEmailResult {
 }
 
 export class EmailProvider {
-  private transporter: nodemailer.Transporter;
+  private payslipsTransporter: nodemailer.Transporter;
+  private registrationTransporter: nodemailer.Transporter;
+  private documentsTransporter: nodemailer.Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
+    this.registrationTransporter = nodemailer.createTransport({
       host: SMTP_HOST.value(),
       port: Number(SMTP_PORT.value()),
-      auth: { user: SMTP_USER.value(), pass: SMTP_PASS.value() },
+      auth: { user: REGISTRATION_SMTP_USER.value(), pass: SMTP_PASS.value() },
+    });
+    this.payslipsTransporter = nodemailer.createTransport({
+      host: SMTP_HOST.value(),
+      port: Number(SMTP_PORT.value()),
+      auth: { user: PAYSLIPS_SMTP_USER.value(), pass: SMTP_PASS.value() },
+    });
+    this.documentsTransporter = nodemailer.createTransport({
+      host: SMTP_HOST.value(),
+      port: Number(SMTP_PORT.value()),
+      auth: { user: DOCUMENTS_SMTP_USER.value(), pass: SMTP_PASS.value() },
     });
     logger.info("[EmailProvider] transporter created", {
       host: SMTP_HOST.value(),
@@ -50,25 +73,49 @@ export class EmailProvider {
     email,
     subject,
     htmlBody,
+    emailUser: emailUser = "registration",
   }: {
     email: string;
     subject: string;
     htmlBody: string;
+    emailUser?: "payslips" | "registration" | "documents";
   }): Promise<void> {
     if (!EMAIL_ENABLED.value()) {
-      logger.warn("[EmailProvider] sendEmail: EMAIL_ENABLED=false, skipping", { email, subject });
+      logger.warn("[EmailProvider] sendEmail: EMAIL_ENABLED=false, skipping", {
+        email,
+        subject,
+      });
       return;
     }
 
     logger.info("[EmailProvider] sendEmail: sending", { email, subject });
 
     try {
-      await this.transporter.sendMail({
-        from: `MDS Payroll <${SMTP_FROM.value()}>`,
-        to: email,
-        subject,
-        html: htmlBody,
-      });
+      switch (emailUser) {
+        case "payslips":
+          await this.payslipsTransporter.sendMail({
+            from: `MDS Payroll <${PAYSLIPS_SMTP_FROM.value()}>`,
+            to: email,
+            subject,
+            html: htmlBody,
+          });
+          break;
+        case "documents":
+          await this.documentsTransporter.sendMail({
+            from: `MDS Payroll <${DOCUMENTS_SMTP_FROM.value()}>`,
+            to: email,
+            subject,
+            html: htmlBody,
+          });
+          break;
+        default:
+          await this.registrationTransporter.sendMail({
+            from: `MDS Payroll <${REGISTRATION_SMTP_FROM.value()}>`,
+            to: email,
+            subject,
+            html: htmlBody,
+          });
+      }
     } catch (err) {
       logger.error("[EmailProvider] sendEmail: SMTP send failed", {
         email,
@@ -78,7 +125,10 @@ export class EmailProvider {
       throw err;
     }
 
-    logger.info("[EmailProvider] sendEmail: sent successfully", { email, subject });
+    logger.info("[EmailProvider] sendEmail: sent successfully", {
+      email,
+      subject,
+    });
   }
 
   async beginBatchEmailSend(
@@ -103,7 +153,9 @@ export class EmailProvider {
       try {
         await emailCallback({ email: emails[i] });
         sent++;
-        logger.info("[EmailProvider] beginBatchEmailSend: sent", { email: emails[i] });
+        logger.info("[EmailProvider] beginBatchEmailSend: sent", {
+          email: emails[i],
+        });
       } catch (err) {
         failed++;
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -129,7 +181,9 @@ export class EmailProvider {
   }
 
   async sendWorkerRegistrationLink(email: string): Promise<void> {
-    logger.info("[EmailProvider] sendWorkerRegistrationLink: starting", { email });
+    logger.info("[EmailProvider] sendWorkerRegistrationLink: starting", {
+      email,
+    });
 
     const customLink = await this.tokenManager().getResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "registration.html");
@@ -138,10 +192,13 @@ export class EmailProvider {
     try {
       raw = fs.readFileSync(templatePath, "utf-8");
     } catch (err) {
-      logger.error("[EmailProvider] sendWorkerRegistrationLink: template not found", {
-        templatePath,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      logger.error(
+        "[EmailProvider] sendWorkerRegistrationLink: template not found",
+        {
+          templatePath,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
       throw err;
     }
 
@@ -156,7 +213,9 @@ export class EmailProvider {
   }
 
   async sendAgencyRegistrationLink(email: string): Promise<void> {
-    logger.info("[EmailProvider] sendAgencyRegistrationLink: starting", { email });
+    logger.info("[EmailProvider] sendAgencyRegistrationLink: starting", {
+      email,
+    });
 
     const customLink = await this.tokenManager().getResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "agencyRegistration.html");
@@ -165,10 +224,13 @@ export class EmailProvider {
     try {
       raw = fs.readFileSync(templatePath, "utf-8");
     } catch (err) {
-      logger.error("[EmailProvider] sendAgencyRegistrationLink: template not found", {
-        templatePath,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      logger.error(
+        "[EmailProvider] sendAgencyRegistrationLink: template not found",
+        {
+          templatePath,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
       throw err;
     }
 
@@ -183,7 +245,9 @@ export class EmailProvider {
   }
 
   async sendClientRegistrationLink(email: string): Promise<void> {
-    logger.info("[EmailProvider] sendClientRegistrationLink: starting", { email });
+    logger.info("[EmailProvider] sendClientRegistrationLink: starting", {
+      email,
+    });
 
     const customLink = await this.tokenManager().getResetLink(email);
     const templatePath = path.join(TEMPLATES_DIR, "clientRegistration.html");
@@ -192,10 +256,13 @@ export class EmailProvider {
     try {
       raw = fs.readFileSync(templatePath, "utf-8");
     } catch (err) {
-      logger.error("[EmailProvider] sendClientRegistrationLink: template not found", {
-        templatePath,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      logger.error(
+        "[EmailProvider] sendClientRegistrationLink: template not found",
+        {
+          templatePath,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
       throw err;
     }
 
@@ -211,7 +278,9 @@ export class EmailProvider {
 
   async sendResetPassword(email: string, resetLink: string): Promise<void> {
     if (!resetLink) {
-      logger.warn("[EmailProvider] sendResetPassword: no resetLink, skipping", { email });
+      logger.warn("[EmailProvider] sendResetPassword: no resetLink, skipping", {
+        email,
+      });
       return;
     }
 
@@ -294,6 +363,11 @@ export class EmailProvider {
         `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
       );
 
-    await this.sendEmail({ email, subject: "Payslip Received!", htmlBody });
+    await this.sendEmail({
+      email,
+      subject: "Payslip Received!",
+      htmlBody,
+      emailUser: "payslips",
+    });
   }
 }

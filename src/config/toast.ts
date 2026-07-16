@@ -1,6 +1,7 @@
 import type { FirebaseError } from "firebase/app";
 
 export const ToastType = {
+  DEFAULT_ERROR: "DEFAULT_ERROR",
   PASSWORD_RESET_SUCCESS: "PASSWORD_RESET_SUCCESS",
   INVALID_TOKEN: "INVALID_TOKEN",
   TOKEN_ALREADY_USED: "TOKEN_ALREADY_USED",
@@ -15,6 +16,8 @@ export const ToastType = {
   TOO_MANY_LOGIN_ATTEMPTS: "TOO_MANY_LOGIN_ATTEMPTS",
   ACCOUNT_DISABLED: "ACCOUNT_DISABLED",
   LOGIN_FAILED: "LOGIN_FAILED",
+  RESET_FAILED: "RESET_FAILED",
+  RESET_PASSWORD_LINK_SET: "RESET_PASSWORD_LINK_SENT",
 } as const;
 
 export type ToastType = (typeof ToastType)[keyof typeof ToastType];
@@ -26,8 +29,14 @@ interface ToastConfig {
 }
 
 export const toast_mapper: Record<ToastType, ToastConfig> = {
+  [ToastType.DEFAULT_ERROR]: {
+    title: "Something went wrong!",
+    description: "Please try again soon.",
+    variant: "error",
+  },
   [ToastType.PASSWORD_RESET_SUCCESS]: {
     title: "Password set successfully",
+    description: "Please enter your new password below",
     variant: "success",
   },
   [ToastType.INVALID_TOKEN]: {
@@ -84,8 +93,7 @@ export const toast_mapper: Record<ToastType, ToastConfig> = {
   },
   [ToastType.TOO_MANY_LOGIN_ATTEMPTS]: {
     title: "Login failed",
-    description:
-      "Too many login attempts. Please wait a moment and try again.",
+    description: "Too many login attempts. Please wait a moment and try again.",
     variant: "error",
   },
   [ToastType.ACCOUNT_DISABLED]: {
@@ -98,6 +106,17 @@ export const toast_mapper: Record<ToastType, ToastConfig> = {
     title: "Login failed",
     description: "Check your credentials and try again.",
     variant: "error",
+  },
+  [ToastType.RESET_FAILED]: {
+    title: "Reset failed",
+    description: "Something went wrong. Please request a new reset link.",
+    variant: "error",
+  },
+  [ToastType.RESET_PASSWORD_LINK_SET]: {
+    title: "Reset email sent",
+    description:
+      "If an account with that email exists, instructions have been sent.",
+    variant: "info",
   },
 };
 

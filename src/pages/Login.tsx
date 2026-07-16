@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button, Input, Label, SecondaryButton } from "../components/ui";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { loginWithEmail } from "../services/authService";
@@ -9,6 +9,7 @@ import { LoadingPage } from "../components/LoadingPage";
 
 export const Login = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState(location.state?.email ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,11 +23,18 @@ export const Login = () => {
 
   useEffect(() => {
     if (shownRef.current) return;
-    const state = location.state as { email?: string } | null;
-    if (state?.email) {
-      shownRef.current = true;
-      toast(toast_mapper[ToastType.PASSWORD_RESET_SUCCESS]);
-      passwordRef.current?.focus();
+    shownRef.current = true;
+    const state = location.state as { email?: string; source?: string } | null;
+    if (state) {
+      switch (state.source) {
+        case "forgot-password":
+          toast(toast_mapper[ToastType.RESET_PASSWORD_LINK_SET]);
+          break;
+        case "reset-password": {
+          toast(toast_mapper[ToastType.PASSWORD_RESET_SUCCESS]);
+          passwordRef.current?.focus();
+        }
+      }
     }
   }, []);
 
@@ -87,7 +95,7 @@ export const Login = () => {
           key="forgot"
           type="button"
           onClick={() => {
-            window.location.href = `/forgot-password?email=${encodeURIComponent(email)}`;
+            navigate("/forgot-password", { state: { email } });
           }}
         >
           Forgot password?
