@@ -335,7 +335,7 @@ export class EmailProvider {
         `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
       );
 
-    await this.sendEmail({ email, subject: "Document Uploaded!", htmlBody });
+    await this.sendEmail({ email, subject: "Document Uploaded!", htmlBody, emailUser: "documents" });
   }
 
   async sendPayslipEmail(email: string): Promise<void> {

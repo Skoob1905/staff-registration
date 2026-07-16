@@ -46,14 +46,38 @@ vi.mock("nodemailer", () => ({
   },
 }));
 
-vi.mock("firebase-functions/params", () => ({
-  defineString: vi.fn(() => ({
-    value: vi.fn(() => "mock-continue-url"),
-  })),
-  defineBoolean: vi.fn(() => ({
+vi.mock("firebase-functions/params", () => {
+  const defineString = vi.fn((name: string) => ({
+    value: vi.fn(() => {
+      switch (name) {
+        case "REGISTRATION_SMTP_FROM":
+          return "registration-from@test.com";
+        case "REGISTRATION_SMTP_USER":
+          return "reg-user";
+        case "PAYSLIPS_SMTP_FROM":
+          return "payslips-from@test.com";
+        case "PAYSLIPS_SMTP_USER":
+          return "payslips-user";
+        case "DOCUMENTS_SMTP_FROM":
+          return "documents-from@test.com";
+        case "DOCUMENTS_SMTP_USER":
+          return "documents-user";
+        case "SMTP_HOST":
+          return "smtp.test.com";
+        case "SMTP_PORT":
+          return "587";
+        case "SMTP_PASS":
+          return "smtp-pass";
+        default:
+          return "mock-continue-url";
+      }
+    }),
+  }));
+  const defineBoolean = vi.fn(() => ({
     value: vi.fn(() => true),
-  })),
-}));
+  }));
+  return { defineString, defineBoolean };
+});
 
 vi.mock("firebase-admin/auth", () => ({
   getAuth: mockGetAuth,
@@ -89,14 +113,27 @@ describe("EmailProvider", () => {
   });
 
   describe("constructor", () => {
-    it("creates an EmailProvider instance and configures SMTP transport", () => {
+    it("creates an EmailProvider instance and configures 3 SMTP transports", () => {
       expect(emailProvider).toBeInstanceOf(EmailProvider);
 
-      expect(mockCreateTransport).toHaveBeenCalledTimes(1);
-      expect(mockCreateTransport).toHaveBeenCalledWith({
-        host: "mock-continue-url",
-        port: NaN,
-        auth: { user: "mock-continue-url", pass: "mock-continue-url" },
+      expect(mockCreateTransport).toHaveBeenCalledTimes(3);
+
+      expect(mockCreateTransport).toHaveBeenNthCalledWith(1, {
+        host: "smtp.test.com",
+        port: 587,
+        auth: { user: "reg-user", pass: "smtp-pass" },
+      });
+
+      expect(mockCreateTransport).toHaveBeenNthCalledWith(2, {
+        host: "smtp.test.com",
+        port: 587,
+        auth: { user: "payslips-user", pass: "smtp-pass" },
+      });
+
+      expect(mockCreateTransport).toHaveBeenNthCalledWith(3, {
+        host: "smtp.test.com",
+        port: 587,
+        auth: { user: "documents-user", pass: "smtp-pass" },
       });
     });
   });
@@ -123,7 +160,7 @@ describe("EmailProvider", () => {
   });
 
   describe("sendEmail", () => {
-    it("dispatches an email via the SMTP transporter with correct fields", async () => {
+    it("dispatches an email via the registration transporter by default", async () => {
       await emailProvider.sendEmail({
         email: "recipient@example.com",
         subject: "Hello World",
@@ -132,10 +169,44 @@ describe("EmailProvider", () => {
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
-        from: "MDS Payroll <mock-continue-url>",
+        from: "MDS Payroll <registration-from@test.com>",
         to: "recipient@example.com",
         subject: "Hello World",
         html: "<p>Email body content</p>",
+      });
+    });
+
+    it("dispatches an email via the payslips transporter when emailUser is payslips", async () => {
+      await emailProvider.sendEmail({
+        email: "payroll@example.com",
+        subject: "Payslip",
+        htmlBody: "<p>Your payslip is ready</p>",
+        emailUser: "payslips",
+      });
+
+      expect(mockSendMail).toHaveBeenCalledTimes(1);
+      expect(mockSendMail).toHaveBeenCalledWith({
+        from: "MDS Payroll <payslips-from@test.com>",
+        to: "payroll@example.com",
+        subject: "Payslip",
+        html: "<p>Your payslip is ready</p>",
+      });
+    });
+
+    it("dispatches an email via the documents transporter when emailUser is documents", async () => {
+      await emailProvider.sendEmail({
+        email: "staff@example.com",
+        subject: "Document Uploaded!",
+        htmlBody: "<p>A document has been uploaded</p>",
+        emailUser: "documents",
+      });
+
+      expect(mockSendMail).toHaveBeenCalledTimes(1);
+      expect(mockSendMail).toHaveBeenCalledWith({
+        from: "MDS Payroll <documents-from@test.com>",
+        to: "staff@example.com",
+        subject: "Document Uploaded!",
+        html: "<p>A document has been uploaded</p>",
       });
     });
 
@@ -302,12 +373,12 @@ describe("EmailProvider", () => {
   });
 
   describe("sendWorkerRegistrationLink", () => {
-    it("generates a custom token link, reads registration.html, replaces {{link}}, and sends the email", async () => {
+    it("generates a custom token link, reads registration.html, replaces {{link}}, and sends the email via the registration transporter", async () => {
       await emailProvider.sendWorkerRegistrationLink("worker@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       const callArgs = mockSendMail.mock.calls[0][0];
-      expect(callArgs.from).toBe("MDS Payroll <mock-continue-url>");
+      expect(callArgs.from).toBe("MDS Payroll <registration-from@test.com>");
       expect(callArgs.to).toBe("worker@example.com");
       expect(callArgs.subject).toBe("Welcome to MDS");
       expect(callArgs.html).toContain(
@@ -334,12 +405,12 @@ describe("EmailProvider", () => {
   });
 
   describe("sendAgencyRegistrationLink", () => {
-    it("generates a custom token link, reads agencyRegistration.html, replaces {{link}}, and sends the email", async () => {
+    it("generates a custom token link, reads agencyRegistration.html, replaces {{link}}, and sends the email via the registration transporter", async () => {
       await emailProvider.sendAgencyRegistrationLink("agency@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       const callArgs = mockSendMail.mock.calls[0][0];
-      expect(callArgs.from).toBe("MDS Payroll <mock-continue-url>");
+      expect(callArgs.from).toBe("MDS Payroll <registration-from@test.com>");
       expect(callArgs.to).toBe("agency@example.com");
       expect(callArgs.subject).toBe("Welcome to MDS");
       expect(callArgs.html).toContain(
@@ -366,12 +437,12 @@ describe("EmailProvider", () => {
   });
 
   describe("sendClientRegistrationLink", () => {
-    it("generates a custom token link, reads clientRegistration.html, replaces {{link}}, and sends the email", async () => {
+    it("generates a custom token link, reads clientRegistration.html, replaces {{link}}, and sends the email via the registration transporter", async () => {
       await emailProvider.sendClientRegistrationLink("client@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       const callArgs = mockSendMail.mock.calls[0][0];
-      expect(callArgs.from).toBe("MDS Payroll <mock-continue-url>");
+      expect(callArgs.from).toBe("MDS Payroll <registration-from@test.com>");
       expect(callArgs.to).toBe("client@example.com");
       expect(callArgs.subject).toBe("Welcome to MDS");
       expect(callArgs.html).toContain(
@@ -398,7 +469,7 @@ describe("EmailProvider", () => {
   });
 
   describe("sendResetPassword", () => {
-    it("sends the email with the provided reset link in the template", async () => {
+    it("sends the email via the registration transporter with the provided reset link in the template", async () => {
       await emailProvider.sendResetPassword(
         "user@example.com",
         "https://portal.com/reset-password?token=abc123",
@@ -406,7 +477,7 @@ describe("EmailProvider", () => {
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
-        from: "MDS Payroll <mock-continue-url>",
+        from: "MDS Payroll <registration-from@test.com>",
         to: "user@example.com",
         subject: "Reset your password",
         html: '<a href="https://portal.com/reset-password?token=abc123">Click here</a>',
@@ -446,12 +517,12 @@ describe("EmailProvider", () => {
   });
 
   describe("sendDocumentEmail", () => {
-    it("sends a notification with the hardcoded subject and a direct portal link", async () => {
+    it("sends a notification via the documents transporter with a direct portal link", async () => {
       await emailProvider.sendDocumentEmail("staff@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
-        from: "MDS Payroll <mock-continue-url>",
+        from: "MDS Payroll <documents-from@test.com>",
         to: "staff@example.com",
         subject: "Document Uploaded!",
         html: '<a href="mock-continue-url">Click here</a>',
@@ -479,12 +550,12 @@ describe("EmailProvider", () => {
   });
 
   describe("sendPayslipEmail", () => {
-    it("sends a notification with the hardcoded subject and a direct portal link", async () => {
+    it("sends a notification via the payslips transporter with a direct portal link", async () => {
       await emailProvider.sendPayslipEmail("staff@example.com");
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
       expect(mockSendMail).toHaveBeenCalledWith({
-        from: "MDS Payroll <mock-continue-url>",
+        from: "MDS Payroll <payslips-from@test.com>",
         to: "staff@example.com",
         subject: "Payslip Received!",
         html: '<a href="mock-continue-url">Click here</a>',
