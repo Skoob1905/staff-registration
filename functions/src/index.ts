@@ -48,6 +48,9 @@ export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
 // Payslip operations
 export { uploadPayslip } from "./payslips";
 
+// Email suppression
+export { unsubscribeEmail } from "./emailSuppressions";
+
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");

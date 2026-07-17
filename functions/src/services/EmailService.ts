@@ -3,8 +3,9 @@ import { defineString, defineBoolean } from "firebase-functions/params";
 import fs from "node:fs";
 import path from "node:path";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { ResetPasswordTokenManager } from "../resetPasswordToken";
+import { EmailSuppressionManager } from "../emailSuppressions";
 import * as logger from "firebase-functions/logger";
 
 const SMTP_HOST = defineString("SMTP_HOST");
@@ -25,6 +26,7 @@ const DOCUMENTS_SMTP_FROM = defineString("DOCUMENTS_SMTP_FROM");
 
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 const EMAIL_ENABLED = defineBoolean("EMAIL_ENABLED", { default: true });
+const UNSUBSCRIBE_BASE_URL = defineString("UNSUBSCRIBE_BASE_URL");
 
 const TEMPLATES_DIR = path.resolve(__dirname, "../../templates");
 
@@ -35,11 +37,13 @@ export interface BatchEmailResult {
 }
 
 export class EmailProvider {
+  private readonly db: Firestore;
   private payslipsTransporter: nodemailer.Transporter;
   private registrationTransporter: nodemailer.Transporter;
   private documentsTransporter: nodemailer.Transporter;
 
   constructor() {
+    this.db = getFirestore();
     this.registrationTransporter = nodemailer.createTransport({
       host: SMTP_HOST.value(),
       port: Number(SMTP_PORT.value()),
@@ -88,16 +92,40 @@ export class EmailProvider {
       return;
     }
 
-    logger.info("[EmailProvider] sendEmail: sending", { email, subject });
+    const unsubscribeUrl = `${UNSUBSCRIBE_BASE_URL.value()}/unsubscribeEmail?email=${encodeURIComponent(email)}&sender=${emailUser}`;
+
+    const body = htmlBody.replace(/\{\{unsubscribeUrl\}\}/g, unsubscribeUrl);
+
+    const suppressionManager = new EmailSuppressionManager(this.db);
+    const suppressed = await suppressionManager.isSuppressed(email, emailUser);
+    if (suppressed) {
+      logger.warn("[EmailProvider] sendEmail: suppressed, skipping", {
+        email,
+        sender: emailUser,
+      });
+      return;
+    }
+
+    logger.info("[EmailProvider] sendEmail: sending", {
+      email,
+      subject,
+      sender: emailUser,
+    });
 
     try {
+      const headers = {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      };
+
       switch (emailUser) {
         case "payslips":
           await this.payslipsTransporter.sendMail({
             from: `MDS Payroll <${PAYSLIPS_SMTP_FROM.value()}>`,
             to: email,
             subject,
-            html: htmlBody,
+            html: body,
+            headers,
           });
           break;
         case "documents":
@@ -105,7 +133,8 @@ export class EmailProvider {
             from: `MDS Payroll <${DOCUMENTS_SMTP_FROM.value()}>`,
             to: email,
             subject,
-            html: htmlBody,
+            html: body,
+            headers,
           });
           break;
         default:
@@ -113,7 +142,8 @@ export class EmailProvider {
             from: `MDS Payroll <${REGISTRATION_SMTP_FROM.value()}>`,
             to: email,
             subject,
-            html: htmlBody,
+            html: body,
+            headers,
           });
       }
     } catch (err) {
@@ -335,7 +365,12 @@ export class EmailProvider {
         `${RESET_CONTINUE_URL.value()}/mds/logo.png`,
       );
 
-    await this.sendEmail({ email, subject: "Document Uploaded!", htmlBody, emailUser: "documents" });
+    await this.sendEmail({
+      email,
+      subject: "Document Uploaded!",
+      htmlBody,
+      emailUser: "documents",
+    });
   }
 
   async sendPayslipEmail(email: string): Promise<void> {

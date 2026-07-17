@@ -29,6 +29,20 @@ const { mockGetFirestore } = vi.hoisted(() => {
         doc: vi.fn(() => ({
           set: vi.fn().mockResolvedValue(undefined),
           update: vi.fn().mockResolvedValue(undefined),
+          collection: vi.fn(() => ({
+            doc: vi.fn(() => ({
+              get: vi.fn().mockResolvedValue({
+                exists: false,
+                data: () => undefined,
+              }),
+              set: vi.fn().mockResolvedValue(undefined),
+              delete: vi.fn().mockResolvedValue(undefined),
+            })),
+            get: vi.fn().mockResolvedValue({
+              docs: [],
+              empty: true,
+            }),
+          })),
         })),
         where: vi.fn(() => makeWhere()),
       })),
@@ -173,6 +187,10 @@ describe("EmailProvider", () => {
         to: "recipient@example.com",
         subject: "Hello World",
         html: "<p>Email body content</p>",
+        headers: {
+          "List-Unsubscribe": expect.stringContaining("/unsubscribeEmail?email=recipient%40example.com&sender=registration"),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     });
 
@@ -190,6 +208,10 @@ describe("EmailProvider", () => {
         to: "payroll@example.com",
         subject: "Payslip",
         html: "<p>Your payslip is ready</p>",
+        headers: {
+          "List-Unsubscribe": expect.stringContaining("/unsubscribeEmail?email=payroll%40example.com&sender=payslips"),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     });
 
@@ -207,6 +229,10 @@ describe("EmailProvider", () => {
         to: "staff@example.com",
         subject: "Document Uploaded!",
         html: "<p>A document has been uploaded</p>",
+        headers: {
+          "List-Unsubscribe": expect.stringContaining("/unsubscribeEmail?email=staff%40example.com&sender=documents"),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     });
 
@@ -481,6 +507,10 @@ describe("EmailProvider", () => {
         to: "user@example.com",
         subject: "Reset your password",
         html: '<a href="https://portal.com/reset-password?token=abc123">Click here</a>',
+        headers: {
+          "List-Unsubscribe": expect.stringContaining("/unsubscribeEmail?email=user%40example.com&sender=registration"),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     });
 
@@ -526,6 +556,10 @@ describe("EmailProvider", () => {
         to: "staff@example.com",
         subject: "Document Uploaded!",
         html: '<a href="mock-continue-url">Click here</a>',
+        headers: {
+          "List-Unsubscribe": expect.stringContaining("/unsubscribeEmail?email=staff%40example.com&sender=documents"),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     });
 
@@ -559,6 +593,10 @@ describe("EmailProvider", () => {
         to: "staff@example.com",
         subject: "Payslip Received!",
         html: '<a href="mock-continue-url">Click here</a>',
+        headers: {
+          "List-Unsubscribe": expect.stringContaining("/unsubscribeEmail?email=staff%40example.com&sender=payslips"),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     });
 
