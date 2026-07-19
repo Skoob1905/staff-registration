@@ -22,6 +22,7 @@ import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+import { usePaginationParams } from "../hooks/usePaginationParams";
 
 export const Agencies = () => {
   useEffect(() => {
@@ -36,8 +37,7 @@ export const Agencies = () => {
     unknown
   > | null>(null);
   const [deletingContract, setDeletingContract] = useState(false);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [clientFilters, setClientFilters] = useFilterParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
@@ -86,17 +86,6 @@ export const Agencies = () => {
   const handleDeleteSuccess = async () => {
     setTimeout(() => refresh(), 2000);
   };
-
-  const onPrevPage = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
-  const onNextPage = useCallback(
-    () => setPage((p) => Math.min(totalPages - 1, p + 1)),
-    [totalPages],
-  );
-  const onGoToPage = useCallback((p: number) => setPage(p), []);
-  const onPageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setPage(0);
-  }, []);
 
   const handleClientFiltersChange = useCallback(
     (filters: typeof clientFilters) => {
@@ -212,10 +201,10 @@ export const Agencies = () => {
         page={page}
         totalPages={totalPages}
         pageSize={pageSize}
-        onPrevPage={onPrevPage}
-        onNextPage={onNextPage}
-        onGoToPage={onGoToPage}
-        onPageSizeChange={onPageSizeChange}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
         filters={clientFilters}
         onFiltersChange={handleClientFiltersChange}
         enableNameFilter

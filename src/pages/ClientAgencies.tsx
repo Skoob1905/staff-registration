@@ -16,6 +16,7 @@ import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+import { usePaginationParams } from "../hooks/usePaginationParams";
 
 function getPrimaryLabel(agency: Record<string, unknown>): string {
   return (
@@ -77,8 +78,7 @@ export const ClientAgencies = () => {
   const navigate = useNavigate();
   const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [filters, setFilters] = useFilterParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
@@ -172,17 +172,6 @@ export const ClientAgencies = () => {
     hitsPerPage: pageSize,
     enabled: ready,
   });
-
-  const onPrevPage = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
-  const onNextPage = useCallback(
-    () => setPage((p) => Math.min(totalPages - 1, p + 1)),
-    [totalPages],
-  );
-  const onGoToPage = useCallback((p: number) => setPage(p), []);
-  const onPageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setPage(0);
-  }, []);
 
   const handleFiltersChange = useCallback(
     (newFilters: typeof filters) => {
@@ -306,10 +295,10 @@ export const ClientAgencies = () => {
           page={page}
           totalPages={totalPages}
           pageSize={pageSize}
-          onPrevPage={onPrevPage}
-          onNextPage={onNextPage}
-          onGoToPage={onGoToPage}
-          onPageSizeChange={onPageSizeChange}
+          onPrevPage={() => setPage(Math.max(0, page - 1))}
+          onNextPage={() => setPage(page + 1)}
+          onGoToPage={setPage}
+          onPageSizeChange={setPageSize}
           filters={filters}
           onFiltersChange={handleFiltersChange}
           enableNameFilter

@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 import { useAuth } from "../context/AuthProvider";
@@ -11,6 +10,7 @@ import { useAppStore } from "../stores/appStore";
 import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
+import { usePaginationParams } from "../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
 import { Section } from "./Section";
@@ -68,8 +68,7 @@ export const StaffListSection = ({
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const isClient = role === "client";
 
   const staffKeyMap = useMemo<FilterKeyMap>(
@@ -186,7 +185,7 @@ export const StaffListSection = ({
       setPage(0);
       setFilters(newFilters);
     },
-    [setFilters],
+    [setPage, setFilters],
   );
 
   const sectionTitle =
@@ -213,13 +212,10 @@ export const StaffListSection = ({
       totalPages={totalPages}
       totalResults={totalResults}
       pageSize={pageSize}
-      onPrevPage={() => setPage((p) => Math.max(0, p - 1))}
-      onNextPage={() => setPage((p) => p + 1)}
+      onPrevPage={() => setPage(Math.max(0, page - 1))}
+      onNextPage={() => setPage(page + 1)}
       onGoToPage={setPage}
-      onPageSizeChange={(s) => {
-        setPageSize(s);
-        setPage(0);
-      }}
+      onPageSizeChange={setPageSize}
       filters={filters}
       onFiltersChange={handleFiltersChange}
       tags={filterTagsMap}
