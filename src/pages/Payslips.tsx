@@ -326,7 +326,7 @@ export const Payslips = () => {
         </AccordionItem>
       );
     },
-    [role],
+    [role, payslipsByStaffId],
   );
 
   return (
