@@ -360,9 +360,26 @@ export const AddModal = ({
         });
       }
 
+      if (data.added === 0 && data.duplicates > 0) {
+        toast({
+          title: "No records added",
+          description: `All ${data.duplicates} ${data.duplicates === 1 ? "record" : "records"} already exist.`,
+          variant: "info",
+          replaceToast: true,
+        });
+        setUploadProgress(0);
+        setCsvData(null);
+        setSelectedAgencyId("");
+        setSelectedAgencyName("");
+        onOpenChange(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const dupInfo = data.duplicates > 0 ? ` (${data.duplicates} duplicate${data.duplicates === 1 ? "" : "s"} skipped)` : "";
       toast({
         title: "Import complete",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added. Logins will be sent shortly.`,
+        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added${dupInfo}. Logins will be sent shortly.`,
         variant: "success",
         replaceToast: true,
       });
@@ -379,7 +396,7 @@ export const AddModal = ({
         // onSuccess failure shouldn't block email sending
       }
 
-      if (data.emails.length > 0) {
+      if (Array.isArray(data.emails) && data.emails.length > 0) {
         const emailCallable = httpsCallable(functions, "sendImportEmails");
         const emailResult = await emailCallable({
           emails: data.emails,

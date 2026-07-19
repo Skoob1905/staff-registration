@@ -1007,6 +1007,8 @@ export const importAgencyCsv = onCall(async (request) => {
       added: 0,
       duplicates: duplicateCount,
       total: records.length,
+      importId: "",
+      emails: [],
     };
   }
 
@@ -1170,6 +1172,8 @@ export const importClientCsv = onCall(async (request) => {
       added: 0,
       duplicates: duplicateCount,
       total: records.length,
+      importId: "",
+      emails: [],
     };
   }
 
@@ -1375,6 +1379,8 @@ export const importStaffCsv = onCall(async (request) => {
       added: 0,
       duplicates: duplicateCount,
       total: records.length,
+      importId: "",
+      emails: [],
     };
   }
 
