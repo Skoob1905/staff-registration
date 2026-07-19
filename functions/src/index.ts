@@ -1900,45 +1900,13 @@ export const removeAgencies = onCall(async (request) => {
     .where("metadata.uploadedInFile", "==", importId)
     .get();
 
-  const BATCH_LIMIT = 500;
-  let deletedCount = 0;
-
-  for (let i = 0; i < agencySnaps.docs.length; i += BATCH_LIMIT) {
-    const batch = db.batch();
-    const chunk = agencySnaps.docs.slice(i, i + BATCH_LIMIT);
-    for (const doc of chunk) {
-      batch.delete(doc.ref);
-      deletedCount++;
-    }
-    await batch.commit();
-  }
-
-  // Delete Auth users + users docs for imported agencies with email
   for (const snap of agencySnaps.docs) {
-    const data = snap.data() as { email?: string };
-    const email = data.email;
-    if (!email || !emailPattern.test(email)) continue;
-    await removeAuthUser(email);
-
-    const userDocs = await db
-      .collection("users")
-      .where("email", "==", email.toLowerCase())
-      .get();
-    userDocs.forEach((doc) => doc.ref.delete());
-
-    const loginEmail = data.email;
-    if (loginEmail) {
-      await db
-        .collection("logins")
-        .doc(loginEmail.toLowerCase())
-        .delete()
-        .catch(() => {});
-    }
+    await deleteAgencyById(snap.id, db);
   }
 
   await importRef.delete();
 
-  return { ok: true, deletedCount, importId };
+  return { ok: true, deletedCount: agencySnaps.docs.length, importId };
 });
 
 export const assignAgencyToClient = onCall(async (request) => {
@@ -3139,6 +3107,120 @@ async function deleteStaffById(
   // 5. Delete staff document
   await staffRef.delete();
 }
+
+async function deleteAgencyById(
+  agencyId: string,
+  db: FirebaseFirestore.Firestore,
+): Promise<void> {
+  const agencyRef = db.collection("agencies").doc(agencyId);
+  const agencySnap = await agencyRef.get();
+  if (!agencySnap.exists) return;
+
+  const agencyData = agencySnap.data() as {
+    email?: string;
+  };
+
+  // 1. Unassign all staff assigned to this agency
+  const staffSnaps = await db
+    .collection("staff")
+    .where("metadata.assignedToId", "==", agencyId)
+    .get();
+
+  for (const snap of staffSnaps.docs) {
+    await snap.ref.set(
+      {
+        metadata: {
+          assignedToId: FieldValue.delete(),
+          assignedToName: FieldValue.delete(),
+          assignedAt: FieldValue.delete(),
+        },
+      },
+      { merge: true },
+    );
+  }
+
+  // 2. Remove this agency from any clients that have it assigned
+  const clientSnaps = await db
+    .collection("clients")
+    .where("metadata.assignedAgencies", "array-contains", agencyId)
+    .get();
+
+  for (const snap of clientSnaps.docs) {
+    await snap.ref.update({
+      "metadata.assignedAgencies": FieldValue.arrayRemove(agencyId),
+    });
+
+    const clientData = snap.data() as { email?: string } | undefined;
+    const email = clientData?.email;
+    if (email) {
+      const userQuery = await db
+        .collection("users")
+        .where("email", "==", email.toLowerCase())
+        .where("role", "==", "admin")
+        .limit(1)
+        .get();
+      if (!userQuery.empty) {
+        await db
+          .collection("users")
+          .doc(userQuery.docs[0].id)
+          .update({
+            assignedAgencyIds: FieldValue.arrayRemove(agencyId),
+          });
+      }
+    }
+  }
+
+  // 3. Remove the agency's login (Auth user + users doc + logins doc)
+  const email = agencyData.email;
+  if (email && emailPattern.test(email)) {
+    await removeAuthUser(email);
+
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+    userDocs.forEach((doc) => doc.ref.delete());
+
+    await db
+      .collection("logins")
+      .doc(email.toLowerCase())
+      .delete()
+      .catch(() => {});
+  }
+
+  // 4. Delete the agency document
+  await agencyRef.delete();
+}
+
+export const deleteAgency = onCall(
+  { region: "europe-west2" },
+  async (request) => {
+    const callerUid = request.auth?.uid;
+    if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const db = getFirestore();
+    const callerSnap = await db.collection("users").doc(callerUid).get();
+    if (!callerSnap.exists) {
+      throw new HttpsError("permission-denied", "Caller profile missing.");
+    }
+
+    const caller = callerSnap.data() as { role?: string };
+    if (caller.role !== "admin" && caller.role !== "super") {
+      throw new HttpsError("permission-denied", "Admin or Super only.");
+    }
+
+    const agencyId = String(request.data?.agencyId || "").trim();
+    if (!agencyId) {
+      throw new HttpsError("invalid-argument", "agencyId is required.");
+    }
+
+    logger.info("deleteAgency called", { agencyId, callerUid });
+
+    await deleteAgencyById(agencyId, db);
+
+    return { ok: true, agencyId };
+  },
+);
 
 export const removeStaffMember = onCall(async (request) => {
   const callerUid = request.auth?.uid;

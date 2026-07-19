@@ -5,7 +5,8 @@ import { FileSignature } from "lucide-react";
 import { AddModal } from "../components/AddModal";
 import { ImportHistory } from "../components/ImportHistory";
 import { AccordionItem, DownloadButton } from "../components/ui";
-import { DeleteClientModal, PreviewModal } from "../components/modals";
+import { PreviewModal } from "../components/modals";
+import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { Pill } from "../components/Pill";
 import { AssignedStaff } from "../components/Pills/AssignedStaff";
 import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
@@ -32,11 +33,12 @@ export const Agencies = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [confirmDeleteClient, setConfirmDeleteClient] = useState<Record<
+  const [confirmDeleteAgency, setConfirmDeleteAgency] = useState<Record<
     string,
     unknown
   > | null>(null);
-  const [deletingContract, setDeletingContract] = useState(false);
+  const [deletingAgency, setDeletingAgency] = useState(false);
+
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [clientFilters, setClientFilters] = useFilterParams();
   const { leftValue, rightValue, onLeftChange, onRightChange } =
@@ -95,19 +97,19 @@ export const Agencies = () => {
     [setClientFilters, setPage],
   );
 
-  const onDeleteContract = async () => {
-    if (!confirmDeleteClient) return;
-    setDeletingContract(true);
-    const name = getPrimaryLabel(confirmDeleteClient);
+  const onDeleteAgency = async () => {
+    if (!confirmDeleteAgency) return;
+    setDeletingAgency(true);
+    const name = getPrimaryLabel(confirmDeleteAgency);
     try {
-      const callable = httpsCallable(functions, "deleteContract");
-      await callable({ clientId: confirmDeleteClient.id as string });
+      const callable = httpsCallable(functions, "deleteAgency");
+      await callable({ agencyId: confirmDeleteAgency.id as string });
       toast({
-        title: "Contract removed",
-        description: `Signed contract for ${name} has been deleted.`,
+        title: "Agency deleted",
+        description: `${name} has been permanently deleted.`,
         variant: "success",
       });
-      setConfirmDeleteClient(null);
+      setConfirmDeleteAgency(null);
       refresh();
     } catch (error: unknown) {
       const message =
@@ -116,14 +118,14 @@ export const Agencies = () => {
         "message" in error &&
         typeof (error as { message?: string }).message === "string"
           ? (error as { message: string }).message
-          : "Failed to delete contract.";
+          : "Failed to delete agency.";
       toast({
         title: "Delete failed",
-        description: `Could not delete contract for ${name}. ${message}`,
+        description: `Could not delete ${name}. ${message}`,
         variant: "error",
       });
     } finally {
-      setDeletingContract(false);
+      setDeletingAgency(false);
     }
   };
 
@@ -193,7 +195,7 @@ export const Agencies = () => {
               )}
               <RecordData data={cleanRecordData(client)} />
               <ActionButtonContainer
-                handleDelete={() => setConfirmDeleteClient(client)}
+                handleDelete={() => setConfirmDeleteAgency(client)}
               />
             </AccordionItem>
           );
@@ -269,14 +271,15 @@ export const Agencies = () => {
         }}
       />
 
-      <DeleteClientModal
-        open={confirmDeleteClient !== null}
-        onClose={() => setConfirmDeleteClient(null)}
-        onDelete={onDeleteContract}
-        deleting={deletingContract}
-        clientName={
-          confirmDeleteClient ? getPrimaryLabel(confirmDeleteClient) : ""
-        }
+      <DeleteConfirmModal
+        open={confirmDeleteAgency !== null}
+        deleting={deletingAgency}
+        label="agency"
+        itemName={confirmDeleteAgency ? getPrimaryLabel(confirmDeleteAgency) : ""}
+        clientName=""
+        description="This will unassign all staff, remove the agency's user and login, and unassign this agency from any clients."
+        onDelete={() => void onDeleteAgency()}
+        onClose={() => setConfirmDeleteAgency(null)}
       />
     </div>
   );

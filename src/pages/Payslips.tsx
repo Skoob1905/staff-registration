@@ -281,7 +281,7 @@ export const Payslips = () => {
             </AccordionAction>
           }
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-flow-col grid-rows-2 gap-3 overflow-x-auto pb-2 auto-cols-[20rem]">
             {payslipEntry.payslips.map((payslip) => (
               <InformationCard
                 key={payslip.id}

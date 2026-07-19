@@ -8,6 +8,7 @@ interface DeleteConfirmModalProps {
   label: string;
   itemName: string;
   clientName: string;
+  description?: string;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -18,6 +19,7 @@ export const DeleteConfirmModal = ({
   label,
   itemName,
   clientName,
+  description,
   onDelete,
   onClose,
 }: DeleteConfirmModalProps) => (
@@ -35,6 +37,9 @@ export const DeleteConfirmModal = ({
         Delete {label} <strong>"{itemName}"</strong> for{" "}
         <strong>{clientName}</strong>? This cannot be undone.
       </Muted>
+      {description && (
+        <p className="mt-3 text-xs sm:text-sm text-zinc-500">{description}</p>
+      )}
       <div className="mt-4 flex justify-end">
         <Button
           type="button"
