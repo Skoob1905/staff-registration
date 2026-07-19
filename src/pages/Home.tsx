@@ -150,7 +150,7 @@ export const Home = () => {
                       icon={<Receipt className="h-4 w-4" />}
                       count={member.metadata.payslipsSent.length}
                       onClick={() =>
-                        navigate(`/payslips?open=${member.id}&name=${encodeURIComponent(getStaffName(member))}`)
+                        navigate(`/payslips?page=1&open=${member.id}&name=${encodeURIComponent(getStaffName(member))}`)
                       }
                     />
                 )}
