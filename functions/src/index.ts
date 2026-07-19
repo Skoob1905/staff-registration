@@ -2144,68 +2144,16 @@ export const removeStaffImport = onCall(async (request) => {
     .where("metadata.uploadedInFile", "==", importId)
     .get();
 
-  const agencyUpdates = new Map<string, string[]>();
-
   for (const snap of staffSnaps.docs) {
-    const data = snap.data();
-    const assignedToId = data.metadata?.assignedToId;
-    if (assignedToId) {
-      const ids = agencyUpdates.get(assignedToId) || [];
-      const refValue = getStaffRef(data);
-      if (refValue) ids.push(refValue);
-      agencyUpdates.set(assignedToId, ids);
-    }
-  }
-
-  const BATCH_LIMIT = 500;
-  let deletedCount = 0;
-
-  for (let i = 0; i < staffSnaps.docs.length; i += BATCH_LIMIT) {
-    const batch = db.batch();
-    const chunk = staffSnaps.docs.slice(i, i + BATCH_LIMIT);
-    for (const doc of chunk) {
-      batch.delete(doc.ref);
-      deletedCount++;
-    }
-    await batch.commit();
-  }
-
-  // Delete Auth users + users docs for staff members with email
-  for (const snap of staffSnaps.docs) {
-    const data = snap.data() as { email?: string };
-    const email = data.email;
-    if (!email || !emailPattern.test(email)) continue;
-    await removeAuthUser(email);
-
-    const userDocs = await db
-      .collection("users")
-      .where("email", "==", email.toLowerCase())
-      .get();
-    userDocs.forEach((doc) => doc.ref.delete());
-
-    await db
-      .collection("logins")
-      .doc(email.toLowerCase())
-      .delete()
-      .catch(() => {});
-  }
-
-  for (const [agencyId, staffIds] of agencyUpdates) {
-    await db
-      .collection("agencies")
-      .doc(agencyId)
-      .update({
-        "metadata.assignedStaff": FieldValue.arrayRemove(...staffIds),
-      });
+    await deleteStaffById(snap.id, db);
   }
 
   await importRef.delete();
 
   return {
     ok: true,
-    deletedCount,
+    deletedCount: staffSnaps.docs.length,
     importId,
-    agencyCleanupCount: agencyUpdates.size,
   };
 });
 
@@ -3105,6 +3053,93 @@ export const deleteStaffDocument = onCall(async (request) => {
   return { ok: true };
 });
 
+async function deleteStaffById(
+  staffId: string,
+  db: FirebaseFirestore.Firestore,
+): Promise<void> {
+  const staffRef = db.collection("staff").doc(staffId);
+  const staffSnap = await staffRef.get();
+  if (!staffSnap.exists) return;
+
+  const staffData = staffSnap.data() as {
+    email?: string;
+    metadata?: {
+      assignedToId?: string;
+      cv?: Array<{ fileName: string }>;
+    };
+  };
+
+  // 1. Delete payslips (Firestore docs + Storage files)
+  const payslipSnaps = await db
+    .collection("payslips")
+    .where("userId", "==", staffId)
+    .get();
+  for (const snap of payslipSnaps.docs) {
+    const pd = snap.data() as { userId?: string; fileName?: string };
+    const targetUserId = pd.userId ?? staffId;
+    const fileName = pd.fileName ?? "";
+    if (fileName) {
+      try {
+        await getStorage()
+          .bucket()
+          .file(`payslips/${targetUserId}/${fileName}`)
+          .delete();
+      } catch {
+        // file may not exist — proceed
+      }
+    }
+    await snap.ref.delete();
+  }
+
+  // 2. Delete CV files from Storage
+  const cvEntries = staffData.metadata?.cv ?? [];
+  for (const entry of cvEntries) {
+    try {
+      await getStorage()
+        .bucket()
+        .file(`cvs/${staffId}/${entry.fileName}`)
+        .delete();
+    } catch {
+      // file may not exist — proceed
+    }
+  }
+
+  // 3. Remove from agency assignedStaff
+  const assignedToId = staffData.metadata?.assignedToId;
+  if (assignedToId) {
+    const refValue = getStaffRef(staffData);
+    if (refValue) {
+      await db
+        .collection("agencies")
+        .doc(assignedToId)
+        .update({
+          "metadata.assignedStaff": FieldValue.arrayRemove(refValue),
+        });
+    }
+  }
+
+  // 4. Delete Auth user + users/login docs (if email)
+  const email = staffData.email;
+  if (email && emailPattern.test(email)) {
+    await removeAuthUser(email);
+
+    const userDocs = await db
+      .collection("users")
+      .where("email", "==", email.toLowerCase())
+      .get();
+    userDocs.forEach((doc) => doc.ref.delete());
+
+    await db
+      .collection("logins")
+      .doc(email.toLowerCase())
+      .delete()
+      .catch(() => {});
+  }
+
+  // 5. Delete staff document
+  await staffRef.delete();
+}
+
 export const removeStaffMember = onCall(async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
@@ -3131,45 +3166,7 @@ export const removeStaffMember = onCall(async (request) => {
     throw new HttpsError("not-found", "Staff member not found.");
   }
 
-  const staffData = staffSnap.data() as {
-    email?: string;
-    metadata?: { assignedToId?: string };
-  };
-
-  // Remove from agency assignedStaff if assigned
-  const assignedToId = staffData.metadata?.assignedToId;
-  if (assignedToId) {
-    const refValue = getStaffRef(staffData);
-    if (refValue) {
-      await db
-        .collection("agencies")
-        .doc(assignedToId)
-        .update({
-          "metadata.assignedStaff": FieldValue.arrayRemove(refValue),
-        });
-    }
-  }
-
-  // Delete Auth user + users doc by email
-  const email = staffData.email;
-  if (email && emailPattern.test(email)) {
-    await removeAuthUser(email);
-
-    const userDocs = await db
-      .collection("users")
-      .where("email", "==", email.toLowerCase())
-      .get();
-    userDocs.forEach((doc) => doc.ref.delete());
-
-    await db
-      .collection("logins")
-      .doc(email.toLowerCase())
-      .delete()
-      .catch(() => {});
-  }
-
-  // Delete staff document
-  await staffRef.delete();
+  await deleteStaffById(staffId, db);
 
   return { ok: true, staffId };
 });
