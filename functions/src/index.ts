@@ -3720,12 +3720,13 @@ export const deletePayslip = onCall(async (request) => {
     );
   }
 
+  const targetUserId = payslipData.userId ?? staffId;
   const fileName = payslipData.fileName ?? "";
   if (fileName) {
     try {
       await getStorage()
         .bucket()
-        .file(`payslips/${staffId}/${fileName}`)
+        .file(`payslips/${targetUserId}/${fileName}`)
         .delete();
     } catch {
       // file may not exist — proceed with document cleanup
@@ -3734,7 +3735,7 @@ export const deletePayslip = onCall(async (request) => {
 
   await db.collection("payslips").doc(payslipId).delete();
 
-  const staffRef = db.collection("staff").doc(staffId);
+  const staffRef = db.collection("staff").doc(targetUserId);
   const staffSnap = await staffRef.get();
   if (staffSnap.exists) {
     const staffData = staffSnap.data() as {
