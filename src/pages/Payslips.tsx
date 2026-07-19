@@ -306,7 +306,7 @@ export const Payslips = () => {
                     >
                       Download
                     </Button>
-                    {(role === "admin" || role === "super") && (
+                    {role === "super" && (
                       <DeleteButton
                         onClick={() => {
                           setDeleteTarget({
