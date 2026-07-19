@@ -40,6 +40,7 @@ export const ToastType = {
   EMAILS_SENT: "EMAILS_SENT",
   DUPLICATE_TIMESHEET: "DUPLICATE_TIMESHEET",
   UPLOAD_FAILED: "UPLOAD_FAILED",
+  PAYSLIP_UPLOAD_START: "PAYSLIP_UPLOAD_START",
 } as const;
 
 export type ToastType = (typeof ToastType)[keyof typeof ToastType];
@@ -250,6 +251,10 @@ export const toast_mapper = {
     description: message,
     variant: "error",
     replaceToast: true,
+  }),
+  [ToastType.PAYSLIP_UPLOAD_START]: (count: number) => ({
+    title: `${count} payslip${count === 1 ? "" : "s"} will be uploaded`,
+    variant: "info",
   }),
 } satisfies Record<ToastType, StaticToastConfig | DynamicToastConfig>;
 

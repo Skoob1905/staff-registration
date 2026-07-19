@@ -23,6 +23,7 @@ import { checkDuplicatePayslip } from "../utils/payslipDuplicateCheck";
 import { db } from "../services/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import type { PayslipFile } from "../types/domain";
+import { toast_mapper, ToastType } from "../config/toast";
 import {
   hasWorkerRefColumn,
   hasAgencyRefColumn,
@@ -230,6 +231,8 @@ export const Upload = () => {
 
     setShowPayslipModal(false);
     setPayslipFiles([]);
+
+    toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_START](eligible.length));
 
     void (async () => {
       const results: { name: string; success: boolean }[] = [];
