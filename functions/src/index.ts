@@ -3256,8 +3256,8 @@ export const syncStaffToAlgolia = onDocumentWritten(
       ""
     ).toLowerCase();
 
-    const payslipCount = (data?.metadata?.payslipsSent as string[] | undefined)?.length ?? 0;
-    const metadata = { ...(data?.metadata as Record<string, unknown>), payslipCount };
+    const payslipsCount = (data?.metadata?.payslipsSent as string[] | undefined)?.length ?? 0;
+    const metadata = { ...(data?.metadata as Record<string, unknown>), payslipsCount };
 
     await client.saveObject({
       indexName: algoliaIndex("staff"),
@@ -3740,7 +3740,7 @@ export const deletePayslip = onCall(async (request) => {
       {
         metadata: {
           payslipsSent: newPayslipsSent,
-          payslipCount: newPayslipsSent.length,
+          payslipsCount: newPayslipsSent.length,
         },
       },
       { merge: true },

@@ -173,7 +173,7 @@ export const uploadPayslipExternal = onRequest(
       {
         metadata: {
           payslipsSent: newPayslipsSent,
-          payslipCount: newPayslipsSent.length,
+          payslipsCount: newPayslipsSent.length,
         },
       },
       { merge: true },
