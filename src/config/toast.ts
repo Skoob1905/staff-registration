@@ -41,6 +41,7 @@ export const ToastType = {
   DUPLICATE_TIMESHEET: "DUPLICATE_TIMESHEET",
   UPLOAD_FAILED: "UPLOAD_FAILED",
   PAYSLIP_UPLOAD_START: "PAYSLIP_UPLOAD_START",
+  PAYSLIP_UPLOAD_COMPLETE: "PAYSLIP_UPLOAD_COMPLETE",
 } as const;
 
 export type ToastType = (typeof ToastType)[keyof typeof ToastType];
@@ -253,8 +254,12 @@ export const toast_mapper = {
     replaceToast: true,
   }),
   [ToastType.PAYSLIP_UPLOAD_START]: (count: number) => ({
-    title: `${count} payslip${count === 1 ? "" : "s"} will be uploaded`,
+    title: `Attempting to upload ${count} payslip${count === 1 ? "" : "s"}`,
     variant: "info",
+  }),
+  [ToastType.PAYSLIP_UPLOAD_COMPLETE]: (succeeded: number, total: number) => ({
+    title: `${succeeded}/${total} payslip${total === 1 ? "" : "s"} uploaded`,
+    variant: "success",
   }),
 } satisfies Record<ToastType, StaticToastConfig | DynamicToastConfig>;
 

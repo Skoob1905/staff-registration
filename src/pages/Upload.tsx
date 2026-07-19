@@ -255,11 +255,7 @@ export const Upload = () => {
       const failed = results.length - succeeded;
 
       if (failed === 0) {
-        toast({
-          title: "Payslips Uploaded",
-          description: `${succeeded} payslip${succeeded === 1 ? "" : "s"} uploaded.`,
-          variant: "success",
-        });
+        toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](succeeded, results.length));
       } else {
         toast({
           title: `${succeeded}/${results.length} Uploaded`,
