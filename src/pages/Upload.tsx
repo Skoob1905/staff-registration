@@ -257,11 +257,7 @@ export const Upload = () => {
       if (failed === 0) {
         toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](succeeded, results.length));
       } else {
-        toast({
-          title: `${succeeded}/${results.length} Uploaded`,
-          description: `${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
-          variant: "error",
-        });
+        toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](succeeded, results.length, failed));
       }
     })();
   };

@@ -42,6 +42,7 @@ export const ToastType = {
   UPLOAD_FAILED: "UPLOAD_FAILED",
   PAYSLIP_UPLOAD_START: "PAYSLIP_UPLOAD_START",
   PAYSLIP_UPLOAD_COMPLETE: "PAYSLIP_UPLOAD_COMPLETE",
+  PAYSLIP_UPLOAD_PARTIAL: "PAYSLIP_UPLOAD_PARTIAL",
 } as const;
 
 export type ToastType = (typeof ToastType)[keyof typeof ToastType];
@@ -260,6 +261,11 @@ export const toast_mapper = {
   [ToastType.PAYSLIP_UPLOAD_COMPLETE]: (succeeded: number, total: number) => ({
     title: `${succeeded}/${total} payslip${total === 1 ? "" : "s"} uploaded`,
     variant: "success",
+  }),
+  [ToastType.PAYSLIP_UPLOAD_PARTIAL]: (succeeded: number, total: number, failed: number) => ({
+    title: `${succeeded}/${total} Uploaded`,
+    description: `${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
+    variant: "error",
   }),
 } satisfies Record<ToastType, StaticToastConfig | DynamicToastConfig>;
 
