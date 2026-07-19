@@ -51,6 +51,7 @@ interface StaticToastConfig {
   replaceToast?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DynamicToastConfig = (...args: any[]) => StaticToastConfig;
 
 export const toast_mapper = {

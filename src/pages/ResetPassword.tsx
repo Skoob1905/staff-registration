@@ -77,7 +77,7 @@ export const ResetPassword = () => {
     } catch (error) {
       const code = parseResetError(error as FirebaseError);
       if (code) {
-        toast(toast_mapper[code]);
+        toast(toast_mapper[code as keyof typeof toast_mapper] as Parameters<typeof toast>[0]);
       } else {
         toast(toast_mapper[ToastType.RESET_FAILED]);
       }
