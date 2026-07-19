@@ -25,13 +25,19 @@ const AppEntryRedirect = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
+  if (appUser.role === "admin") return <Navigate to="/agencies" replace />;
+  if (appUser.role === "super") return <Navigate to="/clients" replace />;
   return <Navigate to="/staff" replace />;
 };
 
 const LoginRedirect = () => {
   const { firebaseUser, appUser, loading } = useAuth();
   if (loading) return <LoadingPage />;
-  if (firebaseUser && appUser) return <Navigate to="/staff" replace />;
+  if (firebaseUser && appUser) {
+    if (appUser.role === "admin") return <Navigate to="/agencies" replace />;
+    if (appUser.role === "super") return <Navigate to="/clients" replace />;
+    return <Navigate to="/staff" replace />;
+  }
   return <Login />;
 };
 
