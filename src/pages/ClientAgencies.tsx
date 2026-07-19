@@ -178,7 +178,7 @@ export const ClientAgencies = () => {
       setPage(0);
       setFilters(newFilters);
     },
-    [setFilters],
+    [setFilters, setPage],
   );
 
   if (!ready || (agencies.length === 0 && loading)) {

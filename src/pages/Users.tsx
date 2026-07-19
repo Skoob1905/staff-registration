@@ -272,7 +272,7 @@ export const Users = () => {
       setLoginsPage(0);
       setLoginsFilters(filters);
     },
-    [setLoginsFilters],
+    [setLoginsFilters, setLoginsPage],
   );
 
   return (

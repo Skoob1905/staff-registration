@@ -149,7 +149,7 @@ export const Clients = () => {
       setPage(0);
       setClientFilters(filters);
     },
-    [setClientFilters],
+    [setClientFilters, setPage],
   );
 
   const onDeleteContract = async () => {
