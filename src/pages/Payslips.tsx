@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import {
   AccordionAction,
@@ -163,11 +163,13 @@ export const Payslips = () => {
     }
   };
 
-  const payslipsByStaffId = useRef<Record<string, StaffPayslips>>({});
-  payslipsByStaffId.current = {};
-  for (const sp of staffPayslips) {
-    payslipsByStaffId.current[sp.staffId] = sp;
-  }
+  const payslipsByStaffId = useMemo(() => {
+    const map: Record<string, StaffPayslips> = {};
+    for (const sp of staffPayslips) {
+      map[sp.staffId] = sp;
+    }
+    return map;
+  }, [staffPayslips]);
 
   const handleItemsChange = useCallback((staffItems: BulkStaff[]) => {
     console.log(
@@ -239,7 +241,7 @@ export const Payslips = () => {
 
   const renderItem = useCallback(
     (member: BulkStaff, idx: number) => {
-      const payslipEntry = payslipsByStaffId.current[member.id];
+      const payslipEntry = payslipsByStaffId[member.id];
       if (!payslipEntry) {
         console.log(
           "[Payslips] renderItem: no payslip data for member",
