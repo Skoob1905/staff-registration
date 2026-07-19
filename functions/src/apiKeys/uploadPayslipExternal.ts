@@ -168,10 +168,12 @@ export const uploadPayslipExternal = onRequest(
         }
       | undefined;
     const existing = staffData?.metadata?.payslipsSent ?? [];
+    const newPayslipsSent = [payslipRef.id, ...existing];
     await staffRef.set(
       {
         metadata: {
-          payslipsSent: [payslipRef.id, ...existing],
+          payslipsSent: newPayslipsSent,
+          payslipCount: newPayslipsSent.length,
         },
       },
       { merge: true },

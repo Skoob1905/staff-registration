@@ -3256,9 +3256,12 @@ export const syncStaffToAlgolia = onDocumentWritten(
       ""
     ).toLowerCase();
 
+    const payslipCount = (data?.metadata?.payslipsSent as string[] | undefined)?.length ?? 0;
+    const metadata = { ...(data?.metadata as Record<string, unknown>), payslipCount };
+
     await client.saveObject({
       indexName: algoliaIndex("staff"),
-      body: { objectID: event.params.docId, ...data, sortableName },
+      body: { objectID: event.params.docId, ...data, sortableName, metadata },
     });
     console.log(`Saved staff ${event.params.docId} to staff index`);
   },
@@ -3732,10 +3735,12 @@ export const deletePayslip = onCall(async (request) => {
       metadata?: { payslipsSent?: string[] };
     };
     const existing = staffData?.metadata?.payslipsSent ?? [];
+    const newPayslipsSent = existing.filter((id) => id !== payslipId);
     await staffRef.set(
       {
         metadata: {
-          payslipsSent: existing.filter((id) => id !== payslipId),
+          payslipsSent: newPayslipsSent,
+          payslipCount: newPayslipsSent.length,
         },
       },
       { merge: true },
