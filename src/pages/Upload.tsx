@@ -191,11 +191,18 @@ export const Upload = () => {
 
       const results = await Promise.all(files.map((f) => readPayslipFile(f)));
 
-      const fetchExistingNames = async (workerRef: string): Promise<string[]> => {
+      const fetchExistingNames = async (
+        workerRef: string,
+      ): Promise<string[]> => {
         const snapshot = await getDocs(
-          query(collection(db, "payslips"), where("userId", "==", workerRef.toUpperCase())),
+          query(
+            collection(db, "payslips"),
+            where("userId", "==", workerRef.toUpperCase()),
+          ),
         );
-        return snapshot.docs.map((doc) => (doc.data() as { fileName?: string }).fileName ?? "");
+        return snapshot.docs.map(
+          (doc) => (doc.data() as { fileName?: string }).fileName ?? "",
+        );
       };
 
       const checkItems = results
@@ -205,7 +212,10 @@ export const Upload = () => {
           displayName: editFileName(r.file.name),
         }));
 
-      const checked = await checkDuplicatePayslip(checkItems, fetchExistingNames);
+      const checked = await checkDuplicatePayslip(
+        checkItems,
+        fetchExistingNames,
+      );
 
       const merged = results.map((r) => ({
         ...r,
@@ -255,9 +265,20 @@ export const Upload = () => {
       const failed = results.length - succeeded;
 
       if (failed === 0) {
-        toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](succeeded, results.length));
+        toast(
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
+            succeeded,
+            results.length,
+          ),
+        );
       } else {
-        toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](succeeded, results.length, failed));
+        toast(
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
+            succeeded,
+            results.length,
+            failed,
+          ),
+        );
       }
     })();
   };
@@ -414,7 +435,13 @@ export const Upload = () => {
       className: "text-orange-500",
     },
     ...(duplicateCount > 0
-      ? [{ label: "Duplicates", count: duplicateCount, className: "text-purple-600" }]
+      ? [
+          {
+            label: "Duplicates",
+            count: duplicateCount,
+            className: "text-purple-600",
+          },
+        ]
       : []),
     { label: "Missing", count: missingCount, className: "text-red-600" },
   ];

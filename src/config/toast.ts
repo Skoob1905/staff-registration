@@ -208,9 +208,7 @@ export const toast_mapper = {
     description: `You have ${existingCount} ${label} in the database. Uploading ${uploadCount} more would exceed the ${maxRecords} limit. Please delete some ${label} first.`,
     variant: "error",
   }),
-  [ToastType.IMPORT_ALL_DUPLICATES]: (
-    duplicates: number,
-  ) => ({
+  [ToastType.IMPORT_ALL_DUPLICATES]: (duplicates: number) => ({
     title: "No Records Added",
     description: `All ${duplicates} staff already exist.`,
     variant: "info",
@@ -255,16 +253,22 @@ export const toast_mapper = {
     replaceToast: true,
   }),
   [ToastType.PAYSLIP_UPLOAD_START]: (count: number) => ({
-    title: `Attempting to upload ${count} payslip${count === 1 ? "" : "s"}`,
+    title: "Attempting Upload",
+    description: `Attempting to upload ${count} payslip${count === 1 ? "" : "s"}`,
     variant: "info",
   }),
   [ToastType.PAYSLIP_UPLOAD_COMPLETE]: (succeeded: number, total: number) => ({
-    title: `${succeeded}/${total} payslip${total === 1 ? "" : "s"} uploaded`,
+    title: "Upload Complete",
+    description: `${succeeded}/${total} payslip${total === 1 ? "" : "s"} uploaded`,
     variant: "success",
   }),
-  [ToastType.PAYSLIP_UPLOAD_PARTIAL]: (succeeded: number, total: number, failed: number) => ({
-    title: `${succeeded}/${total} Uploaded`,
-    description: `${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
+  [ToastType.PAYSLIP_UPLOAD_PARTIAL]: (
+    succeeded: number,
+    total: number,
+    failed: number,
+  ) => ({
+    title: "Failed Upload",
+    description: `${succeeded}/${total} uploaded — ${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
     variant: "error",
   }),
 } satisfies Record<ToastType, StaticToastConfig | DynamicToastConfig>;
