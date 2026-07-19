@@ -231,11 +231,8 @@ export const Upload = () => {
     setShowPayslipModal(false);
     setPayslipFiles([]);
 
-    toast({
-      title: `${eligible.length} payslip${eligible.length === 1 ? "" : "s"} will be uploaded`,
-    });
-
     void (async () => {
+      const results: { name: string; success: boolean }[] = [];
       for (const f of eligible) {
         try {
           await callUploadPayslip(
@@ -244,10 +241,28 @@ export const Upload = () => {
             f.workerRef.toUpperCase(),
             f.agencyId ?? "",
           );
+          results.push({ name: f.file.name, success: true });
         } catch {
-          /* continue on individual failures */
+          results.push({ name: f.file.name, success: false });
         }
         await delay(DOCUMENT_UPLOAD_DELAY);
+      }
+
+      const succeeded = results.filter((r) => r.success).length;
+      const failed = results.length - succeeded;
+
+      if (failed === 0) {
+        toast({
+          title: "Payslips Uploaded",
+          description: `${succeeded} payslip${succeeded === 1 ? "" : "s"} uploaded.`,
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: `${succeeded}/${results.length} Uploaded`,
+          description: `${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
+          variant: "error",
+        });
       }
     })();
   };
