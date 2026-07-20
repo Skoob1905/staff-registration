@@ -6,7 +6,7 @@ import type { PasswordResetDoc } from "./types";
 import { logger } from "firebase-functions";
 
 const MIN_PASSWORD_LENGTH = 6;
-const DEFAULT_EXPIRY_HOURS = 24;
+const DEFAULT_EXPIRY_HOURS = 120;
 const TOKEN_BYTES = 32;
 
 export class ResetPasswordTokenManager {
