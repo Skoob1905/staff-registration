@@ -57,6 +57,10 @@ export function useFilterParams(): [StaffFilters, (filters: StaffFilters) => voi
   );
 
   useEffect(() => {
+    if (hasParams(searchParams)) {
+      filterMemory.set(location.pathname, paramsToFilters(searchParams));
+      return;
+    }
     const memory = filterMemory.get(location.pathname);
     if (memory && !hasParams(searchParams)) {
       setSearchParams(

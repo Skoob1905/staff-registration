@@ -62,8 +62,10 @@ export async function uploadPayslipLogic(
     metadata?: { payslipsSent?: string[] };
   };
   const existing = staffData?.metadata?.payslipsSent ?? [];
+  const newPayslipsSent = [payslipRef.id, ...existing];
   await staffRef.update({
-    "metadata.payslipsSent": [payslipRef.id, ...existing],
+    "metadata.payslipsSent": newPayslipsSent,
+    "metadata.payslipsCount": newPayslipsSent.length,
   });
 
   const staffEmail = (staffSnap.data() as { email?: string })?.email;

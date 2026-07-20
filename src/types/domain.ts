@@ -168,6 +168,7 @@ export interface BulkStaff {
     loginStatus?: string;
     cv?: StaffCvEntry[];
     payslipsSent?: string[];
+    payslipCount?: number;
   };
 }
 

@@ -8,6 +8,7 @@ import { AgenciesDropdown } from "./AgenciesDropdown";
 import { Button, DialogContent, DialogRoot, DialogTitle } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
+import { toast_mapper, ToastType } from "../config/toast";
 import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
@@ -134,11 +135,7 @@ export const AddModal = ({
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".csv")) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a CSV file.",
-        variant: "error",
-      });
+      toast(toast_mapper[ToastType.INVALID_FILE]);
       return;
     }
     if (
@@ -146,11 +143,7 @@ export const AddModal = ({
       file.size > DEV_FILE_SIZE_LIMIT &&
       csvType !== "timesheet"
     ) {
-      toast({
-        title: "File too large",
-        description: "In preview mode, files are limited to 100KB.",
-        variant: "error",
-      });
+      toast(toast_mapper[ToastType.FILE_TOO_LARGE]);
       return;
     }
     const reader = new FileReader();
@@ -159,20 +152,11 @@ export const AddModal = ({
       if (!text) return;
       const parsed = parseCsv(text);
       if (!parsed.headers.length) {
-        toast({
-          title: "Empty CSV",
-          description: "The CSV file has no headers.",
-          variant: "error",
-        });
+        toast(toast_mapper[ToastType.EMPTY_CSV]);
         return;
       }
       if (!parsed.rows.length) {
-        toast({
-          title: "Empty CSV",
-          description:
-            "The CSV has headers but no data rows. Add data and try again.",
-          variant: "error",
-        });
+        toast(toast_mapper[ToastType.EMPTY_CSV_DATA]);
         return;
       }
 
@@ -182,35 +166,20 @@ export const AddModal = ({
             "[AddModal] No Worker Ref column found. Headers:",
             parsed.headers,
           );
-          toast({
-            title: "No reference column",
-            description:
-              "CSV missing Ref/Reference/Workers Ref column. Staff IDs will be auto-generated.",
-            variant: "error",
-          });
+          toast(toast_mapper[ToastType.NO_REFERENCE_COLUMN]);
           return;
         }
       }
 
       if (csvType === "agency") {
         if (!hasAgencyRefColumn(parsed.headers)) {
-          toast({
-            title: "Invalid agency file",
-            description:
-              "The CSV must contain a Ref or Reference column.",
-            variant: "error",
-          });
+          toast(toast_mapper[ToastType.INVALID_AGENCY_FILE]);
           return;
         }
       }
       if (csvType === "client") {
         if (!hasClientRefColumn(parsed.headers)) {
-          toast({
-            title: "Invalid client file",
-            description:
-              "The CSV must contain a Ref or Reference column.",
-            variant: "error",
-          });
+          toast(toast_mapper[ToastType.INVALID_CLIENT_FILE]);
           return;
         }
       }
@@ -265,11 +234,7 @@ export const AddModal = ({
         });
         setUploadProgress(100);
 
-        toast({
-          title: "Timesheet uploaded",
-          description: `We have received your timesheet and will process it as soon as possible.`,
-          variant: "success",
-        });
+        toast(toast_mapper[ToastType.TIMESHEET_UPLOADED]);
         setUploadProgress(0);
         setCsvData(null);
         setSelectedAgencyId("");
@@ -295,11 +260,14 @@ export const AddModal = ({
               : "clients";
         const existingCount = await countCollection(collectionName);
         if (existingCount + csvData.rows.length > maxRecords) {
-          toast({
-            title: "Too Many Records",
-            description: `You have ${existingCount} ${label} in the database. Uploading ${csvData.rows.length} more would exceed the ${maxRecords} limit. Please delete some ${label} first.`,
-            variant: "error",
-          });
+          toast(
+            toast_mapper[ToastType.TOO_MANY_RECORDS](
+              existingCount,
+              csvData.rows.length,
+              maxRecords,
+              label,
+            ),
+          );
           return;
         }
       }
@@ -360,12 +328,25 @@ export const AddModal = ({
         });
       }
 
-      toast({
-        title: "Import complete",
-        description: `${data.added} ${data.added === 1 ? itemLabel : itemLabelPlural} added. Logins will be sent shortly.`,
-        variant: "success",
-        replaceToast: true,
-      });
+      if (data.added === 0 && data.duplicates > 0) {
+        toast(toast_mapper[ToastType.IMPORT_ALL_DUPLICATES](data.duplicates));
+        setUploadProgress(0);
+        setCsvData(null);
+        setSelectedAgencyId("");
+        setSelectedAgencyName("");
+        onOpenChange(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      toast(
+        toast_mapper[ToastType.IMPORT_SUCCESS](
+          data.added,
+          itemLabel,
+          itemLabelPlural,
+          data.duplicates,
+        ),
+      );
       setUploadProgress(0);
       setCsvData(null);
       setSelectedAgencyId("");
@@ -379,7 +360,7 @@ export const AddModal = ({
         // onSuccess failure shouldn't block email sending
       }
 
-      if (data.emails.length > 0) {
+      if (Array.isArray(data.emails) && data.emails.length > 0) {
         const emailCallable = httpsCallable(functions, "sendImportEmails");
         const emailResult = await emailCallable({
           emails: data.emails,
@@ -395,17 +376,9 @@ export const AddModal = ({
           failed: number;
         };
         if (failed > 0) {
-          toast({
-            title: `${failed} email(s) failed`,
-            description: `${sent} sent, ${failed} failed.`,
-            variant: "error",
-          });
+          toast(toast_mapper[ToastType.EMAIL_FAILURE](sent, failed));
         } else {
-          toast({
-            title: "Emails sent",
-            description: `${sent} login email(s) delivered.`,
-            variant: "success",
-          });
+          toast(toast_mapper[ToastType.EMAILS_SENT](sent));
         }
       }
     } catch (error: unknown) {
@@ -414,11 +387,9 @@ export const AddModal = ({
         csvType === "timesheet" &&
         (code === "already-exists" || code === "functions/already-exists")
       ) {
-        toast({
-          title: "Duplicate timesheet",
-          description: `A timesheet named "${csvData?.fileName ?? ""}" has already been uploaded.`,
-          variant: "error",
-        });
+        toast(
+          toast_mapper[ToastType.DUPLICATE_TIMESHEET](csvData?.fileName ?? ""),
+        );
       } else {
         const message =
           typeof error === "object" &&
@@ -427,12 +398,7 @@ export const AddModal = ({
           typeof (error as { message?: string }).message === "string"
             ? (error as { message: string }).message
             : "Upload failed. Please try again.";
-        toast({
-          title: "Upload failed",
-          description: message,
-          variant: "error",
-          replaceToast: true,
-        });
+        toast(toast_mapper[ToastType.UPLOAD_FAILED](message));
       }
     } finally {
       setLoading(false);
@@ -607,7 +573,6 @@ export const AddModal = ({
           ) : null}
         </DialogContent>
       </DialogRoot>
-
     </>
   );
 };

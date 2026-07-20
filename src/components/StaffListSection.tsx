@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 import { useAuth } from "../context/AuthProvider";
@@ -11,6 +10,7 @@ import { useAppStore } from "../stores/appStore";
 import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
+import { usePaginationParams } from "../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
 import { Section } from "./Section";
@@ -23,6 +23,7 @@ import type {
 
 interface StaffListSectionProps {
   action?: ReactNode;
+  title?: string;
   refreshTrigger?: number;
   renderItem: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
@@ -33,10 +34,18 @@ interface StaffListSectionProps {
   onLeftAccordionChange?: (value: string) => void;
   rightAccordionValue?: string;
   onRightAccordionChange?: (value: string) => void;
+
+  accordionLayout?: "dual" | "single";
+  accordionType?: "single" | "multiple";
+  multiAccordionValue?: string[];
+  onMultiAccordionChange?: (value: string[]) => void;
+  algoliaFilters?: string;
+  onItemsChange?: (items: BulkStaff[]) => void;
 }
 
 export const StaffListSection = ({
   action,
+  title,
   refreshTrigger,
   renderItem,
   agencies,
@@ -47,13 +56,19 @@ export const StaffListSection = ({
   onLeftAccordionChange,
   rightAccordionValue,
   onRightAccordionChange,
+
+  accordionLayout = "dual",
+  accordionType = "single",
+  multiAccordionValue,
+  onMultiAccordionChange,
+  algoliaFilters,
+  onItemsChange,
 }: StaffListSectionProps) => {
   const { appUser, role } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const isClient = role === "client";
 
   const staffKeyMap = useMemo<FilterKeyMap>(
@@ -102,21 +117,35 @@ export const StaffListSection = ({
       indexName: "staff_name_desc",
       agencyId: appUser?.agencyId ?? "",
       facetFilters: staffFacetFilters,
+      filters: algoliaFilters,
       facets,
       query: filters.name,
       page,
       hitsPerPage: pageSize,
       enabled: !namesLoading,
     }),
-    [staffFacetFilters, facets, filters.name, page, pageSize, appUser?.agencyId, namesLoading],
+    [
+      staffFacetFilters,
+      algoliaFilters,
+      facets,
+      filters.name,
+      page,
+      pageSize,
+      appUser?.agencyId,
+      namesLoading,
+    ],
   );
-
-  useEffect(() => {
-    console.log("[StaffListSection] Algolia search:", searchParams);
-  }, [searchParams]);
 
   const { items, loading, refresh, totalPages, totalResults, facetCounts } =
     usePaginatedRecords<BulkStaff>(searchParams);
+
+  const prevItems = useRef(items);
+  useEffect(() => {
+    if (items !== prevItems.current) {
+      prevItems.current = items;
+      onItemsChange?.(items);
+    }
+  }, [items, onItemsChange]);
 
   const prevRefreshTrigger = useRef(refreshTrigger);
   useEffect(() => {
@@ -156,11 +185,12 @@ export const StaffListSection = ({
       setPage(0);
       setFilters(newFilters);
     },
-    [setFilters],
+    [setPage, setFilters],
   );
 
   const sectionTitle =
-    isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff";
+    title ??
+    (isClient ? "Assigned Staff" : role === "super" ? "All Staff" : "Staff");
 
   if (namesLoading) {
     return (
@@ -182,13 +212,10 @@ export const StaffListSection = ({
       totalPages={totalPages}
       totalResults={totalResults}
       pageSize={pageSize}
-      onPrevPage={() => setPage((p) => Math.max(0, p - 1))}
-      onNextPage={() => setPage((p) => p + 1)}
+      onPrevPage={() => setPage(Math.max(0, page - 1))}
+      onNextPage={() => setPage(page + 1)}
       onGoToPage={setPage}
-      onPageSizeChange={(s) => {
-        setPageSize(s);
-        setPage(0);
-      }}
+      onPageSizeChange={setPageSize}
       filters={filters}
       onFiltersChange={handleFiltersChange}
       tags={filterTagsMap}
@@ -211,6 +238,10 @@ export const StaffListSection = ({
       onLeftAccordionChange={onLeftAccordionChange}
       rightAccordionValue={rightAccordionValue}
       onRightAccordionChange={onRightAccordionChange}
+      singleColumn={accordionLayout === "single"}
+      accordionType={accordionType}
+      multiAccordionValue={multiAccordionValue}
+      onMultiAccordionChange={onMultiAccordionChange}
     />
   );
 };
