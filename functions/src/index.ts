@@ -532,6 +532,13 @@ export const completePasswordReset = onCall(async (request) => {
  */
 export const validateResetToken = onCall(async (request) => {
   const token = String(request.data?.token || "").trim();
+
+  logger.info("[validateResetToken] called", {
+    hasToken: !!token,
+    tokenPrefix: token ? `${token.substring(0, 8)}...` : "none",
+    tokenLength: token.length,
+  });
+
   if (!token) {
     return { valid: false, reason: "INVALID_TOKEN" };
   }
@@ -544,7 +551,9 @@ export const validateResetToken = onCall(async (request) => {
     `${RESET_CONTINUE_URL.value()}/reset-password`,
   );
 
-  return manager.validateToken(token);
+  const result = await manager.validateToken(token);
+  logger.info("[validateResetToken] result", { result });
+  return result;
 });
 
 export const removeUnregisteredStaffUser = onCall(async (request) => {
