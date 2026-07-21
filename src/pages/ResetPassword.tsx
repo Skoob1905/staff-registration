@@ -28,12 +28,19 @@ export const ResetPassword = () => {
     shownRef.current = true;
 
     if (!token) {
+      console.log("[ResetPassword] no token in URL, redirecting to /login");
       navigate("/login");
       return;
     }
 
+    console.log(
+      "[ResetPassword] extracted token (first 8 chars):",
+      `${token.substring(0, 8)}...`,
+    );
+
     callValidateToken(token)
       .then((result) => {
+        console.log("[ResetPassword] validate result:", result);
         if (!result.valid) {
           navigate("/login", { state: "reset-password" });
           toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
@@ -41,7 +48,8 @@ export const ResetPassword = () => {
           setReady(true);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[ResetPassword] validate threw an error:", err);
         navigate("/login");
         toast(toast_mapper[ToastType.INVALID_RESET_TOKEN]);
       });
@@ -77,7 +85,11 @@ export const ResetPassword = () => {
     } catch (error) {
       const code = parseResetError(error as FirebaseError);
       if (code) {
-        toast(toast_mapper[code as keyof typeof toast_mapper] as Parameters<typeof toast>[0]);
+        toast(
+          toast_mapper[code as keyof typeof toast_mapper] as Parameters<
+            typeof toast
+          >[0],
+        );
       } else {
         toast(toast_mapper[ToastType.RESET_FAILED]);
       }

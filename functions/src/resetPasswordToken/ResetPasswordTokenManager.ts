@@ -6,7 +6,7 @@ import type { PasswordResetDoc } from "./types";
 import { logger } from "firebase-functions";
 
 const MIN_PASSWORD_LENGTH = 6;
-const DEFAULT_EXPIRY_HOURS = 24;
+const DEFAULT_EXPIRY_HOURS = 120;
 const TOKEN_BYTES = 32;
 
 export class ResetPasswordTokenManager {
@@ -271,7 +271,16 @@ export class ResetPasswordTokenManager {
       return { valid: false, reason: "INVALID_TOKEN" };
     }
 
+    logger.info("[ResetPasswordTokenManager] validateToken: looking up doc", {
+      tokenPrefix: `${token.substring(0, 8)}...`,
+      collectionPath: "passwordResets",
+    });
+
     const doc = await this.db.collection("passwordResets").doc(token).get();
+
+    logger.info("[ResetPasswordTokenManager] validateToken: doc exists?", {
+      exists: doc.exists,
+    });
 
     if (!doc.exists) {
       logger.warn(

@@ -203,12 +203,12 @@ describe("ResetPasswordTokenManager", () => {
       expect(doc.expiresAt).toBeInstanceOf(Timestamp);
     });
 
-    it("expiresAt is ~24 hours in the future by default", async () => {
+    it("expiresAt is ~120 hours (5 days) in the future by default", async () => {
       const token = await manager.createToken("user@example.com");
       const doc = firestoreResult.docs[token];
       const expiresAt = doc.expiresAt as Timestamp;
       const expected = Timestamp.fromDate(
-        new Date(referenceTime.getTime() + 24 * 60 * 60 * 1000),
+        new Date(referenceTime.getTime() + 120 * 60 * 60 * 1000),
       );
       expect(expiresAt.seconds).toBe(expected.seconds);
     });
@@ -279,7 +279,7 @@ describe("ResetPasswordTokenManager", () => {
 
       const link = await manager.getResetLink("user@example.com");
 
-      expect(mockCreate).toHaveBeenCalledWith("user@example.com", 24);
+      expect(mockCreate).toHaveBeenCalledWith("user@example.com", 120);
       expect(link).toMatch(
         /^https:\/\/portal\.com\/reset-password\?token=[0-9a-f]{64}$/,
       );

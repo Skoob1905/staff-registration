@@ -71,19 +71,19 @@ export const toast_mapper = {
   [ToastType.INVALID_TOKEN]: {
     title: "Invalid Reset Link",
     description:
-      "The reset link you used is invalid. Please request a new one.",
+      "The reset link you used is invalid. Please reset your password.",
     variant: "error",
   },
   [ToastType.TOKEN_ALREADY_USED]: {
     title: "Link Already Used",
     description:
-      "This reset link has already been used. Please request a new one.",
+      "This reset link has already been used. Please reset your password.",
     variant: "error",
   },
   [ToastType.TOKEN_EXPIRED]: {
     title: "Link Expired",
-    description: "This reset link has expired. Please request a new one.",
-    variant: "warning",
+    description: "This reset link has expired. Please reset your password.",
+    variant: "error",
   },
   [ToastType.INVALID_PASSWORD]: {
     title: "Invalid Password",
