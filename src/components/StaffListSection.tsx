@@ -27,7 +27,7 @@ interface StaffListSectionProps {
   refreshTrigger?: number;
   renderItem: (item: BulkStaff, index: number) => ReactNode;
   agencies?: Agency[];
-  targetAgencyNames?: string[];
+  targetAgencyIds?: string[];
   namesLoading?: boolean;
 
   leftAccordionValue?: string;
@@ -49,7 +49,7 @@ export const StaffListSection = ({
   refreshTrigger,
   renderItem,
   agencies,
-  targetAgencyNames,
+  targetAgencyIds,
   namesLoading,
 
   leftAccordionValue,
@@ -72,7 +72,7 @@ export const StaffListSection = ({
   const isClient = role === "client";
 
   const staffKeyMap = useMemo<FilterKeyMap>(
-    () => ({ tag: "tags", agency: "metadata.assignedToName" }),
+    () => ({ tag: "tags", agency: "metadata.assignedToId" }),
     [],
   );
 
@@ -95,17 +95,16 @@ export const StaffListSection = ({
       ffs.push(filters.agencyIds.map((n) => `${staffKeyMap.agency}:${n}`));
     }
 
-    if (targetAgencyNames) {
-      if (targetAgencyNames.length === 0) {
+    if (targetAgencyIds) {
+      if (targetAgencyIds.length === 0) {
         ffs.push([`${staffKeyMap.agency}:__none__`]);
       } else {
-        ffs.push(targetAgencyNames.map((n) => `${staffKeyMap.agency}:${n}`));
+        ffs.push(targetAgencyIds.map((id) => `${staffKeyMap.agency}:${id}`));
       }
-      return ffs;
     }
 
     return ffs;
-  }, [filters, staffKeyMap, targetAgencyNames]);
+  }, [filters, staffKeyMap, targetAgencyIds]);
 
   const facets = useMemo(
     () => buildFacetRequestFields(staffKeyMap),
@@ -155,13 +154,13 @@ export const StaffListSection = ({
     }
   }, [refreshTrigger, refresh]);
 
-  const prevAgencyNames = useRef(targetAgencyNames);
+  const prevAgencyIds = useRef(targetAgencyIds);
   useEffect(() => {
-    if (targetAgencyNames !== prevAgencyNames.current) {
-      prevAgencyNames.current = targetAgencyNames;
+    if (targetAgencyIds !== prevAgencyIds.current) {
+      prevAgencyIds.current = targetAgencyIds;
       refresh();
     }
-  }, [targetAgencyNames, refresh]);
+  }, [targetAgencyIds, refresh]);
 
   useEffect(() => {
     loadTags().catch(() => {});
@@ -175,9 +174,9 @@ export const StaffListSection = ({
   }, [facetCounts, tagsMap]);
 
   const filterAgencies = useMemo(() => {
-    if (!agencies || !facetCounts?.["metadata.assignedToName"]) return agencies;
-    const counts = facetCounts["metadata.assignedToName"];
-    return agencies.filter((a) => (counts[a.name] ?? 0) > 0);
+    if (!agencies || !facetCounts?.["metadata.assignedToId"]) return agencies;
+    const counts = facetCounts["metadata.assignedToId"];
+    return agencies.filter((a) => (counts[a.id] ?? 0) > 0);
   }, [agencies, facetCounts]);
 
   const handleFiltersChange = useCallback(

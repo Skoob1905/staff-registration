@@ -27,7 +27,7 @@ const AppEntryRedirect = () => {
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
   if (appUser.role === "admin") return <Navigate to="/agencies" replace />;
   if (appUser.role === "super") return <Navigate to="/clients" replace />;
-  return <Navigate to="/staff" replace />;
+  return <Navigate to="/staff?page=1&size=10" replace />;
 };
 
 const LoginRedirect = () => {
@@ -36,7 +36,7 @@ const LoginRedirect = () => {
   if (firebaseUser && appUser) {
     if (appUser.role === "admin") return <Navigate to="/agencies" replace />;
     if (appUser.role === "super") return <Navigate to="/clients" replace />;
-    return <Navigate to="/staff" replace />;
+    return <Navigate to="/staff?page=1&size=10" replace />;
   }
   return <Login />;
 };
@@ -58,7 +58,7 @@ const ProfileSwitch = () => {
 const DashboardSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
-  if (appUser.role !== "worker") return <Navigate to="/staff" replace />;
+  if (appUser.role !== "worker") return <Navigate to="/staff?page=1&size=10" replace />;
   return <Dashboard />;
 };
 
@@ -80,7 +80,7 @@ const PayslipsSwitch = () => {
   const { appUser } = useAuth();
   if (!appUser) return <Navigate to="/login" replace />;
   if (appUser.role === "super" || appUser.role === "admin" || appUser.role === "client") return <Payslips />;
-  return <Navigate to="/staff" replace />;
+  return <Navigate to="/staff?page=1&size=10" replace />;
 };
 
 const AgenciesSwitch = () => {

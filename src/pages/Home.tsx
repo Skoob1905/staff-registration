@@ -11,33 +11,11 @@ import { Pill } from "../components/Pill";
 import { Metadata } from "../components/Metadata";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
-import {
-  getStaffName,
-  findValueByNormalizedKey,
-} from "../utils/keyHeaderNormalisation";
+import { getStaffName } from "../utils/keyHeaderNormalisation";
 import { formatInvitedAt } from "../utils/date";
 import { getTagName } from "../utils/getTagName";
+import { getAgencyName } from "../utils/agency";
 import type { Agency, BulkStaff } from "../types/domain";
-
-function getAgencyName(
-  agencyDoc: Record<string, unknown>,
-  fallbackId: string,
-): string {
-  return typeof agencyDoc.business_name === "string"
-    ? agencyDoc.business_name
-    : typeof agencyDoc["Business Name"] === "string"
-      ? agencyDoc["Business Name"]
-      : typeof agencyDoc.name === "string"
-        ? agencyDoc.name
-        : findValueByNormalizedKey(
-            agencyDoc,
-            "businessname",
-            "companyname",
-            "name",
-            "agencyname",
-            "company",
-          ) || fallbackId;
-}
 
 export const Home = () => {
   useEffect(() => {
@@ -51,7 +29,7 @@ export const Home = () => {
   const { leftValue, rightValue, onLeftChange, onRightChange } =
     useDualAccordionParams();
 
-  const [agencyNames, setAgencyNames] = useState<string[]>([]);
+  const [agencyIds, setAgencyIds] = useState<string[]>([]);
   const [agencyList, setAgencyList] = useState<Agency[]>([]);
   const [agencyNamesLoaded, setAgencyNamesLoaded] = useState(false);
 
@@ -69,16 +47,15 @@ export const Home = () => {
           if (ids.length === 0 && appUser.agencyId) {
             ids.push(appUser.agencyId);
           }
-          const names: string[] = [];
+          const resolvedIds: string[] = [];
           const agenciesArr: Agency[] = [];
           for (const id of ids) {
             const data = await getAgency(id);
             if (data) {
-              const name = getAgencyName(data, id);
-              names.push(name);
+              resolvedIds.push(id);
               agenciesArr.push({
                 id,
-                name,
+                name: getAgencyName(data),
                 slug: (data.slug as string) ?? "",
                 assignedStaff:
                   ((data.metadata as Record<string, unknown> | undefined)
@@ -86,14 +63,13 @@ export const Home = () => {
               });
             }
           }
-          setAgencyNames(names);
+          setAgencyIds(resolvedIds);
           setAgencyList(agenciesArr);
         } else {
           try {
             const agencies = await getAgencyByEmail(appUser.email ?? "");
             if (agencies.length > 0) {
-              const name = getAgencyName(agencies[0], String(agencies[0].id));
-              setAgencyNames(name ? [name] : []);
+              setAgencyIds([String(agencies[0].id)]);
             }
           } catch (err) {
             console.error("[Home] failed to fetch agency by email:", err);
@@ -118,9 +94,9 @@ export const Home = () => {
     return map;
   }, [tags]);
 
-  const targetAgencyNames = useMemo(() => {
-    return agencyNames.length === 0 ? [] : agencyNames;
-  }, [agencyNames]);
+  const targetAgencyIds = useMemo(() => {
+    return agencyIds.length === 0 ? [] : agencyIds;
+  }, [agencyIds]);
 
   const renderItem = useCallback(
     (member: BulkStaff, idx: number) => {
@@ -286,7 +262,7 @@ export const Home = () => {
   return (
     <div className="mx-auto space-y-4">
       <StaffListSection
-        targetAgencyNames={targetAgencyNames}
+        targetAgencyIds={targetAgencyIds}
         agencies={agencyList}
         namesLoading={!agencyNamesLoaded}
         renderItem={renderItem}

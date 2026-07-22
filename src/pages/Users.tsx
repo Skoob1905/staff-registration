@@ -19,7 +19,7 @@ import { Metadata } from "../components/Metadata";
 import { useAppStore } from "../stores/appStore";
 import { functions } from "../services/firebase";
 import { formatInvitedAt } from "../utils/date";
-import { getCompanyName } from "../utils/company";
+import { getAgencyName } from "../utils/agency";
 import { Muted } from "../config/typography";
 import { config } from "../config";
 import { AccordionTitle } from "../components/AccordionTitle";
@@ -326,7 +326,7 @@ export const Users = () => {
             ? companies.find((c) => c.id === companyId) ||
               companyCache[companyId]
             : undefined;
-          const companyName = company ? getCompanyName(company) : "Unknown";
+          const companyName = company ? getAgencyName(company) : "Unknown";
           const invitedByEmail =
             adminEmailByUid[userRecord.invitedByUid ?? ""] ||
             userRecord.invitedByUid ||
