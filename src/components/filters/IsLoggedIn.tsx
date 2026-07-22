@@ -14,7 +14,7 @@ const options: { value: LoginStatusValue; label: string }[] = [
 ];
 
 export const IsLoggedIn = ({ value, onChange }: IsLoggedInProps) => (
-  <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] p-0.5">
+  <div className="flex w-fit items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] p-0.5">
     {options.map((opt) => (
       <button
         key={opt.value}
