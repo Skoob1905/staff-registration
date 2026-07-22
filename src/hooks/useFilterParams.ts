@@ -9,7 +9,7 @@ function hasParams(searchParams: URLSearchParams): boolean {
   return !!(searchParams.get("name") || searchParams.get("tags") || searchParams.get("agencies") || searchParams.get("types") || searchParams.get("loginStatus"));
 }
 
-function filtersToParams(
+export function filtersToParams(
   params: URLSearchParams,
   filters: StaffFilters,
 ): URLSearchParams {

@@ -5,11 +5,12 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { useFilterParams } from "../hooks/useFilterParams";
+import { useFilterParams, filtersToParams } from "../hooks/useFilterParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
@@ -70,6 +71,7 @@ export const StaffListSection = ({
   const loadTags = useAppStore((s) => s.loadTags);
   const [filters, setFilters] = useFilterParams();
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const [, setRawSearchParams] = useSearchParams();
   const isClient = role === "client";
 
   const staffKeyMap = useMemo<FilterKeyMap>(
@@ -197,10 +199,15 @@ export const StaffListSection = ({
 
   const handleFiltersChange = useCallback(
     (newFilters: StaffFilters) => {
-      setPage(0);
       setFilters(newFilters);
+      setRawSearchParams((prev) => {
+        const next = filtersToParams(new URLSearchParams(prev), newFilters);
+        next.set("page", "1");
+        next.set("size", String(pageSize));
+        return next;
+      }, { replace: true });
     },
-    [setPage, setFilters],
+    [pageSize, setRawSearchParams, setFilters],
   );
 
   const sectionTitle =
