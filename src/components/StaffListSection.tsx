@@ -15,7 +15,7 @@ import { usePaginationParams } from "../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
 import { Section } from "./Section";
-import { buildLoginStatusFilter } from "./filters/IsLoggedIn";
+import { buildLoginStatusFilter } from "../utils/buildLoginStatusFilter";
 import type {
   Agency,
   BulkStaff,
