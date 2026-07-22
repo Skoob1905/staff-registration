@@ -1347,6 +1347,12 @@ export const importStaffCsv = onCall(async (request) => {
   const callerAgencySnap = assignedToId
     ? await db.collection("agencies").doc(assignedToId).get()
     : null;
+  if (assignedToId && !callerAgencySnap?.exists) {
+    throw new HttpsError(
+      "not-found",
+      `Agency ${assignedToId} not found. It may have been deleted.`,
+    );
+  }
   const assignedToName =
     assignedToNameInput ||
     (callerAgencySnap?.exists

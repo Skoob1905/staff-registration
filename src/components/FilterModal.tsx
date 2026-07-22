@@ -8,7 +8,7 @@ import {
   Input,
 } from "./ui";
 import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
-import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { getAgencyName } from "../utils/agency";
 import { getTagName } from "../utils/getTagName";
 import { H1, H2, Muted } from "../config/typography";
 
@@ -44,7 +44,7 @@ export const FilterModal = ({
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
     new Set(filters.tagIds),
   );
-  const [selectedAgencyNames, setSelectedAgencyNames] = useState<Set<string>>(
+  const [selectedAgencyIds, setSelectedAgencyIds] = useState<Set<string>>(
     new Set(filters.agencyIds),
   );
 
@@ -53,7 +53,7 @@ export const FilterModal = ({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(filters.name);
       setSelectedTagIds(new Set(filters.tagIds));
-      setSelectedAgencyNames(new Set(filters.agencyIds));
+      setSelectedAgencyIds(new Set(filters.agencyIds));
     }
   }, [open, filters]);
 
@@ -68,23 +68,8 @@ export const FilterModal = ({
   const agencyEntries = useMemo(() => {
     if (!agencies) return [];
     return agencies.map((a) => {
-      const r = a as unknown as Record<string, string>;
-      const name =
-        a.name ||
-        r.business_name ||
-        r.Company_Name ||
-        r.company_name ||
-        r.name ||
-        findValueByNormalizedKey(
-          r,
-          "businessname",
-          "name",
-          "agencyname",
-          "organisation",
-          "company",
-        ) ||
-        "Unknown";
-      return { id: a.id, name };
+      const r = a as unknown as Record<string, unknown>;
+      return { id: a.id, name: getAgencyName(r) };
     });
   }, [agencies]);
 
@@ -95,11 +80,11 @@ export const FilterModal = ({
     setSelectedTagIds(next);
   };
 
-  const toggleAgency = (name: string) => {
-    const next = new Set(selectedAgencyNames);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    setSelectedAgencyNames(next);
+  const toggleAgency = (id: string) => {
+    const next = new Set(selectedAgencyIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedAgencyIds(next);
   };
 
   const handleApply = () => {
@@ -107,7 +92,7 @@ export const FilterModal = ({
       name: enableName ? name.trim() : "",
       typeIds: [],
       tagIds: enableTag ? Array.from(selectedTagIds) : [],
-      agencyIds: enableAgency ? Array.from(selectedAgencyNames) : [],
+      agencyIds: enableAgency ? Array.from(selectedAgencyIds) : [],
     });
     onOpenChange(false);
   };
@@ -170,9 +155,9 @@ export const FilterModal = ({
                       key={id}
                       id={id}
                       label={name}
-                      count={agencyCounts?.[name]}
-                      checked={selectedAgencyNames.has(name)}
-                      onChange={() => toggleAgency(name)}
+                      count={agencyCounts?.[id]}
+                      checked={selectedAgencyIds.has(id)}
+                      onChange={() => toggleAgency(id)}
                     />
                   ))}
                 </div>

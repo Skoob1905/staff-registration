@@ -162,7 +162,7 @@ export const Agencies = () => {
                     record={client}
                     onClick={() =>
                       navigate(
-                        `/staff?agencies=${encodeURIComponent(getPrimaryLabel(client))}`,
+                        `/staff?agencies=${encodeURIComponent(client.id as string)}&page=1`,
                       )
                     }
                   />

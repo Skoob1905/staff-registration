@@ -14,7 +14,7 @@ import { Metadata } from "../components/Metadata";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
-import { getCompanyName } from "../utils/company";
+import { getAgencyName } from "../utils/agency";
 import { functions } from "../services/firebase";
 import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
@@ -71,7 +71,7 @@ export const Clients = () => {
   const agenciesMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const a of agencies) {
-      map[a.id as string] = getCompanyName(a as Record<string, unknown>);
+      map[a.id as string] = getAgencyName(a as Record<string, unknown>);
     }
     return map;
   }, [agencies]);
@@ -80,7 +80,7 @@ export const Clients = () => {
     () =>
       agencies.map((a) => ({
         id: a.id as string,
-        name: getCompanyName(a as Record<string, unknown>),
+        name: getAgencyName(a as Record<string, unknown>),
       })),
     [agencies],
   );

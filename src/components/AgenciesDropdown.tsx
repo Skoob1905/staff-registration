@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useAuth } from "../context/AuthProvider";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+import { getAgencyName } from "../utils/agency";
 
 interface AgenciesDropdownProps {
   value: string;
@@ -40,20 +40,6 @@ export const AgenciesDropdown = ({
     facetFilters: agencyFacetFilters,
     hitsPerPage: 1000,
   });
-
-  const getAgencyName = (agency: Record<string, unknown>): string =>
-    (agency.business_name as string) ||
-    (agency.name as string) ||
-    (agency.agencyName as string) ||
-    findValueByNormalizedKey(
-      agency,
-      "businessname",
-      "name",
-      "agencyname",
-      "organisation",
-      "company",
-    ) ||
-    "Unknown";
 
   return (
     <select

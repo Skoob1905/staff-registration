@@ -5,7 +5,7 @@ import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { sendForgotPassword } from "../services/authService";
-import { getCompanyName } from "../utils/company";
+import { getAgencyName } from "../utils/agency";
 import { Caption } from "../config/typography";
 
 export const Profile = () => {
@@ -80,7 +80,7 @@ export const Profile = () => {
               <Caption>Company</Caption>
               <p className="text-xs sm:text-sm font-medium">
                 {agency
-                  ? getCompanyName(agency as unknown as Record<string, unknown>)
+                  ? getAgencyName(agency as unknown as Record<string, unknown>)
                   : "—"}
               </p>
             </div>

@@ -19,9 +19,10 @@ import {
   getAgency,
   getAgencyByEmail,
 } from "../services/firestore";
-import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
+
 import { functions } from "../services/firebase";
 import { formatSentDate } from "../utils/date";
+import { getAgencyName } from "../utils/agency";
 import type { Agency, BulkStaff, Payslip } from "../types/domain";
 import type { StaffPayslips } from "../utils/payslips";
 
@@ -30,26 +31,6 @@ interface DeleteTarget {
   staffName: string;
   payslipId: string;
   payslipName: string;
-}
-
-function getAgencyName(
-  agencyDoc: Record<string, unknown>,
-  fallbackId: string,
-): string {
-  return typeof agencyDoc.business_name === "string"
-    ? agencyDoc.business_name
-    : typeof agencyDoc["Business Name"] === "string"
-      ? agencyDoc["Business Name"]
-      : typeof agencyDoc.name === "string"
-        ? agencyDoc.name
-        : findValueByNormalizedKey(
-            agencyDoc,
-            "businessname",
-            "companyname",
-            "name",
-            "agencyname",
-            "company",
-          ) || fallbackId;
 }
 
 export const Payslips = () => {
@@ -64,7 +45,7 @@ export const Payslips = () => {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [agencyNames, setAgencyNames] = useState<string[]>([]);
+  const [agencyIds, setAgencyIds] = useState<string[]>([]);
   const [agencyList, setAgencyList] = useState<Agency[]>([]);
   const [agencyNamesLoaded, setAgencyNamesLoaded] = useState(false);
   const [staffPayslips, setStaffPayslips] = useState<StaffPayslips[]>([]);
@@ -88,16 +69,15 @@ export const Payslips = () => {
             ids.push(appUser.agencyId);
           }
           console.log("[Payslips] admin assignedAgencyIds:", ids);
-          const names: string[] = [];
+          const resolvedIds: string[] = [];
           const agenciesArr: Agency[] = [];
           for (const id of ids) {
             const data = await getAgency(id);
             if (data) {
-              const name = getAgencyName(data, id);
-              names.push(name);
+              resolvedIds.push(id);
               agenciesArr.push({
                 id,
-                name,
+                name: getAgencyName(data),
                 slug: (data.slug as string) ?? "",
                 assignedStaff:
                   ((data.metadata as Record<string, unknown> | undefined)
@@ -105,16 +85,15 @@ export const Payslips = () => {
               });
             }
           }
-          console.log("[Payslips] resolved agency names:", names);
-          setAgencyNames(names);
+          console.log("[Payslips] resolved agency ids:", resolvedIds);
+          setAgencyIds(resolvedIds);
           setAgencyList(agenciesArr);
         } else {
           try {
             const agencies = await getAgencyByEmail(appUser.email ?? "");
             if (agencies.length > 0) {
-              const name = getAgencyName(agencies[0], String(agencies[0].id));
-              console.log("[Payslips] client agency name:", name);
-              setAgencyNames(name ? [name] : []);
+              console.log("[Payslips] client agency id:", agencies[0].id);
+              setAgencyIds([String(agencies[0].id)]);
             } else {
               console.log("[Payslips] no agencies found for email");
             }
@@ -129,12 +108,12 @@ export const Payslips = () => {
     void run();
   }, [appUser]);
 
-  const targetAgencyNames = useMemo(() => {
+  const targetAgencyIds = useMemo(() => {
     if (appUser?.role === "super") return undefined;
-    const result = agencyNames.length === 0 ? [] : agencyNames;
-    console.log("[Payslips] targetAgencyNames:", result);
+    const result = agencyIds.length === 0 ? [] : agencyIds;
+    console.log("[Payslips] targetAgencyIds:", result);
     return result;
-  }, [agencyNames, appUser?.role]);
+  }, [agencyIds, appUser?.role]);
 
   const handleDeleteSuccess = useCallback(() => {
     setTimeout(() => setRefreshTrigger((n) => n + 1), 2000);
@@ -281,7 +260,7 @@ export const Payslips = () => {
             </AccordionAction>
           }
         >
-          <div className="grid grid-flow-col grid-rows-2 gap-3 overflow-x-auto pb-2 auto-cols-[20rem]">
+          <div className={`grid grid-flow-col gap-3 overflow-x-auto pb-2 auto-cols-[20rem] ${payslipEntry.payslips.length >= 2 ? "grid-rows-2" : "grid-rows-1"}`}>
             {payslipEntry.payslips.map((payslip) => (
               <InformationCard
                 key={payslip.id}
@@ -341,7 +320,7 @@ export const Payslips = () => {
         onMultiAccordionChange={handleAccordionChange}
         onItemsChange={handleItemsChange}
         refreshTrigger={refreshTrigger}
-        targetAgencyNames={targetAgencyNames}
+        targetAgencyIds={targetAgencyIds}
         agencies={agencyList}
         namesLoading={!agencyNamesLoaded}
       />
