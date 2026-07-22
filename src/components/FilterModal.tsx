@@ -7,10 +7,11 @@ import {
   DialogTitle,
   Input,
 } from "./ui";
-import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
+import type { Agency, FilterKeyMap, LoginStatusValue, StaffFilters } from "../types/domain";
 import { getAgencyName } from "../utils/agency";
 import { getTagName } from "../utils/getTagName";
 import { H1, H2, Muted } from "../config/typography";
+import { IsLoggedIn } from "./filters/IsLoggedIn";
 
 interface FilterModalProps {
   open: boolean;
@@ -25,6 +26,7 @@ interface FilterModalProps {
   enableName?: boolean;
   enableTag?: boolean;
   enableAgency?: boolean;
+  enableLoginStatus?: boolean;
 }
 
 export const FilterModal = ({
@@ -39,6 +41,7 @@ export const FilterModal = ({
   enableName = true,
   enableTag = false,
   enableAgency = false,
+  enableLoginStatus = false,
 }: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
@@ -47,6 +50,9 @@ export const FilterModal = ({
   const [selectedAgencyIds, setSelectedAgencyIds] = useState<Set<string>>(
     new Set(filters.agencyIds),
   );
+  const [loginStatusValue, setLoginStatusValue] = useState<LoginStatusValue>(
+    filters.loginStatusFilter ?? "all",
+  );
 
   useEffect(() => {
     if (open) {
@@ -54,6 +60,7 @@ export const FilterModal = ({
       setName(filters.name);
       setSelectedTagIds(new Set(filters.tagIds));
       setSelectedAgencyIds(new Set(filters.agencyIds));
+      setLoginStatusValue(filters.loginStatusFilter ?? "all");
     }
   }, [open, filters]);
 
@@ -93,6 +100,7 @@ export const FilterModal = ({
       typeIds: [],
       tagIds: enableTag ? Array.from(selectedTagIds) : [],
       agencyIds: enableAgency ? Array.from(selectedAgencyIds) : [],
+      loginStatusFilter: enableLoginStatus ? loginStatusValue : undefined,
     });
     onOpenChange(false);
   };
@@ -162,6 +170,18 @@ export const FilterModal = ({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {enableLoginStatus && (
+            <div>
+              <H2 as="label">Login Status</H2>
+              <div className="mt-2">
+                <IsLoggedIn
+                  value={loginStatusValue}
+                  onChange={setLoginStatusValue}
+                />
+              </div>
             </div>
           )}
         </div>
