@@ -14,6 +14,7 @@ import { usePaginationParams } from "../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
 import { Section } from "./Section";
+import { buildLoginStatusFilter } from "./filters/IsLoggedIn";
 import type {
   Agency,
   BulkStaff,
@@ -103,8 +104,23 @@ export const StaffListSection = ({
       }
     }
 
+    const loginStatus = buildLoginStatusFilter(
+      filters.loginStatusFilter ?? "all",
+    );
+    if (loginStatus.facetFilters) ffs.push(...loginStatus.facetFilters);
+
     return ffs;
   }, [filters, staffKeyMap, targetAgencyIds]);
+
+  const combinedFilters = useMemo(() => {
+    const parts: string[] = [];
+    if (algoliaFilters) parts.push(`(${algoliaFilters})`);
+    const loginStatus = buildLoginStatusFilter(
+      filters.loginStatusFilter ?? "all",
+    );
+    if (loginStatus.filterExpr) parts.push(`(${loginStatus.filterExpr})`);
+    return parts.length > 0 ? parts.join(" AND ") : undefined;
+  }, [algoliaFilters, filters.loginStatusFilter]);
 
   const facets = useMemo(
     () => buildFacetRequestFields(staffKeyMap),
@@ -116,7 +132,7 @@ export const StaffListSection = ({
       indexName: "staff_name_desc",
       agencyId: appUser?.agencyId ?? "",
       facetFilters: staffFacetFilters,
-      filters: algoliaFilters,
+      filters: combinedFilters,
       facets,
       query: filters.name,
       page,
@@ -125,7 +141,7 @@ export const StaffListSection = ({
     }),
     [
       staffFacetFilters,
-      algoliaFilters,
+      combinedFilters,
       facets,
       filters.name,
       page,
@@ -224,6 +240,7 @@ export const StaffListSection = ({
         !isClient || (agencies && agencies.length > 0),
       )}
       enableTagFilter
+      enableLoginStatusFilter={role === "super"}
       emptyMessage={
         isClient
           ? "You've not been assigned any staff yet"

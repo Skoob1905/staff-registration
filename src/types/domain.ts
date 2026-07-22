@@ -1,3 +1,5 @@
+export type LoginStatusValue = "all" | "sent" | "not_sent";
+
 export type UserRole = "admin" | "client" | "super" | "worker";
 
 export interface AppUser {
@@ -102,6 +104,7 @@ export interface StaffFilters {
   typeIds: string[];
   agencyIds: string[];
   tagIds: string[];
+  loginStatusFilter?: LoginStatusValue;
 }
 
 export const emptyFilters: StaffFilters = {

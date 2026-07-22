@@ -30,6 +30,7 @@ interface PaginatedFilterSectionProps<T> {
   enableNameFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
+  enableLoginStatusFilter?: boolean;
 
   tags?: Record<string, string>;
   tagCounts?: Record<string, number>;
@@ -73,6 +74,7 @@ export const PaginatedFilterSection = <T,>({
   enableNameFilter = true,
   enableTagFilter = true,
   enableAgencyFilter = false,
+  enableLoginStatusFilter = false,
 
   tags,
   tagCounts,
@@ -95,7 +97,7 @@ export const PaginatedFilterSection = <T,>({
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const hasAnyFilter =
-    enableNameFilter || enableTagFilter || enableAgencyFilter;
+    enableNameFilter || enableTagFilter || enableAgencyFilter || enableLoginStatusFilter;
 
   const mid = useMemo(() => Math.ceil(items.length / 2), [items.length]);
 
@@ -104,6 +106,7 @@ export const PaginatedFilterSection = <T,>({
     if (enableNameFilter && filters.name.length >= 3) count++;
     if (enableTagFilter) count += filters.tagIds.length;
     if (enableAgencyFilter) count += filters.agencyIds.length;
+    if (filters.loginStatusFilter && filters.loginStatusFilter !== "all") count++;
     return count;
   }, [filters, enableNameFilter, enableTagFilter, enableAgencyFilter]);
 
@@ -208,6 +211,7 @@ export const PaginatedFilterSection = <T,>({
         enableName={enableNameFilter}
         enableTag={enableTagFilter}
         enableAgency={enableAgencyFilter}
+        enableLoginStatus={enableLoginStatusFilter}
       />
     </>
   );
