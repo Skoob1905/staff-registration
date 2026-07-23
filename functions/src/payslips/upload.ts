@@ -146,7 +146,7 @@ export const uploadPayslip = onCall(
 );
 
 export const bulkUploadPayslips = onCall(
-  { timeoutSeconds: 540 },
+  { region: "europe-west2", timeoutSeconds: 540 },
   async (request) => {
     const callerUid = request.auth?.uid;
     if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
