@@ -8,7 +8,7 @@ import type { BulkEmailMessage } from "./publishEmails";
 const EMAILS_PER_HOUR = defineInt("EMAILS_PER_HOUR", { default: 200 });
 
 export const sendBulkEmails = onMessagePublished(
-  { topic: "bulk-email-send", region: "europe-west2", maxInstances: 1, timeoutSeconds: 18000 },
+  { topic: "bulk-email-send", region: "europe-west2", maxInstances: 1, timeoutSeconds: 540 },
   async (event) => {
     const message: BulkEmailMessage = event.data.message.json;
     const { type, emails } = message;
