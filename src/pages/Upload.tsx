@@ -248,7 +248,7 @@ export const Upload = () => {
       }));
 
       try {
-        const { results } = await callBulkUploadPayslips(entries);
+        const { results, queued } = await callBulkUploadPayslips(entries);
         const succeeded = results.filter((r) => r.success).length;
         const failed = results.length - succeeded;
 
@@ -267,6 +267,10 @@ export const Upload = () => {
               failed,
             ),
           );
+        }
+
+        if (queued > 0) {
+          toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
         }
       } catch {
         toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));

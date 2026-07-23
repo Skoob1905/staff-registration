@@ -33,10 +33,10 @@ interface BulkResult {
 
 export const callBulkUploadPayslips = async (
   entries: BulkEntry[],
-): Promise<{ results: BulkResult[]; emails: string[] }> => {
+): Promise<{ results: BulkResult[]; queued: number }> => {
   const callable = httpsCallable<
     { payslips: BulkEntry[] },
-    { ok: boolean; results: BulkResult[]; emails: string[] }
+    { ok: boolean; results: BulkResult[]; queued: number }
   >(functions, "bulkUploadPayslips");
   const result = await callable({ payslips: entries });
   return result.data;
