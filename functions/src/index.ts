@@ -40,21 +40,24 @@ import { createAuthUsers } from "./utils/createAuthUsers";
 import { removeAuthUser } from "./utils/removeAuthUser";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
+import { publishBulkEmailJob } from "./emails/publishEmails";
 import { ResetPasswordTokenManager } from "./resetPasswordToken";
 
 // API Keys for external users using the API
 export { generateApiKey, revokeApiKey, uploadPayslipExternal } from "./apiKeys";
 
 // Payslip operations
-export { uploadPayslip } from "./payslips";
+export { uploadPayslip, bulkUploadPayslips } from "./payslips";
 
 // Email suppression
 export { unsubscribeEmail } from "./emailSuppressions";
 
+// Bulk email sending via pub/sub
+export { sendBulkEmails } from "./emails";
+
 const ALGOLIA_APP_ID = defineString("ALGOLIA_APP_ID");
 const ALGOLIA_ADMIN_API_KEY = defineString("ALGOLIA_ADMIN_API_KEY");
 const ALGOLIA_INDEX_PREFIX = defineString("ALGOLIA_INDEX_PREFIX");
-const DOCUMENT_UPLOAD_DELAY = defineString("DOCUMENT_UPLOAD_DELAY");
 const RESET_CONTINUE_URL = defineString("RESET_CONTINUE_URL");
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -962,7 +965,7 @@ export const updatePayslipDownloadedStatus = onCall(async (request) => {
  * @throws {HttpsError} "permission-denied" if caller is not admin/super.
  * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
  */
-export const importAgencyCsv = onCall(async (request) => {
+export const importAgencyCsv = onCall({ timeoutSeconds: 540 }, async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
 
@@ -1127,7 +1130,7 @@ export const importAgencyCsv = onCall(async (request) => {
  * @throws {HttpsError} "permission-denied" if caller is not admin/super.
  * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
  */
-export const importClientCsv = onCall(async (request) => {
+export const importClientCsv = onCall({ timeoutSeconds: 540 }, async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
 
@@ -1296,7 +1299,7 @@ export const importClientCsv = onCall(async (request) => {
  * @throws {HttpsError} "permission-denied" if caller is not super.
  * @throws {HttpsError} "invalid-argument" if records array is empty or missing.
  */
-export const importStaffCsv = onCall(async (request) => {
+export const importStaffCsv = onCall({ timeoutSeconds: 540 }, async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
 
@@ -1424,11 +1427,11 @@ export const importStaffCsv = onCall(async (request) => {
           importedAt: FieldValue.serverTimestamp(),
           ...(assignedToId
             ? {
-                assignedToId,
-                assignedToName,
-                assignedBy: caller.email,
-                assignedAt: FieldValue.serverTimestamp(),
-              }
+              assignedToId,
+              assignedToName,
+              assignedBy: caller.email,
+              assignedAt: FieldValue.serverTimestamp(),
+            }
             : {}),
         },
       });
@@ -1531,50 +1534,20 @@ export const sendImportEmails = onCall(async (request) => {
     );
   }
 
-  const emailProvider = new EmailProvider();
+  const emailTypeMap: Record<string, "staff_registration" | "agency_registration" | "client_registration"> = {
+    worker: "staff_registration",
+    agency: "agency_registration",
+    client: "client_registration",
+  };
 
-  let callback: (params: { email: string }) => Promise<void>;
-  switch (type) {
-    case "worker":
-      callback = async ({ email }) => {
-        try {
-          await emailProvider.sendWorkerRegistrationLink(email);
-        } catch (err) {
-          logger.error("[sendImportEmails] worker registration email failed", {
-            email,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          const snaps = await getFirestore()
-            .collection("staff")
-            .where("email", "==", email)
-            .get();
-          for (const d of snaps.docs) {
-            void d.ref.update("metadata.loginStatus", "failed");
-          }
-          const error = new Error(`Email failed to send to ${email}`);
-          (error as Error & { cause: unknown }).cause = err;
-          throw error;
-        }
-        const staffSnaps = await getFirestore()
-          .collection("staff")
-          .where("email", "==", email)
-          .get();
-        for (const d of staffSnaps.docs) {
-          await d.ref.update("metadata.loginStatus", "awaiting_login");
-        }
-      };
-      break;
-    case "agency":
-      callback = ({ email }) => emailProvider.sendAgencyRegistrationLink(email);
-      break;
-    case "client":
-      callback = ({ email }) => emailProvider.sendClientRegistrationLink(email);
-      break;
+  const emailType = emailTypeMap[type];
+  if (!emailType) {
+    throw new HttpsError("invalid-argument", `Unknown type: ${type}`);
   }
 
-  const result = await emailProvider.beginBatchEmailSend(emails, callback);
+  await publishBulkEmailJob(emailType, emails);
 
-  return result;
+  return { ok: true, queued: emails.length };
 });
 
 export const assignStaffToAgency = onCall(async (request) => {
@@ -1838,9 +1811,9 @@ export const bulkUploadStaff = onCall(async (request) => {
     added++;
     batchCount++;
 
-    if (batchCount >= 400) {
+    if (batchCount >= 100) {
       await batch.commit();
-      await delay(Number(DOCUMENT_UPLOAD_DELAY.value()));
+      await delay(1000);
       batch = db.batch();
       batchCount = 0;
     }
@@ -2067,7 +2040,7 @@ export const removeClients = onCall(async (request) => {
         .collection("logins")
         .doc(loginEmail.toLowerCase())
         .delete()
-        .catch(() => {});
+        .catch(() => { });
     }
   }
 
@@ -2359,7 +2332,7 @@ export const removeClientLogin = onCall(async (request) => {
       .collection("logins")
       .doc(userData.email.toLowerCase())
       .delete()
-      .catch(() => {});
+      .catch(() => { });
   }
 
   return { ok: true, uid };
@@ -2976,8 +2949,7 @@ export const uploadStaffDocument = onCall(async (request) => {
 
   const staffEmail = (staffSnap.data() as { email?: string })?.email;
   if (staffEmail) {
-    const emailProvider = new EmailProvider();
-    await emailProvider.sendDocumentEmail(staffEmail);
+    await publishBulkEmailJob("staff_document", [staffEmail]);
   }
 
   return { ok: true, staffId, fileName };
@@ -3116,7 +3088,7 @@ async function deleteStaffById(
       .collection("logins")
       .doc(email.toLowerCase())
       .delete()
-      .catch(() => {});
+      .catch(() => { });
   }
 
   // 5. Delete staff document
@@ -3200,7 +3172,7 @@ async function deleteAgencyById(
       .collection("logins")
       .doc(email.toLowerCase())
       .delete()
-      .catch(() => {});
+      .catch(() => { });
   }
 
   // 4. Delete the agency document
@@ -3388,7 +3360,7 @@ export const syncClientUserToAlgolia = onDocumentWritten(
       });
       console.log(
         "Deleted user" +
-          ` ${event.params.docId} from logins index (no longer client)`,
+        ` ${event.params.docId} from logins index (no longer client)`,
       );
       return;
     }
@@ -3903,7 +3875,7 @@ export const updateLoginStatus = onCall(
       const docData = d.data();
       console.log(
         `[updateLoginStatus] Staff doc ${d.id}: email="${docData.email}", ` +
-          `Forename="${docData.Forename}", Surname="${docData.Surname}"`,
+        `Forename="${docData.Forename}", Surname="${docData.Surname}"`,
       );
       console.log(
         `[updateLoginStatus] Updating staff doc ${d.id} → loginStatus: "${status}"`,

@@ -14,14 +14,22 @@ export interface CreateAuthUserInput {
   invitedByUid: string;
 }
 
-/**
- * Creates Firebase Auth users for the given emails if they do not already
- * exist, and writes corresponding documents to the `users` Firestore
- * collection so that the user has a loadable profile on sign-in.
- *
- * @param entries - Per-user metadata (email, role, agencyId, inviter).
- * @returns Array of `{ email, uid }` for each successfully confirmed user.
- */
+async function runWithConcurrency<T>(
+  items: T[],
+  fn: (item: T) => Promise<void>,
+  concurrency = 20,
+): Promise<void> {
+  const executing = new Set<Promise<void>>();
+  for (const item of items) {
+    const p = fn(item).finally(() => executing.delete(p));
+    executing.add(p);
+    if (executing.size >= concurrency) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.allSettled(executing);
+}
+
 export async function createAuthUsers(
   entries: CreateAuthUserInput[],
 ): Promise<CreateAuthUserEntry[]> {
@@ -29,7 +37,7 @@ export async function createAuthUsers(
   const db = getFirestore();
   const confirmed: CreateAuthUserEntry[] = [];
 
-  for (const entry of entries) {
+  const processEntry = async (entry: CreateAuthUserInput) => {
     let uid: string | undefined;
 
     try {
@@ -49,18 +57,18 @@ export async function createAuthUsers(
                 ? createErr.message
                 : String(createErr),
           });
-          continue;
+          return;
         }
       } else {
         logger.error("[createAuthUsers] Failed to look up user", {
           email: entry.email,
           error: err instanceof Error ? err.message : String(err),
         });
-        continue;
+        return;
       }
     }
 
-    if (!uid) continue;
+    if (!uid) return;
 
     const userDoc = {
       uid,
@@ -86,7 +94,9 @@ export async function createAuthUsers(
           writeErr instanceof Error ? writeErr.message : String(writeErr),
       });
     }
-  }
+  };
+
+  await runWithConcurrency(entries, processEntry, 20);
 
   return confirmed;
 }

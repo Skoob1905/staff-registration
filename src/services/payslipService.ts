@@ -18,6 +18,30 @@ export const callUploadPayslip = async (
   return result.data;
 };
 
+interface BulkEntry {
+  fileBase64: string;
+  fileName: string;
+  userId: string;
+  agencyId: string;
+}
+
+interface BulkResult {
+  fileName: string;
+  success: boolean;
+  error?: string;
+}
+
+export const callBulkUploadPayslips = async (
+  entries: BulkEntry[],
+): Promise<{ results: BulkResult[]; emails: string[] }> => {
+  const callable = httpsCallable<
+    { payslips: BulkEntry[] },
+    { ok: boolean; results: BulkResult[]; emails: string[] }
+  >(functions, "bulkUploadPayslips");
+  const result = await callable({ payslips: entries });
+  return result.data;
+};
+
 const blobToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();

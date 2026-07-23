@@ -1,1 +1,1 @@
-export { uploadPayslip } from "./upload.js";
+export { uploadPayslip, bulkUploadPayslips } from "./upload.js";

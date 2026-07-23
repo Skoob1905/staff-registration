@@ -7,6 +7,7 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { ResetPasswordTokenManager } from "../resetPasswordToken";
 import { EmailSuppressionManager } from "../emailSuppressions";
 import * as logger from "firebase-functions/logger";
+import { getEmailRate } from "../utils/emailRate";
 
 const SMTP_HOST = defineString("SMTP_HOST");
 const SMTP_PORT = defineString("SMTP_PORT");
@@ -164,6 +165,7 @@ export class EmailProvider {
   async beginBatchEmailSend(
     emails: string[],
     emailCallback: (params: { email: string }) => Promise<void>,
+    emailsPerHour: number,
   ): Promise<BatchEmailResult> {
     let sent = 0;
     let failed = 0;
@@ -197,7 +199,7 @@ export class EmailProvider {
       }
 
       if (i < emails.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, getEmailRate(emailsPerHour)));
       }
     }
 

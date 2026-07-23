@@ -17,7 +17,7 @@ import {
 import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { callUploadPayslip } from "../services/payslipService";
+import { callBulkUploadPayslips } from "../services/payslipService";
 import { editFileName } from "../utils/fileUpload/editFileName";
 import { checkDuplicatePayslip } from "../utils/payslipDuplicateCheck";
 import { db } from "../services/firebase";
@@ -32,14 +32,9 @@ import {
 import { readPayslipFile } from "../utils/readPayslipFile";
 import { getColumns } from "../utils/fileUpload/columns";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
-const DOCUMENT_UPLOAD_DELAY = Number(
-  import.meta.env.VITE_DOCUMENT_UPLOAD_DELAY ?? 36000,
-);
 
 function parseCsvHeaders(text: string): string[] {
   const firstLine = text.trim().split("\n")[0];
@@ -245,40 +240,36 @@ export const Upload = () => {
     toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_START](eligible.length));
 
     void (async () => {
-      const results: { name: string; success: boolean }[] = [];
-      for (const f of eligible) {
-        try {
-          await callUploadPayslip(
-            f.base64,
-            editFileName(f.file.name),
-            f.workerRef.toUpperCase(),
-            f.agencyId ?? "",
+      const entries = eligible.map((f) => ({
+        fileBase64: f.base64,
+        fileName: editFileName(f.file.name),
+        userId: f.workerRef.toUpperCase(),
+        agencyId: f.agencyId ?? "",
+      }));
+
+      try {
+        const { results } = await callBulkUploadPayslips(entries);
+        const succeeded = results.filter((r) => r.success).length;
+        const failed = results.length - succeeded;
+
+        if (failed === 0) {
+          toast(
+            toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
+              succeeded,
+              results.length,
+            ),
           );
-          results.push({ name: f.file.name, success: true });
-        } catch {
-          results.push({ name: f.file.name, success: false });
+        } else {
+          toast(
+            toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
+              succeeded,
+              results.length,
+              failed,
+            ),
+          );
         }
-        await delay(DOCUMENT_UPLOAD_DELAY);
-      }
-
-      const succeeded = results.filter((r) => r.success).length;
-      const failed = results.length - succeeded;
-
-      if (failed === 0) {
-        toast(
-          toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
-            succeeded,
-            results.length,
-          ),
-        );
-      } else {
-        toast(
-          toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
-            succeeded,
-            results.length,
-            failed,
-          ),
-        );
+      } catch {
+        toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
       }
     })();
   };
