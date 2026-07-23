@@ -2,6 +2,7 @@ import { useAuth } from "../context/AuthProvider";
 import { AgenciesButton } from "./ui/AgenciesButton";
 import { AssignButton } from "./ui/AssignButton";
 import { DeleteButton } from "./ui/DeleteButton";
+import { SendLinkButton } from "./ui/SendLinkButton";
 import { TagsButton } from "./ui/TagsButton";
 import { UnassignButton } from "./ui/UnassignButton";
 
@@ -11,6 +12,7 @@ interface ActionButtonContainerProps {
   handleTags?: () => void;
   handleAgencies?: () => void;
   handleAssign?: () => void;
+  handleSendLink?: () => void;
 }
 
 export const ActionButtonContainer = ({
@@ -19,6 +21,7 @@ export const ActionButtonContainer = ({
   handleTags,
   handleAgencies,
   handleAssign,
+  handleSendLink,
 }: ActionButtonContainerProps) => {
   const { role } = useAuth();
 
@@ -34,6 +37,7 @@ export const ActionButtonContainer = ({
         {handleTags && <TagsButton onClick={handleTags} />}
         {handleUnassign && <UnassignButton onClick={handleUnassign} />}
         {handleAssign && <AssignButton onClick={handleAssign} />}
+        {handleSendLink && <SendLinkButton onClick={handleSendLink} />}
         {handleDelete && <DeleteButton onClick={handleDelete} />}
       </div>
     </div>

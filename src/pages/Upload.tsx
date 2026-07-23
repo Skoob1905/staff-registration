@@ -165,6 +165,7 @@ export const Upload = () => {
 
   const [payslipFiles, setPayslipFiles] = useState<PayslipFile[]>([]);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
+  const [uploadingPayslips, setUploadingPayslips] = useState(false);
 
   const handlePayslips = useCallback(
     async (files: File[]) => {
@@ -228,54 +229,58 @@ export const Upload = () => {
     [toast],
   );
 
-  const handlePayslipUpload = () => {
+  const handlePayslipUpload = async () => {
     const eligible = payslipFiles.filter(
       (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
     );
     if (eligible.length === 0) return;
 
-    setShowPayslipModal(false);
-    setPayslipFiles([]);
+    setUploadingPayslips(true);
 
     toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_START](eligible.length));
 
-    void (async () => {
-      const entries = eligible.map((f) => ({
-        fileBase64: f.base64,
-        fileName: editFileName(f.file.name),
-        userId: f.workerRef.toUpperCase(),
-        agencyId: f.agencyId ?? "",
-      }));
+    const entries = eligible.map((f) => ({
+      fileBase64: f.base64,
+      fileName: editFileName(f.file.name),
+      userId: f.workerRef.toUpperCase(),
+      agencyId: f.agencyId ?? "",
+    }));
 
-      try {
-        const { results, queued } = await callBulkUploadPayslips(entries);
-        const succeeded = results.filter((r) => r.success).length;
-        const failed = results.length - succeeded;
+    try {
+      const { results, queued } = await callBulkUploadPayslips(entries);
 
-        if (failed === 0) {
-          toast(
-            toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
-              succeeded,
-              results.length,
-            ),
-          );
-        } else {
-          toast(
-            toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
-              succeeded,
-              results.length,
-              failed,
-            ),
-          );
-        }
+      setShowPayslipModal(false);
+      setPayslipFiles([]);
 
-        if (queued > 0) {
-          toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
-        }
-      } catch {
-        toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
+      const succeeded = results.filter((r) => r.success).length;
+      const failed = results.length - succeeded;
+
+      if (failed === 0) {
+        toast(
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
+            succeeded,
+            results.length,
+          ),
+        );
+      } else {
+        toast(
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
+            succeeded,
+            results.length,
+            failed,
+          ),
+        );
       }
-    })();
+
+      if (queued > 0) {
+        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+      }
+
+      setUploadingPayslips(false);
+    } catch {
+      toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
+      setUploadingPayslips(false);
+    }
   };
 
   const handleFileSelect = async (file: File, typeId: string) => {
@@ -550,6 +555,7 @@ export const Upload = () => {
         isError={(f) => !!(f.error || f.status === "missing")}
         onUpload={handlePayslipUpload}
         displayTotal={payslipFiles.length - duplicateCount}
+        loading={uploadingPayslips}
       />
     </div>
   );

@@ -61,6 +61,7 @@ export async function readPayslipFile(file: File): Promise<PayslipFile> {
       status: matched.status,
       email: matched.email,
       agencyId: matched.agencyId,
+      loginStatus: matched.loginStatus,
     };
   } catch {
     return {

@@ -141,6 +141,7 @@ export interface PayslipFile extends UploadableFile {
   isDuplicate?: boolean;
   email?: string;
   agencyId?: string;
+  loginStatus?: string;
 }
 
 export interface BulkStaff {
