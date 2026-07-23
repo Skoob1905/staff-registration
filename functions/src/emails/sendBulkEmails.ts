@@ -2,10 +2,9 @@ import { onMessagePublished } from "firebase-functions/v2/pubsub";
 import { getFirestore } from "firebase-admin/firestore";
 import { EmailProvider } from "../services/EmailService";
 import * as logger from "firebase-functions/logger";
-import { defineInt } from "firebase-functions/params";
 import type { BulkEmailMessage } from "./publishEmails";
 
-const EMAILS_PER_HOUR = defineInt("EMAILS_PER_HOUR", { default: 200 });
+const EIGHT_MINUTES_MS = 480_000;
 
 export const sendBulkEmails = onMessagePublished(
   { topic: "bulk-email-send", region: "europe-west2", maxInstances: 1, timeoutSeconds: 540 },
@@ -17,6 +16,9 @@ export const sendBulkEmails = onMessagePublished(
       logger.warn("[sendBulkEmails] No emails to send", { type });
       return;
     }
+
+    const delayPerEmail = Math.min(Math.floor(EIGHT_MINUTES_MS / emails.length), 2000);
+    const emailsPerHour = Math.round(3_600_000 / delayPerEmail);
 
     const emailProvider = new EmailProvider();
     const db = getFirestore();
@@ -83,7 +85,7 @@ export const sendBulkEmails = onMessagePublished(
     const result = await emailProvider.beginBatchEmailSend(
       emails,
       callback,
-      EMAILS_PER_HOUR.value(),
+      emailsPerHour,
     );
 
     logger.info("[sendBulkEmails] Complete", { type, ...result });
