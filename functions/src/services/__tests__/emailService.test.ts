@@ -266,7 +266,7 @@ describe("EmailProvider", () => {
       );
       const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+      const promise = emailProvider.beginBatchEmailSend(emails, callback, 3600);
 
       for (let i = 0; i < 100; i++) {
         await vi.advanceTimersByTimeAsync(1000);
@@ -295,7 +295,7 @@ describe("EmailProvider", () => {
     it("returns zero counts for an empty array", async () => {
       const callback = vi.fn().mockResolvedValue(undefined);
 
-      const result = await emailProvider.beginBatchEmailSend([], callback);
+      const result = await emailProvider.beginBatchEmailSend([], callback, 3600);
 
       expect(result).toEqual({ sent: 0, failed: 0, failures: [] });
       expect(callback).not.toHaveBeenCalled();
@@ -308,6 +308,7 @@ describe("EmailProvider", () => {
       const result = await emailProvider.beginBatchEmailSend(
         ["single@example.com"],
         callback,
+        3600,
       );
 
       expect(result).toEqual({ sent: 1, failed: 0, failures: [] });
@@ -326,7 +327,7 @@ describe("EmailProvider", () => {
         .mockResolvedValue(undefined);
       const emails = ["a@example.com", "b@example.com", "c@example.com"];
 
-      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+      const promise = emailProvider.beginBatchEmailSend(emails, callback, 3600);
 
       for (let i = 0; i < 3; i++) {
         await vi.advanceTimersByTimeAsync(1000);
@@ -346,7 +347,7 @@ describe("EmailProvider", () => {
       const callback = vi.fn().mockRejectedValue(new Error("down"));
       const emails = ["a@example.com", "b@example.com"];
 
-      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+      const promise = emailProvider.beginBatchEmailSend(emails, callback, 3600);
 
       for (let i = 0; i < 2; i++) {
         await vi.advanceTimersByTimeAsync(1000);
@@ -374,7 +375,7 @@ describe("EmailProvider", () => {
       const emails = ["a@example.com", "b@example.com", "c@example.com"];
       const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-      const promise = emailProvider.beginBatchEmailSend(emails, callback);
+      const promise = emailProvider.beginBatchEmailSend(emails, callback, 3600);
 
       for (let i = 0; i < 3; i++) {
         await vi.advanceTimersByTimeAsync(1000);

@@ -33,7 +33,9 @@ import {
   getStaffName,
   getStaffNameFromRawRecord,
 } from "../utils/keyHeaderNormalisation";
+import { shouldShowSendLink } from "../utils/loginStatus";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
+import { toast_mapper, ToastType } from "../config/toast";
 import { Muted } from "../config/typography";
 import type { Agency, BulkStaff } from "../types/domain";
 
@@ -513,6 +515,25 @@ export const Staff = () => {
                   : undefined
               }
               handleTags={() => setTagTarget(member)}
+              handleSendLink={
+                member.email && shouldShowSendLink(member.metadata?.loginStatus)
+                  ? async () => {
+                      try {
+                        const emailCallable = httpsCallable(functions, "sendImportEmails");
+                        const result = await emailCallable({
+                          emails: [member.email],
+                          type: "worker",
+                        });
+                        const { queued } = result.data as { queued: number };
+                        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+                      } catch {
+                        const sent = 0;
+                        const failed = 1;
+                        toast(toast_mapper[ToastType.EMAIL_FAILURE](sent, failed));
+                      }
+                    }
+                  : undefined
+              }
             />
           </AccordionItem>
         )}

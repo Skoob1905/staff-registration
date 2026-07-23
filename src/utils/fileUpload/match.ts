@@ -5,6 +5,7 @@ export interface MatchResult {
   workerRef?: string;
   email?: string;
   agencyId?: string;
+  loginStatus?: string;
 }
 
 /**
@@ -49,6 +50,8 @@ export async function match(
   const email = typeof data.email === "string" ? data.email : undefined;
   const agencyId =
     typeof data.agencyId === "string" ? data.agencyId : undefined;
+  const metadata = data.metadata as { loginStatus?: string } | undefined;
+  const loginStatus = metadata?.loginStatus;
   const docForename = typeof data.Forename === "string" ? data.Forename : "";
   const docSurname = typeof data.Surname === "string" ? data.Surname : "";
 
@@ -57,8 +60,8 @@ export async function match(
     docSurname.toLowerCase() === lastname.toLowerCase();
 
   if (!nameMatch) {
-    return { status: "wrong info", workerRef: matchedWorkerRef, email, agencyId };
+    return { status: "wrong info", workerRef: matchedWorkerRef, email, agencyId, loginStatus };
   }
 
-  return { status: "matched", workerRef: matchedWorkerRef, email, agencyId };
+  return { status: "matched", workerRef: matchedWorkerRef, email, agencyId, loginStatus };
 }

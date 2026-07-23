@@ -371,15 +371,8 @@ export const AddModal = ({
                 ? "agency"
                 : "client",
         });
-        const { sent, failed } = emailResult.data as {
-          sent: number;
-          failed: number;
-        };
-        if (failed > 0) {
-          toast(toast_mapper[ToastType.EMAIL_FAILURE](sent, failed));
-        } else {
-          toast(toast_mapper[ToastType.EMAILS_SENT](sent));
-        }
+        const { queued } = emailResult.data as { queued: number };
+        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
       }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;

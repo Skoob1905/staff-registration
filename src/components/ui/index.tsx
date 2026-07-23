@@ -25,3 +25,4 @@ export {
   ToastRegion,
 } from "./toast";
 export { Navbar } from "./Navbar";
+export { SendLinkButton } from "./SendLinkButton";

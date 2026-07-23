@@ -17,7 +17,7 @@ import {
 import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
-import { callUploadPayslip } from "../services/payslipService";
+import { callBulkUploadPayslips } from "../services/payslipService";
 import { editFileName } from "../utils/fileUpload/editFileName";
 import { checkDuplicatePayslip } from "../utils/payslipDuplicateCheck";
 import { db } from "../services/firebase";
@@ -32,14 +32,9 @@ import {
 import { readPayslipFile } from "../utils/readPayslipFile";
 import { getColumns } from "../utils/fileUpload/columns";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
-const DOCUMENT_UPLOAD_DELAY = Number(
-  import.meta.env.VITE_DOCUMENT_UPLOAD_DELAY ?? 36000,
-);
 
 function parseCsvHeaders(text: string): string[] {
   const firstLine = text.trim().split("\n")[0];
@@ -170,6 +165,7 @@ export const Upload = () => {
 
   const [payslipFiles, setPayslipFiles] = useState<PayslipFile[]>([]);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
+  const [uploadingPayslips, setUploadingPayslips] = useState(false);
 
   const handlePayslips = useCallback(
     async (files: File[]) => {
@@ -233,33 +229,28 @@ export const Upload = () => {
     [toast],
   );
 
-  const handlePayslipUpload = () => {
+  const handlePayslipUpload = async () => {
     const eligible = payslipFiles.filter(
       (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
     );
     if (eligible.length === 0) return;
 
-    setShowPayslipModal(false);
-    setPayslipFiles([]);
+    setUploadingPayslips(true);
 
     toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_START](eligible.length));
 
-    void (async () => {
-      const results: { name: string; success: boolean }[] = [];
-      for (const f of eligible) {
-        try {
-          await callUploadPayslip(
-            f.base64,
-            editFileName(f.file.name),
-            f.workerRef.toUpperCase(),
-            f.agencyId ?? "",
-          );
-          results.push({ name: f.file.name, success: true });
-        } catch {
-          results.push({ name: f.file.name, success: false });
-        }
-        await delay(DOCUMENT_UPLOAD_DELAY);
-      }
+    const entries = eligible.map((f) => ({
+      fileBase64: f.base64,
+      fileName: editFileName(f.file.name),
+      userId: f.workerRef.toUpperCase(),
+      agencyId: f.agencyId ?? "",
+    }));
+
+    try {
+      const { results, queued } = await callBulkUploadPayslips(entries);
+
+      setShowPayslipModal(false);
+      setPayslipFiles([]);
 
       const succeeded = results.filter((r) => r.success).length;
       const failed = results.length - succeeded;
@@ -280,7 +271,16 @@ export const Upload = () => {
           ),
         );
       }
-    })();
+
+      if (queued > 0) {
+        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+      }
+
+      setUploadingPayslips(false);
+    } catch {
+      toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
+      setUploadingPayslips(false);
+    }
   };
 
   const handleFileSelect = async (file: File, typeId: string) => {
@@ -555,6 +555,7 @@ export const Upload = () => {
         isError={(f) => !!(f.error || f.status === "missing")}
         onUpload={handlePayslipUpload}
         displayTotal={payslipFiles.length - duplicateCount}
+        loading={uploadingPayslips}
       />
     </div>
   );

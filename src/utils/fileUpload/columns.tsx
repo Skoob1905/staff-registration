@@ -75,13 +75,6 @@ const payslipColumns: ColumnDef<PayslipFile>[] = [
   },
 ];
 
-/**
- * Returns the column definitions for the multi-file upload modal based on the
- * upload type.
- *
- * @param type - The upload type.
- * @returns An array of `ColumnDef` objects. Returns an empty array for unknown types.
- */
 export function getColumns(type: string): ColumnDef<PayslipFile>[] {
   if (type === "payslip") {
     return payslipColumns;

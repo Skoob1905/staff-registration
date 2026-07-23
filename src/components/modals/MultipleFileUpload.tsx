@@ -36,6 +36,7 @@ interface MultipleFileUploadModalProps<T> {
   isError: (item: T) => boolean;
   onUpload: () => void;
   displayTotal?: number;
+  loading?: boolean;
 }
 
 export function MultipleFileUploadModal<T>({
@@ -51,6 +52,7 @@ export function MultipleFileUploadModal<T>({
   isError,
   onUpload,
   displayTotal: displayTotalProp,
+  loading = false,
 }: MultipleFileUploadModalProps<T>) {
   const totalCount = displayTotalProp ?? files.length;
 
@@ -59,6 +61,7 @@ export function MultipleFileUploadModal<T>({
       <DialogContent
         className="max-w-none flex flex-col overflow-hidden max-sm:h-[90vh] max-sm:w-[96vw] sm:h-[85vh] sm:w-[80vw]"
         onClose={() => onOpenChange(false)}
+        closeDisabled={loading}
       >
         <DialogTitle className="text-base font-bold sm:text-lg">
           {title}
@@ -125,7 +128,7 @@ export function MultipleFileUploadModal<T>({
         <div className="mt-4 flex justify-end gap-2">
           <Button
             type="button"
-            disabled={uploadableCount === 0}
+            disabled={loading || uploadableCount === 0}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -133,7 +136,7 @@ export function MultipleFileUploadModal<T>({
               onUpload();
             }}
           >
-            {`Upload ${uploadableCount} ${itemLabel}${uploadableCount !== 1 ? "s" : ""}`}
+            {loading ? "Uploading..." : `Upload ${uploadableCount} ${itemLabel}${uploadableCount !== 1 ? "s" : ""}`}
           </Button>
         </div>
       </DialogContent>

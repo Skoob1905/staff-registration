@@ -38,6 +38,7 @@ export const ToastType = {
   IMPORT_SUCCESS: "IMPORT_SUCCESS",
   EMAIL_FAILURE: "EMAIL_FAILURE",
   EMAILS_SENT: "EMAILS_SENT",
+  EMAILS_QUEUED: "EMAILS_QUEUED",
   DUPLICATE_TIMESHEET: "DUPLICATE_TIMESHEET",
   UPLOAD_FAILED: "UPLOAD_FAILED",
   PAYSLIP_UPLOAD_START: "PAYSLIP_UPLOAD_START",
@@ -240,6 +241,11 @@ export const toast_mapper = {
     title: "Emails Sent",
     description: `${sent} login email(s) delivered.`,
     variant: "success",
+  }),
+  [ToastType.EMAILS_QUEUED]: (count: number) => ({
+    title: "Emails Queued",
+    description: `Triggering ${count} email${count === 1 ? "" : "s"}.`,
+    variant: "info",
   }),
   [ToastType.DUPLICATE_TIMESHEET]: (fileName: string) => ({
     title: "Duplicate Timesheet",
