@@ -1,4 +1,8 @@
-export type LoginStatusValue = "all" | "sent" | "not_sent";
+export type LoginStatusValue =
+  | "all"
+  | "awaiting_login"
+  | "password_set"
+  | "logged_in";
 
 export type UserRole = "admin" | "client" | "super" | "worker";
 
