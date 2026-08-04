@@ -1,11 +1,12 @@
 import {
   CircleCheck,
+  CirclePlus,
   CircleX,
   Copy,
   TriangleAlert,
 } from "lucide-react";
 import type { ColumnDef } from "../../components/modals/MultipleFileUpload";
-import type { PayslipFile } from "../../types/domain";
+import type { PayslipFile, StaffCsvRow } from "../../types/domain";
 import { editFileName } from "./editFileName";
 
 const payslipColumns: ColumnDef<PayslipFile>[] = [
@@ -81,3 +82,44 @@ export function getColumns(type: string): ColumnDef<PayslipFile>[] {
   }
   return [];
 }
+
+export const staffColumns: ColumnDef<StaffCsvRow>[] = [
+  {
+    header: "Status",
+    cell: (row) => {
+      if (row.status === "New")
+        return (
+          <span className="inline-flex items-center gap-1 text-green-600">
+            <CirclePlus className="h-4 w-4" /> New
+          </span>
+        );
+      if (row.status === "different info")
+        return (
+          <span className="inline-flex items-center gap-1 text-orange-500">
+            <TriangleAlert className="h-4 w-4" /> Different Info
+          </span>
+        );
+      return (
+        <span className="inline-flex items-center gap-1 text-purple-600">
+          <Copy className="h-4 w-4" /> Duplicate
+        </span>
+      );
+    },
+  },
+  {
+    header: "Staff Ref",
+    cell: (row) => row.ref || "-",
+  },
+  {
+    header: "Forename",
+    cell: (row) => row.forename || "-",
+  },
+  {
+    header: "Surname",
+    cell: (row) => row.surname || "-",
+  },
+  {
+    header: "Email",
+    cell: (row) => row.email || "-",
+  },
+];

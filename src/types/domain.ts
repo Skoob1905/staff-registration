@@ -148,6 +148,17 @@ export interface PayslipFile extends UploadableFile {
   loginStatus?: string;
 }
 
+export interface StaffCsvRow {
+  ref: string;
+  forename: string;
+  surname: string;
+  email: string;
+  status: "New" | "different info" | "duplicate";
+  existingName?: string;
+  existingEmail?: string;
+  data: Record<string, string>;
+}
+
 export interface BulkStaff {
   id: string;
   email: string;
