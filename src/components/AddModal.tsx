@@ -13,10 +13,10 @@ import { functions, storage } from "../services/firebase";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { useAppStore } from "../stores/appStore";
 import {
-  hasWorkerRefColumn,
   hasAgencyRefColumn,
   hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
+import { FileCleaner } from "../utils/cleanFile";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const DEV_FILE_SIZE_LIMIT = 102400;
@@ -134,7 +134,10 @@ export const AddModal = ({
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".csv")) {
+    if (
+      !file.name.toLowerCase().endsWith(".csv") &&
+      !file.name.toLowerCase().endsWith(".xlsx")
+    ) {
       toast(toast_mapper[ToastType.INVALID_FILE]);
       return;
     }
@@ -147,44 +150,65 @@ export const AddModal = ({
       return;
     }
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) return;
-      const parsed = parseCsv(text);
-      if (!parsed.headers.length) {
-        toast(toast_mapper[ToastType.EMPTY_CSV]);
-        return;
-      }
-      if (!parsed.rows.length) {
-        toast(toast_mapper[ToastType.EMPTY_CSV_DATA]);
-        return;
-      }
+
+      let headers: string[];
+      let rows: CsvRow[];
 
       if (csvType === "staff") {
-        if (!hasWorkerRefColumn(parsed.headers)) {
-          console.warn(
-            "[AddModal] No Worker Ref column found. Headers:",
-            parsed.headers,
-          );
-          toast(toast_mapper[ToastType.NO_REFERENCE_COLUMN]);
+        const cleaned = await new FileCleaner().cleanFile(file);
+        if (!cleaned.hasHeaders) {
+          toast(toast_mapper[ToastType.NO_COLUMN_HEADERS]);
           return;
+        }
+        if (!cleaned.found.ref) {
+          toast(toast_mapper[ToastType.NO_REF_FOUND]);
+          return;
+        }
+        if (!cleaned.found.forename) {
+          toast(toast_mapper[ToastType.NO_FORENAME_FOUND]);
+          return;
+        }
+        if (!cleaned.found.surname) {
+          toast(toast_mapper[ToastType.NO_SURNAME_FOUND]);
+          return;
+        }
+        if (!cleaned.found.email) {
+          toast(toast_mapper[ToastType.NO_EMAIL_FOUND]);
+          return;
+        }
+        headers = cleaned.headers;
+        rows = cleaned.rows;
+      } else {
+        const parsed = parseCsv(text);
+        headers = parsed.headers;
+        rows = parsed.rows;
+        if (!parsed.headers.length) {
+          toast(toast_mapper[ToastType.EMPTY_CSV]);
+          return;
+        }
+        if (!parsed.rows.length) {
+          toast(toast_mapper[ToastType.EMPTY_CSV_DATA]);
+          return;
+        }
+
+        if (csvType === "agency") {
+          if (!hasAgencyRefColumn(parsed.headers)) {
+            toast(toast_mapper[ToastType.INVALID_AGENCY_FILE]);
+            return;
+          }
+        }
+        if (csvType === "client") {
+          if (!hasClientRefColumn(parsed.headers)) {
+            toast(toast_mapper[ToastType.INVALID_CLIENT_FILE]);
+            return;
+          }
         }
       }
 
-      if (csvType === "agency") {
-        if (!hasAgencyRefColumn(parsed.headers)) {
-          toast(toast_mapper[ToastType.INVALID_AGENCY_FILE]);
-          return;
-        }
-      }
-      if (csvType === "client") {
-        if (!hasClientRefColumn(parsed.headers)) {
-          toast(toast_mapper[ToastType.INVALID_CLIENT_FILE]);
-          return;
-        }
-      }
-
-      setCsvData({ ...parsed, fileName: file.name, rawFile: file });
+      setCsvData({ headers, rows, fileName: file.name, rawFile: file });
     };
     reader.readAsText(file);
   };
@@ -458,7 +482,7 @@ export const AddModal = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx"
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />

@@ -29,7 +29,12 @@ export const ToastType = {
   FILE_TOO_LARGE: "FILE_TOO_LARGE",
   EMPTY_CSV: "EMPTY_CSV",
   EMPTY_CSV_DATA: "EMPTY_CSV_DATA",
+  NO_COLUMN_HEADERS: "NO_COLUMN_HEADERS",
   NO_REFERENCE_COLUMN: "NO_REFERENCE_COLUMN",
+  NO_REF_FOUND: "NO_REF_FOUND",
+  NO_FORENAME_FOUND: "NO_FORENAME_FOUND",
+  NO_SURNAME_FOUND: "NO_SURNAME_FOUND",
+  NO_EMAIL_FOUND: "NO_EMAIL_FOUND",
   INVALID_AGENCY_FILE: "INVALID_AGENCY_FILE",
   INVALID_CLIENT_FILE: "INVALID_CLIENT_FILE",
   TIMESHEET_UPLOADED: "TIMESHEET_UPLOADED",
@@ -181,6 +186,31 @@ export const toast_mapper = {
     title: "No Reference Column",
     description:
       "CSV missing Ref/Reference/Workers Ref column. Staff IDs will be auto-generated.",
+    variant: "error",
+  },
+  [ToastType.NO_COLUMN_HEADERS]: {
+    title: "No Column Headers",
+    description: "No column headers found in the CSV.",
+    variant: "error",
+  },
+  [ToastType.NO_REF_FOUND]: {
+    title: "No Reference Column",
+    description: "CSV is missing a Ref/Reference/Worker Ref column.",
+    variant: "error",
+  },
+  [ToastType.NO_FORENAME_FOUND]: {
+    title: "No Forename Column",
+    description: "CSV is missing a Forename/First Name column.",
+    variant: "error",
+  },
+  [ToastType.NO_SURNAME_FOUND]: {
+    title: "No Surname Column",
+    description: "CSV is missing a Surname/Last Name column.",
+    variant: "error",
+  },
+  [ToastType.NO_EMAIL_FOUND]: {
+    title: "No Email Column",
+    description: "CSV is missing an Email column.",
     variant: "error",
   },
   [ToastType.INVALID_AGENCY_FILE]: {

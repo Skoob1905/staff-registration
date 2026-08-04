@@ -31,6 +31,7 @@ import {
 } from "../utils/keyHeaderNormalisation";
 import { readPayslipFile } from "../utils/readPayslipFile";
 import { getColumns } from "../utils/fileUpload/columns";
+import * as XLSX from "xlsx";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
@@ -57,6 +58,20 @@ function parseCsvHeaders(text: string): string[] {
   return result;
 }
 
+async function readXlsxHeaders(file: File): Promise<string[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet) return [];
+  const firstRow = XLSX.utils.sheet_to_json<
+    Array<string | number | boolean | null | undefined>
+  >(sheet, { header: 1, blankrows: false }).flatMap((r) => (Array.isArray(r) ? r : []))[0];
+  if (!Array.isArray(firstRow)) return [];
+  return firstRow.map((c) =>
+    c === null || c === undefined ? "" : String(c).trim(),
+  );
+}
+
 interface UploadType {
   id: string;
   icon: ElementType;
@@ -75,7 +90,7 @@ const SUPER_TYPES: UploadType[] = [
     title: "Staff",
     description: "Bulk import your staff",
     color: "#4A90D9",
-    acceptedFiles: ".csv",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
   {
@@ -84,7 +99,7 @@ const SUPER_TYPES: UploadType[] = [
     title: "Agencies",
     description: "Bulk import agencies",
     color: "#34A853",
-    acceptedFiles: ".csv",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
   {
@@ -93,7 +108,7 @@ const SUPER_TYPES: UploadType[] = [
     title: "Clients",
     description: "Bulk import clients",
     color: "#9C27B0",
-    acceptedFiles: ".csv",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
   {
@@ -135,7 +150,7 @@ const CLIENT_TYPES: UploadType[] = [
     title: "Timesheets",
     description: "Upload your timesheet",
     color: "#005F57",
-    acceptedFiles: ".csv",
+    acceptedFiles: ".csv,.xlsx",
     fileLimit: "Max 2MB",
   },
 ];
@@ -294,14 +309,16 @@ export const Upload = () => {
       if (file.size > MAX_FILE_SIZE) {
         toast({
           title: "File too large",
-          description: `${typeLabel} CSV must be 2MB or less.`,
+          description: `${typeLabel} file must be 2MB or less.`,
           variant: "error",
         });
         return;
       }
 
-      const text = await file.text();
-      const headers = parseCsvHeaders(text);
+      const isXlsx = file.name.toLowerCase().endsWith(".xlsx");
+      const headers = isXlsx
+        ? await readXlsxHeaders(file)
+        : parseCsvHeaders(await file.text());
 
       if (typeId === "staff") {
         if (!hasWorkerRefColumn(headers)) {
