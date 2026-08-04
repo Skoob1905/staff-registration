@@ -7,14 +7,14 @@ interface IsLoggedInProps {
 
 const LOGIN_STATUS_LABELS: Record<LoginStatusValue, string> = {
   all: "All",
-  awaiting_login: "Awaiting Login",
-  password_set: "Password Set",
+  awaiting_login: "Email Sent",
+  password_set: "Password Reset",
   logged_in: "Logged In",
 };
 
 const options = Object.entries(LOGIN_STATUS_LABELS) as [
   LoginStatusValue,
-  string,
+  string
 ][];
 
 export const IsLoggedIn = ({ value, onChange }: IsLoggedInProps) => (
