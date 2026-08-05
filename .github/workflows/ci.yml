@@ -49,6 +49,10 @@ jobs:
         run: |
           echo "${{ secrets.ENV_FILE_DEV }}" > .env.development
 
+      - name: Write functions env file
+        run: |
+          echo "${{ secrets.FUNCTIONS_ENV_DEV }}" > functions/.env.development
+
       - name: Authenticate to GCP
         run: |
           echo '${{ secrets.GCP_SA_KEY_DEV }}' > /tmp/gcp-key.json
@@ -74,6 +78,10 @@ jobs:
       - name: Write env files
         run: |
           echo "${{ secrets.ENV_FILE_PROD }}" > .env.production
+
+      - name: Write functions env file
+        run: |
+          echo "${{ secrets.FUNCTIONS_ENV_PROD }}" > functions/.env.production
 
       - name: Authenticate to GCP
         run: |
