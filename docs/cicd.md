@@ -18,12 +18,12 @@
 - `npm run build` (root + functions)
 
 **`deploy-dev`** — runs after `ci` on any branch except `main`:
-- Writes `.env.development` and `functions/.env.mdsce-dev` from secrets
+- Writes `.env.development` from secrets
 - Authenticates to GCP via service account JSON key
 - Runs `npm run deploy:dev` (builds + deploys all resources to the `development` project)
 
 **`deploy-prod`** — runs after `ci` only on `main`:
-- Writes `.env.production` and `functions/.env.mdsce-prod` from secrets
+- Writes `.env.production` from secrets
 - Authenticates to GCP via service account JSON key
 - Runs `npm run deploy:prod` (builds + deploys all resources to the `production` project)
 
@@ -33,8 +33,6 @@
 |---|---|
 | `ENV_FILE_DEV` | Full contents of `.env.development` (Vite frontend env vars for dev) |
 | `ENV_FILE_PROD` | Full contents of `.env.production` (Vite frontend env vars for prod) |
-| `FUNCTIONS_ENV_DEV` | Full contents of `functions/.env.mdsce-dev` (Cloud Functions runtime config for dev) |
-| `FUNCTIONS_ENV_PROD` | Full contents of `functions/.env.mdsce-prod` (Cloud Functions runtime config for prod) |
 | `GCP_SA_KEY_DEV` | JSON key for the service account with Firebase Admin role on the dev project |
 | `GCP_SA_KEY_PROD` | JSON key for the service account with Firebase Admin role on the prod project |
 
@@ -45,8 +43,6 @@ When an env file changes, update the corresponding secret with one command:
 ```bash
 gh secret set ENV_FILE_DEV --repo Skoob1905/staff-registration < .env.development
 gh secret set ENV_FILE_PROD --repo Skoob1905/staff-registration < .env.production
-gh secret set FUNCTIONS_ENV_DEV --repo Skoob1905/staff-registration < functions/.env.mdsce-dev
-gh secret set FUNCTIONS_ENV_PROD --repo Skoob1905/staff-registration < functions/.env.mdsce-prod
 ```
 
 ### Env files
@@ -56,10 +52,7 @@ Vite automatically loads the correct `.env` file based on the mode:
 - `vite build` (production mode) → loads `.env.production`
 - `vite build --mode development` → loads `.env.development`
 
-Cloud Functions loads the correct `.env` file based on the project alias:
-
-- `firebase deploy --project development` → loads `functions/.env.mdsce-dev`
-- `firebase deploy --project production` → loads `functions/.env.mdsce-prod`
+Cloud Functions secrets are managed via the Firebase Secret Manager (`functions:secrets:set`) and read at runtime through `defineString`/`defineBoolean` params — no env files are injected during CI.
 
 ## Vercel deployment control
 

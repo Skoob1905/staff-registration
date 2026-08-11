@@ -32,7 +32,12 @@ function paramsToFilters(searchParams: URLSearchParams): StaffFilters {
   const agencies = searchParams.get("agencies")?.split(",").filter(Boolean) ?? [];
   const types = searchParams.get("types")?.split(",").filter(Boolean) ?? [];
   const loginStatusParam = searchParams.get("loginStatus");
-  const loginStatusFilter: LoginStatusValue | undefined = loginStatusParam === "sent" || loginStatusParam === "not_sent" ? loginStatusParam : undefined;
+  const loginStatusFilter: LoginStatusValue | undefined =
+    loginStatusParam === "awaiting_login" ||
+    loginStatusParam === "password_set" ||
+    loginStatusParam === "logged_in"
+      ? loginStatusParam
+      : undefined;
   if (!name && tags.length === 0 && agencies.length === 0 && types.length === 0 && !loginStatusFilter) {
     return emptyFilters;
   }

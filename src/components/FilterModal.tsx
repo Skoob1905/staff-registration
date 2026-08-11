@@ -7,7 +7,12 @@ import {
   DialogTitle,
   Input,
 } from "./ui";
-import type { Agency, FilterKeyMap, LoginStatusValue, StaffFilters } from "../types/domain";
+import type {
+  Agency,
+  FilterKeyMap,
+  LoginStatusValue,
+  StaffFilters,
+} from "../types/domain";
 import { getAgencyName } from "../utils/agency";
 import { getTagName } from "../utils/getTagName";
 import { H1, H2, Muted } from "../config/typography";
@@ -45,13 +50,13 @@ export const FilterModal = ({
 }: FilterModalProps) => {
   const [name, setName] = useState(filters.name);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
-    new Set(filters.tagIds),
+    new Set(filters.tagIds)
   );
   const [selectedAgencyIds, setSelectedAgencyIds] = useState<Set<string>>(
-    new Set(filters.agencyIds),
+    new Set(filters.agencyIds)
   );
   const [loginStatusValue, setLoginStatusValue] = useState<LoginStatusValue>(
-    filters.loginStatusFilter ?? "all",
+    filters.loginStatusFilter ?? "all"
   );
 
   useEffect(() => {
@@ -69,7 +74,7 @@ export const FilterModal = ({
       tagCounts
         ? Object.keys(tags).filter((id) => (tagCounts[id] ?? 0) > 0)
         : Object.keys(tags),
-    [tags, tagCounts],
+    [tags, tagCounts]
   );
 
   const agencyEntries = useMemo(() => {

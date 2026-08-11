@@ -1,4 +1,8 @@
-export type LoginStatusValue = "all" | "sent" | "not_sent";
+export type LoginStatusValue =
+  | "all"
+  | "awaiting_login"
+  | "password_set"
+  | "logged_in";
 
 export type UserRole = "admin" | "client" | "super" | "worker";
 
@@ -142,6 +146,17 @@ export interface PayslipFile extends UploadableFile {
   email?: string;
   agencyId?: string;
   loginStatus?: string;
+}
+
+export interface StaffCsvRow {
+  ref: string;
+  forename: string;
+  surname: string;
+  email: string;
+  status: "New" | "different info" | "duplicate";
+  existingName?: string;
+  existingEmail?: string;
+  data: Record<string, string>;
 }
 
 export interface BulkStaff {

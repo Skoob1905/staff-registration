@@ -1,7 +1,7 @@
 {
   "name": "app",
   "private": true,
-  "version": "1.0.10",
+  "version": "1.0.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,9 +17,11 @@
     "deploy:hosting:prod": "npm run build && npx firebase deploy --project production --only hosting",
     "deploy:dev": "npm run build:dev && npx firebase deploy --project development",
     "deploy:prod": "npm run build && npx firebase deploy --project production",
-    "update-secrets": "gh secret set ENV_FILE_DEV --repo Skoob1905/staff-registration < .env.development && gh secret set ENV_FILE_PROD --repo Skoob1905/staff-registration < .env.production && gh secret set FUNCTIONS_ENV_DEV --repo Skoob1905/staff-registration < functions/.env.mdsce-dev && gh secret set FUNCTIONS_ENV_PROD --repo Skoob1905/staff-registration < functions/.env.mdsce-prod"
+    "list-secrets:dev": "gcloud config set project mdsce-dev && gcloud secrets list",
+    "list-secrets:prod": "gcloud config set project mdsce-prod && gcloud secrets list"
   },
   "dependencies": {
+    "@algolia/client-search": "^5.53.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-separator": "^1.1.8",
@@ -38,6 +40,7 @@
     "react-router-dom": "^7.15.0",
     "react-signature-canvas": "^1.1.0-alpha.2",
     "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },

@@ -48,8 +48,10 @@ jobs:
       - name: Write env files
         run: |
           echo "${{ secrets.ENV_FILE_DEV }}" > .env.development
-          mkdir -p functions
-          echo "${{ secrets.FUNCTIONS_ENV_DEV }}" > functions/.env.mdsce-dev
+
+      - name: Write functions env file
+        run: |
+          echo "${{ secrets.FUNCTIONS_ENV_DEV }}" > functions/.env.development
 
       - name: Authenticate to GCP
         run: |
@@ -76,8 +78,10 @@ jobs:
       - name: Write env files
         run: |
           echo "${{ secrets.ENV_FILE_PROD }}" > .env.production
-          mkdir -p functions
-          echo "${{ secrets.FUNCTIONS_ENV_PROD }}" > functions/.env.mdsce-prod
+
+      - name: Write functions env file
+        run: |
+          echo "${{ secrets.FUNCTIONS_ENV_PROD }}" > functions/.env.production
 
       - name: Authenticate to GCP
         run: |

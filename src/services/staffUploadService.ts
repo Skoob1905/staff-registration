@@ -4,7 +4,8 @@ import {
   getDownloadURL,
   type UploadTask,
 } from "firebase/storage";
-import { storage } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { storage, functions } from "./firebase";
 import {
   createStaffUpload,
   getStaffUploadsByAgency,
@@ -202,4 +203,32 @@ export const getBulkStaffForAgency = async (
 export const getUploadHistory = async (): Promise<BulkUploadRecord[]> => {
   const docs = await getAllUploadHistory();
   return docs as unknown as BulkUploadRecord[];
+};
+
+export const callImportStaffCsv = async (
+  records: Record<string, string>[],
+  fileName: string,
+  fileUrl: string,
+  assignedToId?: string,
+  assignedToName?: string,
+): Promise<{
+  added: number;
+  duplicates: number;
+  importId?: string;
+  emails: string[];
+}> => {
+  const callable = httpsCallable(functions, "importStaffCsv");
+  const result = await callable({
+    records,
+    totalRecords: records.length,
+    fileName,
+    fileUrl,
+    ...(assignedToId ? { assignedToId, assignedToName } : {}),
+  });
+  return result.data as {
+    added: number;
+    duplicates: number;
+    importId?: string;
+    emails: string[];
+  };
 };
