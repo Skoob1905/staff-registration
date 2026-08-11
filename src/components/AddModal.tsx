@@ -309,7 +309,13 @@ export const AddModal = ({
       setProcessing(true);
       const fileUrl = await getDownloadURL(storageRef);
 
-      const recordsToSend = csvData.rows;
+      const recordsToSend = csvData.rows.map((row) => {
+        const cleaned: Record<string, string> = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (key !== "") cleaned[key] = value;
+        }
+        return cleaned;
+      });
 
       const callable = httpsCallable(functions, cloudFunction);
       const result = await callable({

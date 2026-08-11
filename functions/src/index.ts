@@ -1048,6 +1048,7 @@ export const importAgencyCsv = onCall({ timeoutSeconds: 540 }, async (request) =
         uploadedBy,
         importedAt: FieldValue.serverTimestamp(),
       };
+      if ("" in record) delete record[""];
       batch.set(docRef, {
         ...record,
         metadata: meta,
@@ -1213,6 +1214,7 @@ export const importClientCsv = onCall({ timeoutSeconds: 540 }, async (request) =
         uploadedBy,
         importedAt: FieldValue.serverTimestamp(),
       };
+      if ("" in record) delete record[""];
       batch.set(docRef, {
         ...record,
         metadata: meta,
@@ -1417,6 +1419,7 @@ export const importStaffCsv = onCall({ timeoutSeconds: 540 }, async (request) =>
       const docRef = staffRef
         ? db.collection("staff").doc(staffRef)
         : db.collection("staff").doc();
+      if ("" in record) delete record[""];
       batch.set(docRef, {
         ...record,
         ...(tagIds && tagIds.length > 0 ? { tags: tagIds } : {}),
