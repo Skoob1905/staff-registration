@@ -3,7 +3,6 @@ import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "./ui";
 import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
-import { Section } from "./Section";
 import { Muted } from "../config/typography";
 import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
 
@@ -40,12 +39,8 @@ interface PaginatedFilterSectionProps<T> {
   emptyMessage?: string;
   noMatchMessage?: string;
 
-  leftAccordionValue?: string;
-  onLeftAccordionChange?: (value: string) => void;
-  rightAccordionValue?: string;
-  onRightAccordionChange?: (value: string) => void;
+  columnHeaders?: string[];
 
-  singleColumn?: boolean;
   accordionType?: "single" | "multiple";
   multiAccordionValue?: string[];
   onMultiAccordionChange?: (value: string[]) => void;
@@ -79,27 +74,21 @@ export const PaginatedFilterSection = <T,>({
   tags,
   tagCounts,
   agencies,
-    agencyCounts,
+  agencyCounts,
 
-    emptyMessage,
-    noMatchMessage = "Oops there are no records with that filter",
+  emptyMessage,
+  noMatchMessage = "Oops there are no records with that filter",
 
-    leftAccordionValue,
-    onLeftAccordionChange,
-    rightAccordionValue,
-    onRightAccordionChange,
+  columnHeaders,
 
-    singleColumn = false,
-    accordionType = "single",
-    multiAccordionValue,
-    onMultiAccordionChange,
-  }: PaginatedFilterSectionProps<T>) => {
+  accordionType = "single",
+  multiAccordionValue,
+  onMultiAccordionChange,
+}: PaginatedFilterSectionProps<T>) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const hasAnyFilter =
     enableNameFilter || enableTagFilter || enableAgencyFilter || enableLoginStatusFilter;
-
-  const mid = useMemo(() => Math.ceil(items.length / 2), [items.length]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -116,11 +105,12 @@ export const PaginatedFilterSection = <T,>({
         <button
           type="button"
           onClick={() => setShowFilterModal(true)}
-          className="relative inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--primary)]/20 bg-[var(--primary-400)] text-white transition hover:bg-[var(--primary-500)]/85"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
         >
           <Filter className="h-3.5 w-3.5" />
+          Filter
           {activeFilterCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[10px] font-bold text-white">
+            <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
               {activeFilterCount}
             </span>
           )}
@@ -132,71 +122,76 @@ export const PaginatedFilterSection = <T,>({
 
   return (
     <>
-      <Section title={title} count={totalResults} action={renderHeaderAction()}>
-        {loading && items.length === 0 ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
-          </div>
-        ) : items.length === 0 ? (
-          <Muted>
-            {activeFilterCount > 0
-              ? noMatchMessage
-              : emptyMessage || `Add some ${title.toLowerCase()} now!`}
-          </Muted>
-        ) : (
+      <div>
+        <div className="flex items-center justify-between px-4">
+          <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
+            {title} ({totalResults})
+          </h2>
+          {renderHeaderAction()}
+        </div>
+
+        <div className="mt-1.5 sm:mt-3">
+          {loading && items.length === 0 ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+            </div>
+          ) : items.length === 0 ? (
+            <Muted className="px-4">
+              {activeFilterCount > 0
+                ? noMatchMessage
+                : emptyMessage || `Add some ${title.toLowerCase()} now!`}
+            </Muted>
+          ) : (
             <div className="space-y-4">
-            {singleColumn && accordionType === "multiple" ? (
-              <AccordionRoot
-                type="multiple"
-                value={multiAccordionValue ?? []}
-                onValueChange={onMultiAccordionChange ?? (() => {})}
-              >
-                {items.map((item, idx) => renderItem(item, idx))}
-              </AccordionRoot>
-            ) : singleColumn ? (
-              <AccordionRoot type="single" collapsible>
-                {items.map((item, idx) => renderItem(item, idx))}
-              </AccordionRoot>
-            ) : (
-              <div className="flex flex-col min-[1500px]:flex-row min-[1500px]:gap-x-3">
-                <div className="flex-1">
+              <div className="border-y border-[var(--border)]">
+                {columnHeaders && (
+                  <div className="flex items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-foreground)] sm:px-4">
+                    {columnHeaders.map((header, i) => (
+                      <span
+                        key={i}
+                        className={
+                          i === 0
+                            ? "w-8 shrink-0"
+                            : "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+                        }
+                      >
+                        {header}
+                      </span>
+                    ))}
+                    <span className="w-4 shrink-0" />
+                  </div>
+                )}
+                {accordionType === "multiple" ? (
                   <AccordionRoot
-                    type="single"
-                    collapsible
-                    {...(leftAccordionValue !== undefined && onLeftAccordionChange !== undefined
-                      ? { value: leftAccordionValue, onValueChange: onLeftAccordionChange }
-                      : {})}
+                    type="multiple"
+                    value={multiAccordionValue ?? []}
+                    onValueChange={onMultiAccordionChange ?? (() => {})}
                   >
-                    {items.slice(0, mid).map((item, idx) => renderItem(item, idx))}
+                    {items.map((item, idx) => renderItem(item, idx))}
                   </AccordionRoot>
-                </div>
-                <div className="flex-1">
-                  <AccordionRoot
-                    type="single"
-                    collapsible
-                    {...(rightAccordionValue !== undefined && onRightAccordionChange !== undefined
-                      ? { value: rightAccordionValue, onValueChange: onRightAccordionChange }
-                      : {})}
-                  >
-                    {items.slice(mid).map((item, idx) => renderItem(item, mid + idx))}
+                ) : (
+                  <AccordionRoot type="single" collapsible>
+                    {items.map((item, idx) => renderItem(item, idx))}
                   </AccordionRoot>
-                </div>
+                )}
               </div>
-            )}
-            <PaginationBar
-              currentPage={page + 1}
-              totalPages={totalPages}
-              totalCount={totalResults}
-              pageSize={pageSize}
-              loading={loading}
-              onPrev={onPrevPage}
-              onNext={onNextPage}
-              onGoToPage={(p) => onGoToPage(p - 1)}
-              onPageSizeChange={onPageSizeChange}
-            />
-          </div>
-        )}
-      </Section>
+              <div className="px-4">
+                <PaginationBar
+                  currentPage={page + 1}
+                  totalPages={totalPages}
+                  totalCount={totalResults}
+                  pageSize={pageSize}
+                  loading={loading}
+                  onPrev={onPrevPage}
+                  onNext={onNextPage}
+                  onGoToPage={(p) => onGoToPage(p - 1)}
+                  onPageSizeChange={onPageSizeChange}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <FilterModal
         open={showFilterModal}

@@ -32,12 +32,6 @@ interface StaffListSectionProps {
   targetAgencyIds?: string[];
   namesLoading?: boolean;
 
-  leftAccordionValue?: string;
-  onLeftAccordionChange?: (value: string) => void;
-  rightAccordionValue?: string;
-  onRightAccordionChange?: (value: string) => void;
-
-  accordionLayout?: "dual" | "single";
   accordionType?: "single" | "multiple";
   multiAccordionValue?: string[];
   onMultiAccordionChange?: (value: string[]) => void;
@@ -54,12 +48,6 @@ export const StaffListSection = ({
   targetAgencyIds,
   namesLoading,
 
-  leftAccordionValue,
-  onLeftAccordionChange,
-  rightAccordionValue,
-  onRightAccordionChange,
-
-  accordionLayout = "dual",
   accordionType = "single",
   multiAccordionValue,
   onMultiAccordionChange,
@@ -257,11 +245,7 @@ export const StaffListSection = ({
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem}
-      leftAccordionValue={leftAccordionValue}
-      onLeftAccordionChange={onLeftAccordionChange}
-      rightAccordionValue={rightAccordionValue}
-      onRightAccordionChange={onRightAccordionChange}
-      singleColumn={accordionLayout === "single"}
+      columnHeaders={["#", "Name", "Email", "Assigned To", "NI Number"]}
       accordionType={accordionType}
       multiAccordionValue={multiAccordionValue}
       onMultiAccordionChange={onMultiAccordionChange}

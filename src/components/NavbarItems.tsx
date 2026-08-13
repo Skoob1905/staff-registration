@@ -1,6 +1,18 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { useData } from "../context/DataProvider";
+import {
+  Building,
+  Building2,
+  Users,
+  Upload,
+  Receipt,
+  Banknote,
+  UserCircle,
+  HelpCircle,
+  LayoutDashboard,
+  type LucideIcon,
+} from "lucide-react";
 
 type BadgeKey = "staff" | "invoices" | "timesheets";
 
@@ -16,65 +28,67 @@ const CLIENT_BADGE_MAP: Record<string, BadgeKey> = {
   STAFF: "staff",
 };
 
-const SUPER_ROUTES = [
-  { label: "CLIENTS", to: "/clients" },
-  { label: "AGENCIES", to: "/agencies" },
-  { label: "STAFF", to: "/staff" },
-  { label: "UPLOAD", to: "/upload" },
-  { label: "INVOICES", to: "/invoices" },
-  { label: "PAYSLIPS", to: "/payslips" },
-  { label: "PROFILE", to: "/profile" },
+interface RouteDef {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+}
+
+const SUPER_ROUTES: RouteDef[] = [
+  { label: "CLIENTS", to: "/clients", icon: Building2 },
+  { label: "AGENCIES", to: "/agencies", icon: Building },
+  { label: "STAFF", to: "/staff", icon: Users },
+  { label: "UPLOAD", to: "/upload", icon: Upload },
+  { label: "INVOICES", to: "/invoices", icon: Receipt },
+  { label: "PAYSLIPS", to: "/payslips", icon: Banknote },
+  { label: "PROFILE", to: "/profile", icon: UserCircle },
 ];
 
-const ADMIN_ROUTES = [
-  { label: "AGENCIES", to: "/agencies" },
-  { label: "STAFF", to: "/staff" },
-  { label: "INVOICES", to: "/invoices" },
-  { label: "PAYSLIPS", to: "/payslips" },
-  // hide for the tiem being
-  // { label: "TIMESHEETS", to: "/timesheets" },
-  { label: "PROFILE", to: "/profile" },
-  { label: "SUPPORT", to: "/support" },
+const ADMIN_ROUTES: RouteDef[] = [
+  { label: "AGENCIES", to: "/agencies", icon: Building },
+  { label: "STAFF", to: "/staff", icon: Users },
+  { label: "INVOICES", to: "/invoices", icon: Receipt },
+  { label: "PAYSLIPS", to: "/payslips", icon: Banknote },
+  { label: "PROFILE", to: "/profile", icon: UserCircle },
+  { label: "SUPPORT", to: "/support", icon: HelpCircle },
 ];
 
-const CLIENT_ROUTES = [
-  { label: "STAFF", to: "/staff" },
-  { label: "PAYSLIPS", to: "/payslips" },
-  // hide for the tiem being
-  // { label: "UPLOAD", to: "/upload" },
-  // { label: "TIMESHEETS", to: "/timesheets" },
-  { label: "PROFILE", to: "/profile" },
-  { label: "SUPPORT", to: "/support" },
+const CLIENT_ROUTES: RouteDef[] = [
+  { label: "STAFF", to: "/staff", icon: Users },
+  { label: "PAYSLIPS", to: "/payslips", icon: Banknote },
+  { label: "PROFILE", to: "/profile", icon: UserCircle },
+  { label: "SUPPORT", to: "/support", icon: HelpCircle },
 ];
 
-const WORKER_ROUTES = [
-  { label: "DASHBOARD", to: "/dashboard" },
-  { label: "PROFILE", to: "/profile" },
-  { label: "SUPPORT", to: "/support" },
+const WORKER_ROUTES: RouteDef[] = [
+  { label: "DASHBOARD", to: "/dashboard", icon: LayoutDashboard },
+  { label: "PROFILE", to: "/profile", icon: UserCircle },
+  { label: "SUPPORT", to: "/support", icon: HelpCircle },
 ];
 
 function NavItem({
   label,
   to,
+  icon: Icon,
   count,
   className,
 }: {
   label: string;
   to: string;
+  icon: LucideIcon;
   count: number;
   className: (props: { isActive: boolean }) => string;
 }) {
   return (
-    <span className="relative">
-      <NavLink to={to} className={className} end>
-        {label}
-      </NavLink>
+    <NavLink to={to} className={className} end>
+      <Icon className="size-4 shrink-0" />
+      <span className="flex-1">{label}</span>
       {count > 0 && (
-        <span className="absolute right-0 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-yellow-300 bg-yellow-100 text-[10px] font-bold text-yellow-700">
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full border border-yellow-300 bg-yellow-100 px-1 text-[10px] font-bold text-yellow-700">
           {count}
         </span>
       )}
-    </span>
+    </NavLink>
   );
 }
 
@@ -110,6 +124,7 @@ export function NavbarItems({
       key={route.to}
       label={route.label}
       to={route.to}
+      icon={route.icon}
       count={badgeMap[route.label] != null ? counts[badgeMap[route.label]] : 0}
       className={className}
     />

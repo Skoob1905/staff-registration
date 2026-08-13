@@ -24,7 +24,6 @@ import { Muted } from "../config/typography";
 import { config } from "../config";
 import { AccordionTitle } from "../components/AccordionTitle";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
@@ -93,7 +92,6 @@ export const Users = () => {
 
   const [loginsFilters, setLoginsFilters] = useFilterParams();
   const { page: loginsPage, pageSize: loginsPageSize, setPage: setLoginsPage, setPageSize: setLoginsPageSize } = usePaginationParams(50);
-  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   const loginsKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "assignedTo" }),
@@ -296,10 +294,6 @@ export const Users = () => {
         enableTagFilter={false}
         agencies={filteredLoginsAgencies as unknown as Agency[]}
         agencyCounts={loginsAgencyCounts}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
         emptyMessage="No users created yet."
         action={
           <Button

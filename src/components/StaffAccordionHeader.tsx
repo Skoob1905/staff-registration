@@ -27,7 +27,7 @@ export function StaffAccordionHeader({
     <div className="flex min-w-0 items-center gap-2">
       {loginStatus !== undefined && (
         <span
-          className={`inline-block w-[3px] h-3 sm:w-1 sm:h-4 shrink-0 ${getStatusColor(loginStatus)}`}
+          className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${getStatusColor(loginStatus)}`}
           title={loginStatus.replace(/_/g, " ")}
         />
       )}
