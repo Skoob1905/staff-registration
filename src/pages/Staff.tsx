@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { addStaffTags, removeStaffTags } from "../services/firestore";
 import { httpsCallable } from "firebase/functions";
 import { FileText, Loader2, Receipt } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
 import { ImportHistory } from "../components/ImportHistory";
@@ -15,9 +15,7 @@ import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
 import { getTagName } from "../utils/getTagName";
 import { StaffListSection } from "../components/StaffListSection";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import {
-  AccordionAction,
   AccordionItem,
   ActionButton,
   Button,
@@ -32,6 +30,7 @@ import { functions } from "../services/firebase";
 import {
   getStaffName,
   getStaffNameFromRawRecord,
+  findValueByNormalizedKey,
 } from "../utils/keyHeaderNormalisation";
 import { shouldShowSendLink } from "../utils/loginStatus";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
@@ -47,6 +46,8 @@ export const Staff = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab") ?? "records";
 
   const tags = useAppStore((s) => s.tags);
   const addTag = useAppStore((s) => s.addTag);
@@ -70,7 +71,7 @@ export const Staff = () => {
 
   const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
   const [assignStaffTarget, setAssignStaffTarget] = useState<BulkStaff | null>(
-    null,
+    null
   );
   const [unassignTarget, setUnassignTarget] = useState<BulkStaff | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
@@ -78,18 +79,16 @@ export const Staff = () => {
   const [tagInput, setTagInput] = useState("");
   const [tagLoading, setTagLoading] = useState(false);
   const [selectedAssignTagIds, setSelectedAssignTagIds] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const [deletingCvKey, setDeletingCvKey] = useState<string | null>(null);
   const [deleteStaffTarget, setDeleteStaffTarget] = useState<BulkStaff | null>(
-    null,
+    null
   );
   const [deleteStaffLoading, setDeleteStaffLoading] = useState(false);
   const [deletingDocumentKey, setDeletingDocumentKey] = useState<string | null>(
-    null,
+    null
   );
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
 
   useEffect(() => {
     if (tagTarget) {
@@ -118,7 +117,7 @@ export const Staff = () => {
         setDeletingDocumentKey(null);
       }
     },
-    [deletingDocumentKey, toast],
+    [deletingDocumentKey, toast]
   );
 
   const handleDeleteCv = useCallback(
@@ -137,7 +136,7 @@ export const Staff = () => {
         setDeletingCvKey(null);
       }
     },
-    [deletingCvKey, toast],
+    [deletingCvKey, toast]
   );
 
   const handleAssignTags = useCallback(async () => {
@@ -163,7 +162,7 @@ export const Staff = () => {
           callable({ staffId, tag: tagInput.trim() }).then((res) => {
             const data = res.data as { tagId: string; tagValue: string };
             addTag({ id: data.tagId, value: data.tagValue });
-          }),
+          })
         );
       }
       if (ops.length === 0) return;
@@ -221,7 +220,7 @@ export const Staff = () => {
       staffId: string,
       agencyId: string,
       agencyName?: string,
-      staffName?: string,
+      staffName?: string
     ) => {
       if (!agencyId) return;
       console.log("[Staff] handleAssign called with:", {
@@ -238,7 +237,9 @@ export const Staff = () => {
 
         toast({
           title: "Assigned",
-          description: `${staffName || staffId} has been assigned to ${agencyName || agencyId}`,
+          description: `${staffName || staffId} has been assigned to ${
+            agencyName || agencyId
+          }`,
           variant: "success",
         });
       } catch {
@@ -251,7 +252,7 @@ export const Staff = () => {
         setAssigningStaffId(null);
       }
     },
-    [appUser?.agencyId, toast],
+    [appUser?.agencyId, toast]
   );
 
   const handleDeleteStaff = useCallback(async () => {
@@ -264,7 +265,9 @@ export const Staff = () => {
       setDeleteStaffTarget(null);
       toast({
         title: "Deleted",
-        description: `${getStaffName(deleteStaffTarget)} has been permanently deleted`,
+        description: `${getStaffName(
+          deleteStaffTarget
+        )} has been permanently deleted`,
         variant: "success",
       });
     } catch {
@@ -284,171 +287,125 @@ export const Staff = () => {
 
   return (
     <div className="mx-auto space-y-4">
-      <StaffListSection
-        refreshTrigger={staffRefreshTrigger}
+      {tab === "records" ? (
+        <StaffListSection
+          refreshTrigger={staffRefreshTrigger}
         agencies={companies as unknown as Agency[]}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
-        renderItem={(member, idx) => (
-          <AccordionItem
-            key={member.id}
-            value={member.id}
-            className="animate-cascade"
-            style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-            title={
-              <StaffAccordionHeader
-                name={getStaffName(member)}
-                loginStatus={member.metadata?.loginStatus}
-              >
-                {member.metadata?.cv && member.metadata.cv.length > 0 && (
-                  <Pill
-                    status="cv"
-                    icon={<FileText className="h-4 w-4" />}
-                    label=""
-                  />
-                )}
-                {member.metadata?.payslipsSent &&
-                  member.metadata.payslipsSent.length > 0 && (
+        renderItem={(member, idx) => {
+          const raw = member as unknown as Record<string, unknown>;
+          const niNumber = findValueByNormalizedKey(raw, "ni number");
+          return (
+            <AccordionItem
+              key={member.id}
+              value={member.id}
+              className="animate-cascade"
+              style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+              columns={[
+                <span className="tabular-nums">{idx + 1}</span>,
+                <StaffAccordionHeader
+                  name={getStaffName(member)}
+                  loginStatus={member.metadata?.loginStatus}
+                >
+                  {member.metadata?.cv && member.metadata.cv.length > 0 && (
                     <Pill
-                      status="payslip"
-                      icon={<Receipt className="h-4 w-4" />}
-                      count={member.metadata.payslipsSent.length}
-                      onClick={() =>
-                        navigate(`/payslips?page=1&open=${member.id}&name=${encodeURIComponent(getStaffName(member))}`)
-                      }
+                      status="cv"
+                      icon={<FileText className="h-4 w-4" />}
+                      label=""
                     />
                   )}
-              </StaffAccordionHeader>
-            }
-            actions={
-              member.metadata?.assignedToName ? (
-                <AccordionAction>
-                  {member.metadata.assignedToName}
-                </AccordionAction>
-              ) : null
-            }
-          >
-            <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
-              <div className="sm:hidden">
-                <Metadata
-                  title="Assigned to"
-                  className="animate-cascade"
-                  style={{ animationDelay: "0ms" }}
-                  value={
-                    member.metadata?.assignedToName ? (
-                      <>
-                        {member.metadata.assignedToName}
-                        <ActionButton
-                          variant="delete"
-                          size="md"
-                          ariaLabel="Unassign staff"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUnassignTarget(member);
-                          }}
-                          className="ml-1.5 align-middle"
-                        />
-                      </>
-                    ) : appUser?.role === "super" ? (
-                      <AgenciesDropdown
-                        disabled={assigningStaffId === member.id}
-                        value=""
-                        onChange={(value, name) => {
-                          if (value)
-                            handleAssign(
-                              member.id,
-                              value,
-                              name,
-                              getStaffName(member),
-                            );
-                        }}
-                        className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
-                        placeholder="Assign agency"
+                  {member.metadata?.payslipsSent &&
+                    member.metadata.payslipsSent.length > 0 && (
+                      <Pill
+                        status="payslip"
+                        icon={<Receipt className="h-4 w-4" />}
+                        count={member.metadata.payslipsSent.length}
+                        onClick={() =>
+                          navigate(
+                            `/payslips?page=1&open=${
+                              member.id
+                            }&name=${encodeURIComponent(getStaffName(member))}`
+                          )
+                        }
                       />
-                    ) : null
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Metadata
-                  title="Tags"
-                  className="animate-cascade"
-                  style={{ animationDelay: "0ms" }}
-                  value={
-                    member.tags?.length
-                      ? member.tags.map((id) => getTagName(tagsMap, id)).filter(Boolean).join(", ") || "None"
-                      : "None"
-                  }
-                />
-              </div>
-            </div>
-            {member.metadata?.cv && member.metadata.cv.length > 0 && (
-              <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                {member.metadata.cv.map((entry, idx) => {
-                  const cvKey = `${member.id}::${entry.fileName}`;
-                  const isDeleting = deletingCvKey === cvKey;
-                  return (
-                    <Metadata
-                      key={cvKey}
-                      title="CV"
-                      className="flex items-center animate-cascade"
-                      style={
-                        {
-                          animationDelay: `${(idx + 1) * 12}ms`,
-                        } as React.CSSProperties
-                      }
-                      value={
-                        <span className="inline-flex flex-wrap items-center gap-2 align-middle">
-                          <span className="text-[var(--muted-foreground)]">
-                            {entry.fileName}
-                          </span>
-                          <FileInteractionButtons
-                            fileUrl={entry.fileUrl}
-                            fileName={entry.fileName}
-                            name={getStaffName(member)}
-                            interactionKey="cv"
+                    )}
+                </StaffAccordionHeader>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {member.email || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {member.metadata?.assignedToName || "—"}
+                </span>,
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  {niNumber || "—"}
+                </span>,
+              ]}
+            >
+              <div className="flex flex-col gap-0.5 mb-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="sm:hidden">
+                  <Metadata
+                    title="Assigned to"
+                    className="animate-cascade"
+                    style={{ animationDelay: "0ms" }}
+                    value={
+                      member.metadata?.assignedToName ? (
+                        <>
+                          {member.metadata.assignedToName}
+                          <ActionButton
+                            variant="delete"
                             size="md"
-                            onDelete={
-                              isDeleting
-                                ? undefined
-                                : () =>
-                                    handleDeleteCv(member.id, entry.fileName)
-                            }
+                            ariaLabel="Unassign staff"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnassignTarget(member);
+                            }}
+                            className="ml-1.5 align-middle"
                           />
-                          {entry.uploadedAt && (
-                            <span className="text-zinc-400">
-                              ({new Date(entry.uploadedAt).toLocaleDateString()}
-                              )
-                            </span>
-                          )}
-                          {isDeleting && (
-                            <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
-                          )}
-                        </span>
-                      }
-                    />
-                  );
-                })}
+                        </>
+                      ) : appUser?.role === "super" ? (
+                        <AgenciesDropdown
+                          disabled={assigningStaffId === member.id}
+                          value=""
+                          onChange={(value, name) => {
+                            if (value)
+                              handleAssign(
+                                member.id,
+                                value,
+                                name,
+                                getStaffName(member)
+                              );
+                          }}
+                          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-1.5 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+                          placeholder="Assign agency"
+                        />
+                      ) : null
+                    }
+                  />
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Metadata
+                    title="Tags"
+                    className="animate-cascade"
+                    style={{ animationDelay: "0ms" }}
+                    value={
+                      member.tags?.length
+                        ? member.tags
+                            .map((id) => getTagName(tagsMap, id))
+                            .filter(Boolean)
+                            .join(", ") || "None"
+                        : "None"
+                    }
+                  />
+                </div>
               </div>
-            )}
-            {Boolean((member.metadata as Record<string, unknown>)?.documents) &&
-              (
-                (member.metadata as Record<string, unknown>)
-                  ?.documents as Record<string, unknown>[]
-              )?.length > 0 && (
+              {member.metadata?.cv && member.metadata.cv.length > 0 && (
                 <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
-                  {(
-                    (member.metadata as Record<string, unknown>)
-                      ?.documents as Record<string, unknown>[]
-                  )?.map((entry: Record<string, unknown>, idx: number) => {
-                    const docKey = `${member.id}::${entry.fileName}`;
-                    const isDeleting = deletingDocumentKey === docKey;
+                  {member.metadata.cv.map((entry, idx) => {
+                    const cvKey = `${member.id}::${entry.fileName}`;
+                    const isDeleting = deletingCvKey === cvKey;
                     return (
                       <Metadata
-                        key={docKey}
-                        title="Document"
+                        key={cvKey}
+                        title="CV"
                         className="flex items-center animate-cascade"
                         style={
                           {
@@ -458,29 +415,26 @@ export const Staff = () => {
                         value={
                           <span className="inline-flex flex-wrap items-center gap-2 align-middle">
                             <span className="text-[var(--muted-foreground)]">
-                              {entry.fileName as string}
+                              {entry.fileName}
                             </span>
                             <FileInteractionButtons
-                              fileUrl={entry.fileUrl as string}
-                              fileName={entry.fileName as string}
+                              fileUrl={entry.fileUrl}
+                              fileName={entry.fileName}
                               name={getStaffName(member)}
-                              interactionKey="document"
+                              interactionKey="cv"
                               size="md"
                               onDelete={
                                 isDeleting
                                   ? undefined
                                   : () =>
-                                      handleDeleteDocument(
-                                        member.id,
-                                        entry.fileName as string,
-                                      )
+                                      handleDeleteCv(member.id, entry.fileName)
                               }
                             />
-                            {Boolean(entry.uploadedAt) && (
+                            {entry.uploadedAt && (
                               <span className="text-zinc-400">
                                 (
                                 {new Date(
-                                  entry.uploadedAt as string,
+                                  entry.uploadedAt
                                 ).toLocaleDateString()}
                                 )
                               </span>
@@ -495,49 +449,128 @@ export const Staff = () => {
                   })}
                 </div>
               )}
-            <RecordData
-              data={cleanRecordData(
-                member as unknown as Record<string, unknown>,
-              )}
-            />
-            <ActionButtonContainer
-              handleDelete={() => setDeleteStaffTarget(member)}
-              handleUnassign={
-                member.metadata?.assignedToName
-                  ? () => {
-                      setUnassignTarget(member);
-                    }
-                  : undefined
-              }
-              handleAssign={
-                !member.metadata?.assignedToName
-                  ? () => setAssignStaffTarget(member)
-                  : undefined
-              }
-              handleTags={() => setTagTarget(member)}
-              handleSendLink={
-                member.email && shouldShowSendLink(member.metadata?.loginStatus)
-                  ? async () => {
-                      try {
-                        const emailCallable = httpsCallable(functions, "sendImportEmails");
-                        const result = await emailCallable({
-                          emails: [member.email],
-                          type: "worker",
-                        });
-                        const { queued } = result.data as { queued: number };
-                        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
-                      } catch {
-                        const sent = 0;
-                        const failed = 1;
-                        toast(toast_mapper[ToastType.EMAIL_FAILURE](sent, failed));
+              {Boolean(
+                (member.metadata as Record<string, unknown>)?.documents
+              ) &&
+                (
+                  (member.metadata as Record<string, unknown>)
+                    ?.documents as Record<string, unknown>[]
+                )?.length > 0 && (
+                  <div className="mb-2 flex flex-col gap-1 text-xs sm:text-sm">
+                    {(
+                      (member.metadata as Record<string, unknown>)
+                        ?.documents as Record<string, unknown>[]
+                    )?.map((entry: Record<string, unknown>, idx: number) => {
+                      const docKey = `${member.id}::${entry.fileName}`;
+                      const isDeleting = deletingDocumentKey === docKey;
+                      return (
+                        <Metadata
+                          key={docKey}
+                          title="Document"
+                          className="flex items-center animate-cascade"
+                          style={
+                            {
+                              animationDelay: `${(idx + 1) * 12}ms`,
+                            } as React.CSSProperties
+                          }
+                          value={
+                            <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                              <span className="text-[var(--muted-foreground)]">
+                                {entry.fileName as string}
+                              </span>
+                              <FileInteractionButtons
+                                fileUrl={entry.fileUrl as string}
+                                fileName={entry.fileName as string}
+                                name={getStaffName(member)}
+                                interactionKey="document"
+                                size="md"
+                                onDelete={
+                                  isDeleting
+                                    ? undefined
+                                    : () =>
+                                        handleDeleteDocument(
+                                          member.id,
+                                          entry.fileName as string
+                                        )
+                                }
+                              />
+                              {Boolean(entry.uploadedAt) && (
+                                <span className="text-zinc-400">
+                                  (
+                                  {new Date(
+                                    entry.uploadedAt as string
+                                  ).toLocaleDateString()}
+                                  )
+                                </span>
+                              )}
+                              {isDeleting && (
+                                <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
+                              )}
+                            </span>
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              <RecordData
+                data={cleanRecordData(
+                  member as unknown as Record<string, unknown>
+                )}
+              />
+              <ActionButtonContainer
+                handleDelete={() => setDeleteStaffTarget(member)}
+                handleUnassign={
+                  member.metadata?.assignedToName
+                    ? () => {
+                        setUnassignTarget(member);
                       }
-                    }
-                  : undefined
-              }
-            />
-          </AccordionItem>
-        )}
+                    : undefined
+                }
+                handleAssign={
+                  !member.metadata?.assignedToName
+                    ? () => setAssignStaffTarget(member)
+                    : undefined
+                }
+                handleTags={() => setTagTarget(member)}
+                handleSendLink={
+                  member.email &&
+                  shouldShowSendLink(member.metadata?.loginStatus)
+                    ? async () => {
+                        try {
+                          const emailCallable = httpsCallable(
+                            functions,
+                            "sendImportEmails"
+                          );
+                          const result = await emailCallable({
+                            emails: [member.email],
+                            type: "worker",
+                          });
+                          const { queued } = result.data as { queued: number };
+                          toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
+                        } catch {
+                          const sent = 0;
+                          const failed = 1;
+                          toast(
+                            toast_mapper[ToastType.EMAIL_FAILURE](sent, failed)
+                          );
+                        }
+                      }
+                    : undefined
+                }
+              />
+            </AccordionItem>
+          );
+        }}
       />
+    ) : (
+      <ImportHistory
+        type="staff"
+        cloudFunction="removeStaffImport"
+        getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
+        onDeleteSuccess={handleDeleteSuccess}
+      />
+    )}
 
       <DialogRoot
         open={unassignTarget !== null}
@@ -654,21 +687,12 @@ export const Staff = () => {
               assignStaffTarget.id,
               agencyId,
               agencyName,
-              getStaffName(assignStaffTarget),
+              getStaffName(assignStaffTarget)
             );
           setAssignStaffTarget(null);
         }}
         saving={assigningStaffId !== null}
       />
-
-      {appUser?.role === "super" && (
-        <ImportHistory
-          type="staff"
-          cloudFunction="removeStaffImport"
-          getPreviewNames={(rows) => rows.map(getStaffNameFromRawRecord)}
-          onDeleteSuccess={handleDeleteSuccess}
-        />
-      )}
     </div>
   );
 };

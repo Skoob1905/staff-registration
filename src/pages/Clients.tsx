@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { httpsCallable } from "firebase/functions";
 import { FileSignature } from "lucide-react";
 import { AssignAgenciesModal, DeleteClientModal } from "../components/modals";
@@ -20,7 +21,6 @@ import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 
 export const Clients = () => {
@@ -30,6 +30,8 @@ export const Clients = () => {
 
   const { appUser } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab") ?? "records";
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<Record<
     string,
     unknown
@@ -37,8 +39,6 @@ export const Clients = () => {
   const [deletingContract, setDeletingContract] = useState(false);
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [clientFilters, setClientFilters] = useFilterParams();
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
   const [assignAgenciesTarget, setAssignAgenciesTarget] = useState<Record<
     string,
     unknown
@@ -113,10 +113,6 @@ export const Clients = () => {
     );
   };
 
-  const handleDeleteSuccess = async () => {
-    setTimeout(() => refresh(), 2000);
-  };
-
   const handleAssignAgencies = useCallback(async () => {
     if (!assignAgenciesTarget) return;
     setAssignAgenciesLoading(true);
@@ -184,10 +180,15 @@ export const Clients = () => {
     }
   };
 
+  const handleDeleteSuccess = async () => {
+    setTimeout(() => refresh(), 2000);
+  };
+
   return (
     <div className="mx-auto space-y-4">
-      <PaginatedFilterSection
-        title="Clients"
+      {tab === "records" ? (
+        <PaginatedFilterSection
+          title="Clients"
         items={clients}
         loading={loading}
         totalResults={totalResults}
@@ -276,37 +277,34 @@ export const Clients = () => {
         onFiltersChange={handleClientFiltersChange}
         enableNameFilter
         enableTagFilter={false}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
       />
-
-      <ImportHistory
-        type="client"
-        cloudFunction="removeClients"
-        getPreviewNames={(rows) =>
-          rows.map(
-            (r) =>
-              r.business_name ||
-              r["Business Name"] ||
-              r["Company Name"] ||
-              r.Company_Name ||
-              r.company_name ||
-              findValueByNormalizedKey(
-                r,
-                "businessname",
-                "companyname",
-                "name",
-                "agencyname",
-                "organisation",
-                "company",
-              ) ||
-              "Unknown",
-          )
-        }
-        onDeleteSuccess={handleDeleteSuccess}
-      />
+      ) : (
+        <ImportHistory
+          type="client"
+          cloudFunction="removeClients"
+          getPreviewNames={(rows) =>
+            rows.map(
+              (r) =>
+                r.business_name ||
+                r["Business Name"] ||
+                r["Company Name"] ||
+                r.Company_Name ||
+                r.company_name ||
+                findValueByNormalizedKey(
+                  r,
+                  "businessname",
+                  "companyname",
+                  "name",
+                  "agencyname",
+                  "organisation",
+                  "company",
+                ) ||
+                "Unknown",
+            )
+          }
+          onDeleteSuccess={handleDeleteSuccess}
+        />
+      )}
 
       <DeleteClientModal
         open={confirmDeleteClient !== null}

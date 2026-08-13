@@ -15,7 +15,6 @@ import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 
 function getPrimaryLabel(agency: Record<string, unknown>): string {
@@ -80,8 +79,6 @@ export const ClientAgencies = () => {
   const [ready, setReady] = useState(false);
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [filters, setFilters] = useFilterParams();
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
 
   useEffect(() => {
     let cancelled = false;
@@ -303,10 +300,6 @@ export const ClientAgencies = () => {
           onFiltersChange={handleFiltersChange}
           enableNameFilter
           enableTagFilter={false}
-          leftAccordionValue={leftValue}
-          onLeftAccordionChange={onLeftChange}
-          rightAccordionValue={rightValue}
-          onRightAccordionChange={onRightChange}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { httpsCallable } from "firebase/functions";
 import { FileSignature } from "lucide-react";
 import { AddModal } from "../components/AddModal";
@@ -22,7 +22,6 @@ import { toDate } from "../utils/date";
 import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 
 export const Agencies = () => {
@@ -33,6 +32,8 @@ export const Agencies = () => {
   const { appUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab") ?? "records";
   const [confirmDeleteAgency, setConfirmDeleteAgency] = useState<Record<
     string,
     unknown
@@ -41,8 +42,6 @@ export const Agencies = () => {
 
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [clientFilters, setClientFilters] = useFilterParams();
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalFile, setAddModalFile] = useState<File | null>(null);
@@ -85,10 +84,6 @@ export const Agencies = () => {
     );
   };
 
-  const handleDeleteSuccess = async () => {
-    setTimeout(() => refresh(), 2000);
-  };
-
   const handleClientFiltersChange = useCallback(
     (filters: typeof clientFilters) => {
       setPage(0);
@@ -129,10 +124,15 @@ export const Agencies = () => {
     }
   };
 
+  const handleDeleteSuccess = async () => {
+    setTimeout(() => refresh(), 2000);
+  };
+
   return (
     <div className="mx-auto space-y-4">
-      <PaginatedFilterSection
-        title="Agencies"
+      {tab === "records" ? (
+        <PaginatedFilterSection
+          title="Agencies"
         items={clients}
         loading={loading}
         totalResults={totalResults}
@@ -211,37 +211,34 @@ export const Agencies = () => {
         onFiltersChange={handleClientFiltersChange}
         enableNameFilter
         enableTagFilter={false}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
       />
-
-      <ImportHistory
-        type="agency"
-        cloudFunction="removeAgencies"
-        getPreviewNames={(rows) =>
-          rows.map(
-            (r) =>
-              r.business_name ||
-              r["Business Name"] ||
-              r["Company Name"] ||
-              r.Company_Name ||
-              r.company_name ||
-              findValueByNormalizedKey(
-                r,
-                "businessname",
-                "companyname",
-                "name",
-                "agencyname",
-                "organisation",
-                "company",
-              ) ||
-              "Unknown",
-          )
-        }
-        onDeleteSuccess={handleDeleteSuccess}
-      />
+      ) : (
+        <ImportHistory
+          type="agency"
+          cloudFunction="removeAgencies"
+          getPreviewNames={(rows) =>
+            rows.map(
+              (r) =>
+                r.business_name ||
+                r["Business Name"] ||
+                r["Company Name"] ||
+                r.Company_Name ||
+                r.company_name ||
+                findValueByNormalizedKey(
+                  r,
+                  "businessname",
+                  "companyname",
+                  "name",
+                  "agencyname",
+                  "organisation",
+                  "company",
+                ) ||
+                "Unknown",
+            )
+          }
+          onDeleteSuccess={handleDeleteSuccess}
+        />
+      )}
 
       <AddModal
         open={showAddModal}

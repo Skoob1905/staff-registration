@@ -312,7 +312,6 @@ export const Payslips = () => {
     <div className="mx-auto space-y-4">
       <StaffListSection
         title="Payslips"
-        accordionLayout="single"
         accordionType="multiple"
         algoliaFilters="metadata.payslipsCount > 0"
         renderItem={renderItem}
