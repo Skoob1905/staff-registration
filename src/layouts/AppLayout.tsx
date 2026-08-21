@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Menu, UserCircle } from "lucide-react";
-import { Navbar } from "../components/ui";
-import { SecondaryNavbar } from "../components/SecondaryNavbar";
+import { SecondaryNavbar } from "./SecondaryNavbar";
 import { GlobalBanner } from "./GlobalBanner";
 import { useAuth } from "../context/AuthProvider";
+import { Navbar } from "./Navbar";
 
 export const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

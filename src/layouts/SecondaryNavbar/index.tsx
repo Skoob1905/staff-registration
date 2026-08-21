@@ -14,7 +14,7 @@ export const SecondaryNavbar = () => {
         else params.set("tab", next);
         return params;
       },
-      { replace: true },
+      { replace: true }
     );
 
   return (

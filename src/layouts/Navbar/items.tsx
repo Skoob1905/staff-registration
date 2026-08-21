@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { useAuth } from "../context/AuthProvider";
-import { useData } from "../context/DataProvider";
+import { useAuth } from "../../context/AuthProvider";
+import { useData } from "../../context/DataProvider";
 import {
   Building,
   Building2,
@@ -105,19 +105,19 @@ export function NavbarItems({
     role === "super"
       ? SUPER_ROUTES
       : role === "admin"
-        ? ADMIN_ROUTES
-        : role === "worker"
-          ? WORKER_ROUTES
-          : CLIENT_ROUTES;
+      ? ADMIN_ROUTES
+      : role === "worker"
+      ? WORKER_ROUTES
+      : CLIENT_ROUTES;
 
   const badgeMap =
     role === "super"
       ? SUPER_BADGE_MAP
       : role === "admin"
-        ? ADMIN_BADGE_MAP
-        : role === "client"
-          ? CLIENT_BADGE_MAP
-          : {};
+      ? ADMIN_BADGE_MAP
+      : role === "client"
+      ? CLIENT_BADGE_MAP
+      : {};
 
   return routes.map((route) => (
     <NavItem
