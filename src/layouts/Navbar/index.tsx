@@ -1,8 +1,8 @@
 import { X } from "lucide-react";
 import { logoutUser } from "../../services/authService";
-import { Button } from ".";
 import { config } from "../../config";
-import { NavbarItems } from "../NavbarItems";
+import { NavbarItems } from "./items";
+import { Button } from "../../components/ui";
 
 declare const __APP_VERSION__: string;
 
@@ -40,11 +40,7 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
         </button>
 
         <div className="flex justify-center px-4 pt-6 pb-4">
-          <a
-            href={config.homepage}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href={config.homepage} target="_blank" rel="noopener noreferrer">
             <img
               src={config.navbar}
               alt={config.name}
