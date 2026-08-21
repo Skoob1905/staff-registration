@@ -4,7 +4,7 @@ import { Menu, UserCircle } from "lucide-react";
 import { SecondaryNavbar } from "./SecondaryNavbar";
 import { GlobalBanner } from "./GlobalBanner";
 import { useAuth } from "../context/AuthProvider";
-import { Navbar } from "./Navbar";
+import { Navbar } from "./Navbar/Navbar";
 
 export const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
