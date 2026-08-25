@@ -6,10 +6,10 @@ import {
   Button,
   DeleteButton,
 } from "../components/ui";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { AccordionTitle } from "../views/Accordion";
 import { InformationCard } from "../components/InformationCard";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
-import { StaffListSection } from "../components/StaffListSection";
+import { TableView } from "../views/Table";
 import { useToast } from "../context/ToastProvider";
 import { useAuth } from "../context/AuthProvider";
 import { useAccordionParams } from "../hooks/useAccordionParams";
@@ -310,7 +310,7 @@ export const Payslips = () => {
 
   return (
     <div className="mx-auto space-y-4">
-      <StaffListSection
+      <TableView
         title="Payslips"
         accordionType="multiple"
         algoliaFilters="metadata.payslipsCount > 0"

@@ -6,28 +6,28 @@ import {
   type ReactNode,
 } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthProvider";
-import { useAppStore } from "../stores/appStore";
+import { useAuth } from "../../context/AuthProvider";
+import { useAppStore } from "../../stores/appStore";
 import { PaginatedFilterSection } from "./PaginatedFilterSection";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { useFilterParams, filtersToParams } from "../hooks/useFilterParams";
-import { usePaginationParams } from "../hooks/usePaginationParams";
-import { buildFacetRequestFields } from "../utils/loginsFilter";
+import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
+import { useFilterParams, filtersToParams } from "../../hooks/useFilterParams";
+import { usePaginationParams } from "../../hooks/usePaginationParams";
+import { buildFacetRequestFields } from "../../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
-import { Section } from "./Section";
-import { buildLoginStatusFilter } from "../utils/buildLoginStatusFilter";
+import { Section } from "../../components/Section";
+import { buildLoginStatusFilter } from "../../utils/buildLoginStatusFilter";
 import type {
   Agency,
   BulkStaff,
   FilterKeyMap,
   StaffFilters,
-} from "../types/domain";
+} from "../../types/domain";
 
-interface StaffListSectionProps {
+interface TableViewProps<T extends Record<string, unknown>> {
   action?: ReactNode;
   title?: string;
   refreshTrigger?: number;
-  renderItem: (item: BulkStaff, index: number) => ReactNode;
+  renderItem: (item: T, index: number) => ReactNode;
   agencies?: Agency[];
   targetAgencyIds?: string[];
   namesLoading?: boolean;
@@ -36,10 +36,21 @@ interface StaffListSectionProps {
   multiAccordionValue?: string[];
   onMultiAccordionChange?: (value: string[]) => void;
   algoliaFilters?: string;
-  onItemsChange?: (items: BulkStaff[]) => void;
+  onItemsChange?: (items: T[]) => void;
+
+  indexName?: string;
+  filterKeys?: FilterKeyMap;
+  enableTagFilter?: boolean;
+  enableLoginStatusFilter?: boolean;
+  columnHeaders?: string[];
 }
 
-export const StaffListSection = ({
+const defaultFilterKeys: FilterKeyMap = {
+  tag: "tags",
+  agency: "metadata.assignedToId",
+};
+
+export const TableView = <T extends Record<string, unknown> = BulkStaff>({
   action,
   title,
   refreshTrigger,
@@ -53,7 +64,13 @@ export const StaffListSection = ({
   onMultiAccordionChange,
   algoliaFilters,
   onItemsChange,
-}: StaffListSectionProps) => {
+
+  indexName = "staff_name_desc",
+  filterKeys = defaultFilterKeys,
+  enableTagFilter: tagsEnabled = true,
+  enableLoginStatusFilter: loginStatusEnabled,
+  columnHeaders = ["Name", "Email", "Assigned To", "NI Number"],
+}: TableViewProps<T>) => {
   const { appUser, role } = useAuth();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
@@ -61,11 +78,7 @@ export const StaffListSection = ({
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [, setRawSearchParams] = useSearchParams();
   const isClient = role === "client";
-
-  const staffKeyMap = useMemo<FilterKeyMap>(
-    () => ({ tag: "tags", agency: "metadata.assignedToId" }),
-    [],
-  );
+  const showLoginStatus = loginStatusEnabled ?? role === "super";
 
   const tagsMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -75,53 +88,65 @@ export const StaffListSection = ({
     return map;
   }, [tags]);
 
-  const staffFacetFilters = useMemo(() => {
+  const facetFilters = useMemo(() => {
     const ffs: string[][] = [];
 
-    for (const id of filters.tagIds) {
-      ffs.push([`${staffKeyMap.tag}:${id}`]);
+    if (tagsEnabled) {
+      for (const id of filters.tagIds) {
+        ffs.push([`${filterKeys.tag}:${id}`]);
+      }
     }
 
     if (filters.agencyIds.length > 0) {
-      ffs.push(filters.agencyIds.map((n) => `${staffKeyMap.agency}:${n}`));
+      ffs.push(filters.agencyIds.map((n) => `${filterKeys.agency}:${n}`));
     }
 
     if (targetAgencyIds) {
       if (targetAgencyIds.length === 0) {
-        ffs.push([`${staffKeyMap.agency}:__none__`]);
+        ffs.push([`${filterKeys.agency}:__none__`]);
       } else {
-        ffs.push(targetAgencyIds.map((id) => `${staffKeyMap.agency}:${id}`));
+        ffs.push(targetAgencyIds.map((id) => `${filterKeys.agency}:${id}`));
       }
     }
 
-    const loginStatus = buildLoginStatusFilter(
-      filters.loginStatusFilter ?? "all",
-    );
-    if (loginStatus.facetFilters) ffs.push(...loginStatus.facetFilters);
+    if (showLoginStatus) {
+      const loginStatus = buildLoginStatusFilter(
+        filters.loginStatusFilter ?? "all",
+      );
+      if (loginStatus.facetFilters) ffs.push(...loginStatus.facetFilters);
+    }
 
     return ffs;
-  }, [filters, staffKeyMap, targetAgencyIds]);
+  }, [
+    filters,
+    filterKeys,
+    targetAgencyIds,
+    tagsEnabled,
+    showLoginStatus,
+  ]);
 
   const combinedFilters = useMemo(() => {
     const parts: string[] = [];
     if (algoliaFilters) parts.push(`(${algoliaFilters})`);
-    const loginStatus = buildLoginStatusFilter(
-      filters.loginStatusFilter ?? "all",
-    );
-    if (loginStatus.filterExpr) parts.push(`(${loginStatus.filterExpr})`);
+    if (showLoginStatus) {
+      const loginStatus = buildLoginStatusFilter(
+        filters.loginStatusFilter ?? "all",
+      );
+      if (loginStatus.filterExpr) parts.push(`(${loginStatus.filterExpr})`);
+    }
     return parts.length > 0 ? parts.join(" AND ") : undefined;
-  }, [algoliaFilters, filters.loginStatusFilter]);
+  }, [algoliaFilters, filters.loginStatusFilter, showLoginStatus]);
 
   const facets = useMemo(
-    () => buildFacetRequestFields(staffKeyMap),
-    [staffKeyMap],
+    () => buildFacetRequestFields(filterKeys),
+    [filterKeys],
   );
 
   const searchParams = useMemo(
     () => ({
-      indexName: "staff_name_desc",
+      indexName,
       agencyId: appUser?.agencyId ?? "",
-      facetFilters: staffFacetFilters,
+      facetFilters,
       filters: combinedFilters,
       facets,
       query: filters.name,
@@ -130,7 +155,8 @@ export const StaffListSection = ({
       enabled: !namesLoading,
     }),
     [
-      staffFacetFilters,
+      indexName,
+      facetFilters,
       combinedFilters,
       facets,
       filters.name,
@@ -142,7 +168,7 @@ export const StaffListSection = ({
   );
 
   const { items, loading, refresh, totalPages, totalResults, facetCounts } =
-    usePaginatedRecords<BulkStaff>(searchParams);
+    usePaginatedRecords<T>(searchParams);
 
   const prevItems = useRef(items);
   useEffect(() => {
@@ -180,10 +206,10 @@ export const StaffListSection = ({
   }, [facetCounts, tagsMap]);
 
   const filterAgencies = useMemo(() => {
-    if (!agencies || !facetCounts?.["metadata.assignedToId"]) return agencies;
-    const counts = facetCounts["metadata.assignedToId"];
+    if (!agencies || !facetCounts?.[filterKeys.agency]) return agencies;
+    const counts = facetCounts[filterKeys.agency];
     return agencies.filter((a) => (counts[a.id] ?? 0) > 0);
-  }, [agencies, facetCounts]);
+  }, [agencies, facetCounts, filterKeys.agency]);
 
   const handleFiltersChange = useCallback(
     (newFilters: StaffFilters) => {
@@ -215,7 +241,7 @@ export const StaffListSection = ({
   return (
     <PaginatedFilterSection
       title={sectionTitle}
-      filterKeys={staffKeyMap}
+      filterKeys={filterKeys}
       items={items}
       loading={loading}
       page={page}
@@ -234,8 +260,8 @@ export const StaffListSection = ({
       enableAgencyFilter={Boolean(
         !isClient || (agencies && agencies.length > 0),
       )}
-      enableTagFilter
-      enableLoginStatusFilter={role === "super"}
+      enableTagFilter={tagsEnabled}
+      enableLoginStatusFilter={showLoginStatus}
       emptyMessage={
         isClient
           ? "You've not been assigned any staff yet"
@@ -245,7 +271,7 @@ export const StaffListSection = ({
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem}
-      columnHeaders={["#", "Name", "Email", "Assigned To", "NI Number"]}
+      columnHeaders={columnHeaders}
       accordionType={accordionType}
       multiAccordionValue={multiAccordionValue}
       onMultiAccordionChange={onMultiAccordionChange}
