@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { InvoicePills } from "../components/InvoicePills";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { AccordionTitle } from "../views/Accordion";
 import { InformationCard } from "../components/InformationCard";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { useToast } from "../context/ToastProvider";

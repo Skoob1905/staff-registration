@@ -1,10 +1,10 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Filter, Loader2 } from "lucide-react";
-import { AccordionRoot } from "./ui";
+import { AccordionRoot } from "../../components/ui";
 import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
-import { Muted } from "../config/typography";
-import type { Agency, FilterKeyMap, StaffFilters } from "../types/domain";
+import { Muted } from "../../config/typography";
+import type { Agency, FilterKeyMap, StaffFilters } from "../../types/domain";
 
 interface PaginatedFilterSectionProps<T> {
   title: string;
@@ -146,14 +146,11 @@ export const PaginatedFilterSection = <T,>({
               <div className="border-y border-[var(--border)]">
                 {columnHeaders && (
                   <div className="flex items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-foreground)] sm:px-4">
+                    <span className="w-8 shrink-0">#</span>
                     {columnHeaders.map((header, i) => (
                       <span
                         key={i}
-                        className={
-                          i === 0
-                            ? "w-8 shrink-0"
-                            : "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
-                        }
+                        className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
                       >
                         {header}
                       </span>

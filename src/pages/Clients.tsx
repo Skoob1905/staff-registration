@@ -7,21 +7,19 @@ import { ImportHistory } from "../components/ImportHistory";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
 import { AgencyPill } from "../components/Pills/AgencyPill";
-import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
+import { StaffAccordionHeader } from "../views/Accordion";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { RecordData } from "../components/RecordData";
 import { cleanRecordData } from "../utils/cleanRecordData";
 import { Metadata } from "../components/Metadata";
+import { TableView } from "../views/Table";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { getAgencyName } from "../utils/agency";
 import { functions } from "../services/firebase";
 import { toDate } from "../utils/date";
-import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { useFilterParams } from "../hooks/useFilterParams";
-import { usePaginationParams } from "../hooks/usePaginationParams";
 
 export const Clients = () => {
   useEffect(() => {
@@ -32,13 +30,13 @@ export const Clients = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get("tab") ?? "records";
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [confirmDeleteClient, setConfirmDeleteClient] = useState<Record<
     string,
     unknown
   > | null>(null);
   const [deletingContract, setDeletingContract] = useState(false);
-  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
-  const [clientFilters, setClientFilters] = useFilterParams();
   const [assignAgenciesTarget, setAssignAgenciesTarget] = useState<Record<
     string,
     unknown
@@ -48,33 +46,11 @@ export const Clients = () => {
   );
   const [assignAgenciesLoading, setAssignAgenciesLoading] = useState(false);
 
-  const {
-    items: clients,
-    loading,
-    refresh,
-    totalPages,
-    totalResults,
-  } = usePaginatedRecords({
-    indexName: "clients_name_desc",
-    agencyId: appUser?.agencyId ?? "",
-    query: clientFilters.name,
-    page,
-    hitsPerPage: pageSize,
-  });
-
   const { items: agencies } = usePaginatedRecords({
     indexName: "agencies_name_desc",
     agencyId: appUser?.agencyId ?? "",
     hitsPerPage: 1000,
   });
-
-  const agenciesMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const a of agencies) {
-      map[a.id as string] = getAgencyName(a as Record<string, unknown>);
-    }
-    return map;
-  }, [agencies]);
 
   const agencyItems = useMemo(
     () =>
@@ -113,6 +89,11 @@ export const Clients = () => {
     );
   };
 
+  const handleRefresh = useCallback(
+    () => setRefreshTrigger((n) => n + 1),
+    [],
+  );
+
   const handleAssignAgencies = useCallback(async () => {
     if (!assignAgenciesTarget) return;
     setAssignAgenciesLoading(true);
@@ -122,7 +103,7 @@ export const Clients = () => {
         clientId: assignAgenciesTarget.id as string,
         assignedAgencyIds: [...selectedAgencyIds],
       });
-      setTimeout(() => refresh(), 2000);
+      setTimeout(handleRefresh, 2000);
       setAssignAgenciesTarget(null);
       toast({
         title: "Agencies updated",
@@ -138,15 +119,7 @@ export const Clients = () => {
     } finally {
       setAssignAgenciesLoading(false);
     }
-  }, [assignAgenciesTarget, selectedAgencyIds, toast]);
-
-  const handleClientFiltersChange = useCallback(
-    (filters: typeof clientFilters) => {
-      setPage(0);
-      setClientFilters(filters);
-    },
-    [setClientFilters, setPage],
-  );
+  }, [assignAgenciesTarget, selectedAgencyIds, toast, handleRefresh]);
 
   const onDeleteContract = async () => {
     if (!confirmDeleteClient) return;
@@ -161,7 +134,7 @@ export const Clients = () => {
         variant: "success",
       });
       setConfirmDeleteClient(null);
-      refresh();
+      handleRefresh();
     } catch (error: unknown) {
       const message =
         typeof error === "object" &&
@@ -180,104 +153,78 @@ export const Clients = () => {
     }
   };
 
-  const handleDeleteSuccess = async () => {
-    setTimeout(() => refresh(), 2000);
-  };
-
   return (
     <div className="mx-auto space-y-4">
       {tab === "records" ? (
-        <PaginatedFilterSection
+        <TableView<Record<string, unknown>>
           title="Clients"
-        items={clients}
-        loading={loading}
-        totalResults={totalResults}
-        renderItem={(client, idx) => {
-          const meta = (client as Record<string, unknown>).metadata as
-            | Record<string, unknown>
-            | undefined;
-          const scName = meta?.signedContractName as string | undefined;
-          const scUrl = meta?.signedContract as string | undefined;
-          const scDate = meta?.signedContractAt as string | number | undefined;
-          return (
-            <AccordionItem
-              key={client.id as string}
-              value={client.id as string}
-              className="animate-cascade"
-              style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-              title={
-                <StaffAccordionHeader name={getPrimaryLabel(client)}>
-                  <AgencyPill record={client} />
-                  {scName && (
-                    <Pill
-                      status="signed"
-                      icon={<FileSignature className="h-4 w-4" />}
-                      label=""
+          indexName="clients_name_desc"
+          filterKeys={{ tag: "tags", agency: "metadata.uploadedBy" }}
+          enableTagFilter={false}
+          enableLoginStatusFilter={false}
+          columnHeaders={["Business Name", "Email", "Agencies"]}
+          refreshTrigger={refreshTrigger}
+          renderItem={(client, idx) => {
+            const meta = client.metadata as Record<string, unknown> | undefined;
+            const scName = meta?.signedContractName as string | undefined;
+            const scUrl = meta?.signedContract as string | undefined;
+            const scDate = meta?.signedContractAt as string | number | undefined;
+            return (
+              <AccordionItem
+                key={client.id as string}
+                value={client.id as string}
+                className="animate-cascade"
+                style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
+                columns={[
+                  <span className="tabular-nums">{idx + 1}</span>,
+                  <StaffAccordionHeader name={getPrimaryLabel(client)}>
+                    {scName && (
+                      <Pill
+                        status="signed"
+                        icon={<FileSignature className="h-4 w-4" />}
+                        label=""
+                      />
+                    )}
+                  </StaffAccordionHeader>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {(client.email as string) || "—"}
+                  </span>,
+                  <AgencyPill record={client} />,
+                ]}
+              >
+                {scName && scUrl && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <Metadata
+                      title="Signed Contract"
+                      className="animate-cascade"
+                      style={{ animationDelay: "0ms" }}
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          {scName}
+                          {scDate && toDate(scDate) && (
+                            <span className="text-zinc-400">
+                              ({toDate(scDate)!.toLocaleDateString()})
+                            </span>
+                          )}
+                        </span>
+                      }
                     />
-                  )}
-                </StaffAccordionHeader>
-              }
-            >
-              {scName && scUrl && (
-                <div className="mb-2 flex items-center gap-2">
-                  <Metadata
-                    title="Signed Contract"
-                    className="animate-cascade"
-                    style={{ animationDelay: "0ms" }}
-                    value={
-                      <span className="inline-flex items-center gap-2">
-                        {scName}
-                        {scDate && toDate(scDate) && (
-                          <span className="text-zinc-400">
-                            ({toDate(scDate)!.toLocaleDateString()})
-                          </span>
-                        )}
-                      </span>
-                    }
-                  />
-                  <DownloadButton
-                    size="md"
-                    href={scUrl}
-                    ariaLabel="Download contract"
-                  />
-                </div>
-              )}
-              {(appUser?.role === "super" || Boolean(meta?.assignedAgencies)) && (
-                <div className="flex items-center gap-2 mb-2">
-                  <Metadata
-                    title="Agencies"
-                    className="animate-cascade"
-                    style={{ animationDelay: "0ms" }}
-                    value={
-                      meta?.assignedAgencies
-                        ? (meta.assignedAgencies as string[])
-                            .map((id: string) => agenciesMap[id] || id)
-                            .join(", ")
-                        : "None"
-                    }
-                  />
-                </div>
-              )}
-              <RecordData data={cleanRecordData(client)} />
-              <ActionButtonContainer
-                handleAgencies={() => openAssignAgencies(client)}
-                handleDelete={() => setConfirmDeleteClient(client)}
-              />
-            </AccordionItem>
-          );
-        }}
-        page={page}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        onPrevPage={() => setPage(Math.max(0, page - 1))}
-        onNextPage={() => setPage(page + 1)}
-        onGoToPage={setPage}
-        onPageSizeChange={setPageSize}
-        filters={clientFilters}
-        onFiltersChange={handleClientFiltersChange}
-        enableNameFilter
-        enableTagFilter={false}
-      />
+                    <DownloadButton
+                      size="md"
+                      href={scUrl}
+                      ariaLabel="Download contract"
+                    />
+                  </div>
+                )}
+                <RecordData data={cleanRecordData(client)} />
+                <ActionButtonContainer
+                  handleAgencies={() => openAssignAgencies(client)}
+                  handleDelete={() => setConfirmDeleteClient(client)}
+                />
+              </AccordionItem>
+            );
+          }}
+        />
       ) : (
         <ImportHistory
           type="client"
@@ -302,7 +249,7 @@ export const Clients = () => {
                 "Unknown",
             )
           }
-          onDeleteSuccess={handleDeleteSuccess}
+          onDeleteSuccess={() => setTimeout(handleRefresh, 2000)}
         />
       )}
 

@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { getUser, getAgency, getAgencyByEmail } from "../services/firestore";
-import { StaffListSection } from "../components/StaffListSection";
+import { TableView } from "../views/Table";
 import { AccordionItem } from "../components/ui";
-import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
+import { StaffAccordionHeader } from "../views/Accordion";
 import { Pill } from "../components/Pill";
 import { Metadata } from "../components/Metadata";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
@@ -263,7 +263,7 @@ export const Home = () => {
 
   return (
     <div className="mx-auto space-y-4">
-      <StaffListSection
+      <TableView
         targetAgencyIds={targetAgencyIds}
         agencies={agencyList}
         namesLoading={!agencyNamesLoaded}

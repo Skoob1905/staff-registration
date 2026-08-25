@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { Caption } from "../config/typography";
+import { Caption } from "../../config/typography";
 
 interface PaginationBarProps {
   currentPage: number;
