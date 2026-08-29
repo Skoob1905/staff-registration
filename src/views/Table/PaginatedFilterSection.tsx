@@ -1,10 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Filter, Loader2 } from "lucide-react";
 import { AccordionRoot } from "../../components/ui";
-import { FilterModal } from "./FilterModal";
 import { PaginationBar } from "./PaginationBar";
 import { Muted } from "../../config/typography";
-import type { Agency, FilterKeyMap, StaffFilters } from "../../types/domain";
+import type { StaffFilters, FilterKeyMap } from "../../types/domain";
 
 interface PaginatedFilterSectionProps<T> {
   title: string;
@@ -23,18 +22,11 @@ interface PaginatedFilterSectionProps<T> {
   onPageSizeChange: (size: number) => void;
 
   filters: StaffFilters;
-  onFiltersChange: (filters: StaffFilters) => void;
-
   filterKeys?: FilterKeyMap;
   enableNameFilter?: boolean;
   enableTagFilter?: boolean;
   enableAgencyFilter?: boolean;
   enableLoginStatusFilter?: boolean;
-
-  tags?: Record<string, string>;
-  tagCounts?: Record<string, number>;
-  agencies?: Agency[];
-  agencyCounts?: Record<string, number>;
 
   emptyMessage?: string;
   noMatchMessage?: string;
@@ -44,6 +36,8 @@ interface PaginatedFilterSectionProps<T> {
   accordionType?: "single" | "multiple";
   multiAccordionValue?: string[];
   onMultiAccordionChange?: (value: string[]) => void;
+
+  expandable?: boolean;
 }
 
 export const PaginatedFilterSection = <T,>({
@@ -63,18 +57,10 @@ export const PaginatedFilterSection = <T,>({
   onPageSizeChange,
 
   filters,
-  onFiltersChange,
-
-  filterKeys,
   enableNameFilter = true,
   enableTagFilter = true,
   enableAgencyFilter = false,
   enableLoginStatusFilter = false,
-
-  tags,
-  tagCounts,
-  agencies,
-  agencyCounts,
 
   emptyMessage,
   noMatchMessage = "Oops there are no records with that filter",
@@ -84,9 +70,9 @@ export const PaginatedFilterSection = <T,>({
   accordionType = "single",
   multiAccordionValue,
   onMultiAccordionChange,
-}: PaginatedFilterSectionProps<T>) => {
-  const [showFilterModal, setShowFilterModal] = useState(false);
 
+  expandable = true,
+}: PaginatedFilterSectionProps<T>) => {
   const hasAnyFilter =
     enableNameFilter || enableTagFilter || enableAgencyFilter || enableLoginStatusFilter;
 
@@ -104,7 +90,6 @@ export const PaginatedFilterSection = <T,>({
       {hasAnyFilter && (totalResults > 0 || activeFilterCount > 0) && (
         <button
           type="button"
-          onClick={() => setShowFilterModal(true)}
           className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
         >
           <Filter className="h-3.5 w-3.5" />
@@ -119,6 +104,45 @@ export const PaginatedFilterSection = <T,>({
       {action}
     </div>
   );
+
+  const renderItems = () => {
+    if (expandable) {
+      if (accordionType === "multiple") {
+        return (
+          <AccordionRoot
+            type="multiple"
+            value={multiAccordionValue ?? []}
+            onValueChange={onMultiAccordionChange ?? (() => {})}
+          >
+            {items.map((item, idx) => renderItem(item, idx))}
+          </AccordionRoot>
+        );
+      }
+      return (
+        <AccordionRoot type="single" collapsible>
+          {items.map((item, idx) => renderItem(item, idx))}
+        </AccordionRoot>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item, idx) => {
+            const rendered = renderItem(item, idx);
+            return (
+              <div
+                key={idx}
+                className="rounded-2xl border p-3 sm:p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
+              >
+                {rendered}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -158,19 +182,7 @@ export const PaginatedFilterSection = <T,>({
                     <span className="w-4 shrink-0" />
                   </div>
                 )}
-                {accordionType === "multiple" ? (
-                  <AccordionRoot
-                    type="multiple"
-                    value={multiAccordionValue ?? []}
-                    onValueChange={onMultiAccordionChange ?? (() => {})}
-                  >
-                    {items.map((item, idx) => renderItem(item, idx))}
-                  </AccordionRoot>
-                ) : (
-                  <AccordionRoot type="single" collapsible>
-                    {items.map((item, idx) => renderItem(item, idx))}
-                  </AccordionRoot>
-                )}
+                {renderItems()}
               </div>
               <div className="px-4">
                 <PaginationBar
@@ -189,22 +201,6 @@ export const PaginatedFilterSection = <T,>({
           )}
         </div>
       </div>
-
-      <FilterModal
-        open={showFilterModal}
-        onOpenChange={setShowFilterModal}
-        filterKeys={filterKeys}
-        agencies={agencies}
-        agencyCounts={agencyCounts}
-        filters={filters}
-        onApply={onFiltersChange}
-        tags={tags}
-        tagCounts={tagCounts}
-        enableName={enableNameFilter}
-        enableTag={enableTagFilter}
-        enableAgency={enableAgencyFilter}
-        enableLoginStatus={enableLoginStatusFilter}
-      />
     </>
   );
 };

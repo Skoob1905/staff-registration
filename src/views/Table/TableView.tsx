@@ -43,6 +43,7 @@ interface TableViewProps<T extends Record<string, unknown>> {
   enableTagFilter?: boolean;
   enableLoginStatusFilter?: boolean;
   columnHeaders?: string[];
+  expandable?: boolean;
 }
 
 const defaultFilterKeys: FilterKeyMap = {
@@ -70,6 +71,7 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
   enableTagFilter: tagsEnabled = true,
   enableLoginStatusFilter: loginStatusEnabled,
   columnHeaders = ["Name", "Email", "Assigned To", "NI Number"],
+  expandable = true,
 }: TableViewProps<T>) => {
   const { appUser, role } = useAuth();
   const tags = useAppStore((s) => s.tags);
@@ -241,7 +243,6 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
   return (
     <PaginatedFilterSection
       title={sectionTitle}
-      filterKeys={filterKeys}
       items={items}
       loading={loading}
       page={page}
@@ -253,13 +254,6 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
       onGoToPage={setPage}
       onPageSizeChange={setPageSize}
       filters={filters}
-      onFiltersChange={handleFiltersChange}
-      tags={filterTagsMap}
-      tagCounts={facetCounts?.tags}
-      agencies={filterAgencies}
-      enableAgencyFilter={Boolean(
-        !isClient || (agencies && agencies.length > 0),
-      )}
       enableTagFilter={tagsEnabled}
       enableLoginStatusFilter={showLoginStatus}
       emptyMessage={
@@ -275,6 +269,7 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
       accordionType={accordionType}
       multiAccordionValue={multiAccordionValue}
       onMultiAccordionChange={onMultiAccordionChange}
+      expandable={expandable}
     />
   );
 };
