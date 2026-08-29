@@ -15,7 +15,6 @@ import {
   PreviewModal,
   type SummaryItem,
 } from "../components/modals";
-import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { callBulkUploadPayslips } from "../services/payslipService";
@@ -625,41 +624,45 @@ export const Upload = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Section title="Upload">
-        <div className="flex flex-wrap justify-center gap-3">
-          {types.map((type) => (
-            <div
-              key={type.id}
-              className="w-[calc(50%-0.375rem)] md:w-[calc(33.333%-0.5rem)] max-w-[200px]"
-            >
-              <FileDrop
-                icon={type.icon}
-                title={type.title}
-                description={type.description}
-                color={type.color}
-                acceptedFiles={type.acceptedFiles}
-                fileLimit={type.fileLimit}
-                multiple={type.multiple}
-                feint={type.id === "timesheets"}
-                noScale={type.id === "timesheets"}
-                onFileSelect={
-                  type.multiple
-                    ? undefined
-                    : (file) => handleFileSelect(file, type.id)
-                }
-                onFilesSelect={
-                  type.id === "payslips"
-                    ? handlePayslips
-                    : type.multiple
-                      ? (_files: File[]) => undefined
-                      : undefined
-                }
-              />
-            </div>
-          ))}
-        </div>
-      </Section>
+    <div className="mx-auto space-y-4">
+      <div className="flex items-center justify-between px-4">
+        <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)]">
+          Upload
+        </h2>
+      </div>
+
+      <div
+        className="grid gap-3 px-4"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+      >
+        {types.map((type) => (
+          <div key={type.id} className="mx-auto w-full max-w-[280px]">
+            <FileDrop
+              icon={type.icon}
+              title={type.title}
+              description={type.description}
+              color={type.color}
+              acceptedFiles={type.acceptedFiles}
+              fileLimit={type.fileLimit}
+              multiple={type.multiple}
+              feint={type.id === "timesheets"}
+              noScale={type.id === "timesheets"}
+              onFileSelect={
+                type.multiple
+                  ? undefined
+                  : (file) => handleFileSelect(file, type.id)
+              }
+              onFilesSelect={
+                type.id === "payslips"
+                  ? handlePayslips
+                  : type.multiple
+                    ? (_files: File[]) => undefined
+                    : undefined
+              }
+            />
+          </div>
+        ))}
+      </div>
 
       <AddModal
         open={showAddModal}
