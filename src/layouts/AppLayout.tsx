@@ -1,21 +1,16 @@
 import { useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Menu, UserCircle } from "lucide-react";
+import { Outlet, useLocation } from "react-router-dom";
+import { Menu } from "lucide-react";
 import { SecondaryNavbar } from "./SecondaryNavbar";
 import { GlobalBanner } from "./GlobalBanner";
+import { ProfileDropdown } from "./ProfileDropdown";
 import { useAuth } from "../context/AuthProvider";
 import { Navbar } from "./Navbar/Navbar";
 
 export const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { appUser } = useAuth();
-  const navigate = useNavigate();
   const { pathname } = useLocation();
-
-  const initials =
-    appUser?.firstName && appUser?.lastName
-      ? `${appUser.firstName[0]}${appUser.lastName[0]}`.toUpperCase()
-      : null;
 
   const showSecondaryNavbar =
     appUser?.role === "super" &&
@@ -51,18 +46,7 @@ export const AppLayout = () => {
           </div>
 
           <div className="flex items-center justify-end">
-            <button
-              onClick={() => void navigate("/profile")}
-              className="flex items-center gap-2 rounded-lg p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
-            >
-              {initials ? (
-                <span className="flex size-8 items-center justify-center rounded-full bg-[var(--primary-100)] text-xs font-bold text-[var(--primary)]">
-                  {initials}
-                </span>
-              ) : (
-                <UserCircle className="size-8" />
-              )}
-            </button>
+            <ProfileDropdown />
           </div>
         </header>
 

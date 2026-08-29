@@ -8,7 +8,6 @@ import {
   Upload,
   Receipt,
   Banknote,
-  UserCircle,
   HelpCircle,
   LayoutDashboard,
   type LucideIcon,
@@ -41,7 +40,6 @@ const SUPER_ROUTES: RouteDef[] = [
   { label: "UPLOAD", to: "/upload", icon: Upload },
   { label: "INVOICES", to: "/invoices", icon: Receipt },
   { label: "PAYSLIPS", to: "/payslips", icon: Banknote },
-  { label: "PROFILE", to: "/profile", icon: UserCircle },
 ];
 
 const ADMIN_ROUTES: RouteDef[] = [
@@ -49,20 +47,17 @@ const ADMIN_ROUTES: RouteDef[] = [
   { label: "STAFF", to: "/staff", icon: Users },
   { label: "INVOICES", to: "/invoices", icon: Receipt },
   { label: "PAYSLIPS", to: "/payslips", icon: Banknote },
-  { label: "PROFILE", to: "/profile", icon: UserCircle },
   { label: "SUPPORT", to: "/support", icon: HelpCircle },
 ];
 
 const CLIENT_ROUTES: RouteDef[] = [
   { label: "STAFF", to: "/staff", icon: Users },
   { label: "PAYSLIPS", to: "/payslips", icon: Banknote },
-  { label: "PROFILE", to: "/profile", icon: UserCircle },
   { label: "SUPPORT", to: "/support", icon: HelpCircle },
 ];
 
 const WORKER_ROUTES: RouteDef[] = [
   { label: "DASHBOARD", to: "/dashboard", icon: LayoutDashboard },
-  { label: "PROFILE", to: "/profile", icon: UserCircle },
   { label: "SUPPORT", to: "/support", icon: HelpCircle },
 ];
 

@@ -14,7 +14,6 @@ import { AllInvoices } from "../pages/AllInvoices";
 import { Staff } from "../pages/Staff";
 import { Home } from "../pages/Home";
 import { Invoices } from "../pages/Invoices";
-import { Profile } from "../pages/Profile";
 import { Support } from "../pages/Support";
 import { Timesheets } from "../pages/Timesheets";
 import { Upload } from "../pages/Upload";
@@ -47,12 +46,6 @@ const StaffPageSwitch = () => {
   if (appUser.role === "worker") return <Navigate to="/dashboard" replace />;
   if (appUser.role === "super") return <Staff />;
   return <Home />;
-};
-
-const ProfileSwitch = () => {
-  const { appUser } = useAuth();
-  if (!appUser) return <Navigate to="/login" replace />;
-  return <Profile />;
 };
 
 const DashboardSwitch = () => {
@@ -100,7 +93,6 @@ export const AppRouter = () => (
       <Route element={<RoleGuard role="authenticated" />}>
         <Route element={<AppLayout />}>
           <Route path="/staff" element={<StaffPageSwitch />} />
-          <Route path="/profile" element={<ProfileSwitch />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/invoices" element={<InvoicesSwitch />} />
           <Route path="/timesheets" element={<TimesheetsSwitch />} />
