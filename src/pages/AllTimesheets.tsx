@@ -5,7 +5,8 @@ import { useData } from "../context/DataProvider";
 import { useToast } from "../context/ToastProvider";
 import { TableView } from "../views/Table/TableView";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
-import { formatTimesheetDate } from "../utils/timesheets";
+import { functions } from "../services/firebase";
+import { formatTimesheetDate, type TimesheetEntry } from "../utils/timesheets";
 
 interface DeleteTarget {
   clientId: string;
@@ -28,6 +29,7 @@ export const AllTimesheets = () => {
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [openValues] = useState<string[]>([]);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -94,10 +96,7 @@ export const AllTimesheets = () => {
     const result: TimesheetEntry[] = [];
     for (const agency of agencies) {
       for (const ts of agency.timesheets) {
-        result.push({
-          ...ts,
-          _agencyName: agency.agencyName,
-        });
+        result.push(ts);
       }
     }
     return result;
@@ -111,7 +110,7 @@ export const AllTimesheets = () => {
         ) : flatTimesheets.length === 0 ? (
           <p className="text-sm text-zinc-500">No timesheets uploaded yet.</p>
         ) : (
-<TableView
+<TableView<TimesheetEntry>
               title="Timesheets"
               expandable={false}
               columnHeaders={["Columns", "File Name", "Date Sent", "Sent By"]}

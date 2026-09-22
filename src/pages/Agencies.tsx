@@ -200,7 +200,9 @@ export const Agencies = () => {
                 "Unknown",
             )
           }
-          onDeleteSuccess={() => setTimeout(handleRefresh, 2000)}
+          onDeleteSuccess={async () => {
+            setTimeout(handleRefresh, 2000);
+          }}
         />
       )}
 
@@ -217,7 +219,9 @@ export const Agencies = () => {
         csvType="agency"
         duplicateKey="companyName"
         initialFile={addModalFile}
-        onSuccess={() => setTimeout(handleRefresh, 2000)}
+        onSuccess={async () => {
+          setTimeout(handleRefresh, 2000);
+        }}
       />
 
       <PreviewModal
