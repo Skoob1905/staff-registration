@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { AddModal } from "../components/AddModal";
+import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileDrop } from "../components/FileDrop";
 import {
   MultipleFileUploadModal,
@@ -748,6 +749,21 @@ export const Upload = () => {
         isError={() => false}
         onUpload={handleStaffUpload}
         loading={uploadingStaff}
+        footerExtra={
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium sm:text-sm">Auto-assign</span>
+            <AgenciesDropdown
+              value={staffAssignedToId}
+              onChange={(id, name) => {
+                setStaffAssignedToId(id);
+                setStaffAssignedToName(name);
+              }}
+              disabled={uploadingStaff}
+              placeholder="No Assigned Agency"
+              className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs sm:text-sm"
+            />
+          </div>
+        }
       />
     </div>
   );
