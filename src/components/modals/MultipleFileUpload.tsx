@@ -37,6 +37,7 @@ interface MultipleFileUploadModalProps<T> {
   onUpload: () => void;
   displayTotal?: number;
   loading?: boolean;
+  footerExtra?: ReactNode;
 }
 
 export function MultipleFileUploadModal<T>({
@@ -53,6 +54,7 @@ export function MultipleFileUploadModal<T>({
   onUpload,
   displayTotal: displayTotalProp,
   loading = false,
+  footerExtra,
 }: MultipleFileUploadModalProps<T>) {
   const totalCount = displayTotalProp ?? files.length;
 
@@ -125,14 +127,16 @@ export function MultipleFileUploadModal<T>({
           </table>
         </div>
 
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-4 flex items-center justify-end gap-3">
+          {footerExtra && (
+            <div className="flex items-center gap-2">{footerExtra}</div>
+          )}
           <Button
             type="button"
             disabled={loading || uploadableCount === 0}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("[MultipleFileUploadModal] button onClick fired, uploadableCount:", uploadableCount);
               onUpload();
             }}
           >
