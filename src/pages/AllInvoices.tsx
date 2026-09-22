@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Section } from "../components/Section";
 import {
   DialogContent,
@@ -113,40 +113,44 @@ export const AllInvoices = () => {
             expandable={false}
             columnHeaders={["Name", "Amount", "Sent On", "Due On", "Status"]}
             renderItem={(invoice) => {
-                const isPaid = invoice.status === "paid";
-                const amount = parseFloat(invoice.amountPayable).toFixed(2);
+              const isPaid = invoice.status === "paid";
+              const amount = parseFloat(invoice.amountPayable).toFixed(2);
 
-                return (
-                  <span className="flex items-center gap-2">
-                    <span className="tabular-nums">{/* index */}</span>
-                    <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {invoice.fileName}
-                    </span>
-                    <span className="text-right text-sm font-medium">£{amount}</span>
-                    <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
-                      {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
-                      {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <span
-                      className={isPaid
-                        ? "text-green-600 font-medium"
-                        : "text-red-600 font-medium"}
-                    >
-                      {isPaid ? "Paid" : "Not Paid"}
-                    </span>
+              return (
+                <span className="flex items-center gap-2">
+                  <span className="tabular-nums">{/* index */}</span>
+                  <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {invoice.fileName}
                   </span>
-                );
-              }}
+                  <span className="text-right text-sm font-medium">
+                    £{amount}
+                  </span>
+                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
+                    {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
+                    {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <span
+                    className={
+                      isPaid
+                        ? "text-green-600 font-medium"
+                        : "text-red-600 font-medium"
+                    }
+                  >
+                    {isPaid ? "Paid" : "Not Paid"}
+                  </span>
+                </span>
+              );
+            }}
           />
         )}
       </Section>
