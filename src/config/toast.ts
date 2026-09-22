@@ -1,4 +1,5 @@
 import type { FirebaseError } from "firebase/app";
+import type { ToastPosition } from "../components/ui";
 
 export const ToastType = {
   /**
@@ -47,8 +48,11 @@ export const ToastType = {
   DUPLICATE_TIMESHEET: "DUPLICATE_TIMESHEET",
   UPLOAD_FAILED: "UPLOAD_FAILED",
   PAYSLIP_UPLOAD_START: "PAYSLIP_UPLOAD_START",
+  STAFF_UPLOAD_START: "STAFF_UPLOAD_START",
+  PAYSLIP_UPLOAD_PROGRESS: "PAYSLIP_UPLOAD_PROGRESS",
   PAYSLIP_UPLOAD_COMPLETE: "PAYSLIP_UPLOAD_COMPLETE",
   PAYSLIP_UPLOAD_PARTIAL: "PAYSLIP_UPLOAD_PARTIAL",
+  PAYSLIP_UPLOAD_DUPLICATES_SKIPPED: "PAYSLIP_UPLOAD_DUPLICATES_SKIPPED",
 } as const;
 
 export type ToastType = (typeof ToastType)[keyof typeof ToastType];
@@ -58,6 +62,8 @@ interface StaticToastConfig {
   description?: string;
   variant: "success" | "error" | "warning" | "info";
   replaceToast?: boolean;
+  duration?: number;
+  position?: ToastPosition;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,6 +299,30 @@ export const toast_mapper = {
     description: `Attempting to upload ${count} payslip${count === 1 ? "" : "s"}`,
     variant: "info",
   }),
+  [ToastType.STAFF_UPLOAD_START]: (count: number) => ({
+    title: "Uploading Staff",
+    description: `Uploading ${count} staff member${count === 1 ? "" : "s"}…`,
+    variant: "info",
+  }),
+  [ToastType.PAYSLIP_UPLOAD_PROGRESS]: (
+    currentBatch: number,
+    completedBatches: number,
+    totalBatches: number,
+    uploaded: number,
+    total: number,
+  ) => {
+    const batchLabel = `${totalBatches} batch${totalBatches === 1 ? "" : "es"}`;
+    const done = completedBatches >= totalBatches;
+    return {
+      title: "Uploading Payslips",
+      description: done
+        ? `All ${batchLabel} complete — ${uploaded}/${total} payslips`
+        : `Uploading batch ${currentBatch} of ${totalBatches} — ${completedBatches}/${totalBatches} complete, ${uploaded}/${total} payslips`,
+      variant: "info",
+      duration: Infinity,
+      position: "bottom-right",
+    };
+  },
   [ToastType.PAYSLIP_UPLOAD_COMPLETE]: (succeeded: number, total: number) => ({
     title: "Upload Complete",
     description: `${succeeded}/${total} payslip${total === 1 ? "" : "s"} uploaded`,
@@ -306,6 +336,11 @@ export const toast_mapper = {
     title: "Failed Upload",
     description: `${succeeded}/${total} uploaded — ${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
     variant: "error",
+  }),
+  [ToastType.PAYSLIP_UPLOAD_DUPLICATES_SKIPPED]: (count: number) => ({
+    title: "Duplicates Skipped",
+    description: `${count} payslip${count === 1 ? "" : "s"} already existed and ${count === 1 ? "was" : "were"} skipped.`,
+    variant: "info",
   }),
 } satisfies Record<ToastType, StaticToastConfig | DynamicToastConfig>;
 

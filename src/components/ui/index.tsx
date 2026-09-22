@@ -17,7 +17,7 @@ export {
   DialogTitle,
   DialogContent,
 } from "./dialog";
-export type { AppToast } from "./toast";
+export type { AppToast, ToastPosition } from "./toast";
 export {
   ToastProviderRoot,
   ToastViewport,

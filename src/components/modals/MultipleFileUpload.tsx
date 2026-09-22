@@ -37,6 +37,7 @@ interface MultipleFileUploadModalProps<T> {
   onUpload: () => void;
   displayTotal?: number;
   loading?: boolean;
+  closeDisabled?: boolean;
   footerExtra?: ReactNode;
 }
 
@@ -54,6 +55,7 @@ export function MultipleFileUploadModal<T>({
   onUpload,
   displayTotal: displayTotalProp,
   loading = false,
+  closeDisabled = loading,
   footerExtra,
 }: MultipleFileUploadModalProps<T>) {
   const totalCount = displayTotalProp ?? files.length;
@@ -63,7 +65,7 @@ export function MultipleFileUploadModal<T>({
       <DialogContent
         className="max-w-none flex flex-col overflow-hidden max-sm:h-[90vh] max-sm:w-[96vw] sm:h-[85vh] sm:w-[80vw]"
         onClose={() => onOpenChange(false)}
-        closeDisabled={loading}
+        closeDisabled={closeDisabled}
       >
         <DialogTitle className="text-base font-bold sm:text-lg">
           {title}

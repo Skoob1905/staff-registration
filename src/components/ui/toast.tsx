@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
 type ToastVariant = "default" | "success" | "error" | "info" | "warning";
+export type ToastPosition = "top" | "bottom-right";
 
 export interface AppToast {
   id: string;
@@ -12,12 +13,25 @@ export interface AppToast {
   description?: ReactNode;
   variant?: ToastVariant;
   icon?: ReactNode;
+  duration?: number;
+  position?: ToastPosition;
 }
 
 export const ToastProviderRoot = ToastPrimitive.Provider;
 
-export const ToastViewport = () => (
-  <ToastPrimitive.Viewport data-toast-viewport className="fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none" />
+export const ToastViewport = ({
+  position = "top",
+}: {
+  position?: ToastPosition;
+}) => (
+  <ToastPrimitive.Viewport
+    data-toast-viewport
+    className={
+      position === "bottom-right"
+        ? "fixed bottom-4 right-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] flex-col gap-2 outline-none"
+        : "fixed left-1/2 top-4 z-[9999] flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col gap-2 outline-none"
+    }
+  />
 );
 
 export const ToastItem = ({
@@ -60,7 +74,7 @@ export const ToastItem = ({
     <ToastPrimitive.Root
       open={open}
       onOpenChange={onOpenChange}
-      duration={5000}
+      duration={toast.duration ?? 5000}
       className={`group z-[9999] pointer-events-auto rounded-xl border p-4 shadow-lg ${borderColor} data-[state=open]:animate-[toast-in_250ms_ease-out_forwards] data-[state=closed]:animate-[toast-out_200ms_ease-in_forwards]`}
     >
       <div className="flex items-start justify-between gap-3">
