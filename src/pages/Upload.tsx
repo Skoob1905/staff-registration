@@ -43,6 +43,7 @@ import * as XLSX from "xlsx";
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const FILE_SIZE_LIMIT = 209715200;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const PAYSLIP_PROGRESS_TOAST_ID = "payslip-upload-progress";
 
 function parseCsvHeaders(text: string): string[] {
   const firstLine = text.trim().split("\n")[0];
@@ -168,7 +169,7 @@ export const Upload = () => {
   }, []);
 
   const { appUser } = useAuth();
-  const { toast } = useToast();
+  const { toast, dismissToast } = useToast();
   const isSuper = appUser?.role === "super";
   const isAdmin = appUser?.role === "admin";
   const types = isSuper ? SUPER_TYPES : isAdmin ? ADMIN_TYPES : CLIENT_TYPES;
@@ -310,14 +311,14 @@ export const Upload = () => {
   );
 
   const handlePayslipUpload = async () => {
+    if (uploadingPayslips) return;
+
     const eligible = payslipFiles.filter(
       (f) => !f.error && !f.isDuplicate && f.status !== "missing" && f.base64,
     );
     if (eligible.length === 0) return;
 
     setUploadingPayslips(true);
-
-    toast(toast_mapper[ToastType.PAYSLIP_UPLOAD_START](eligible.length));
 
     const entries = eligible.map((f) => ({
       fileBase64: f.base64,
@@ -327,38 +328,63 @@ export const Upload = () => {
     }));
 
     try {
-      const { results, queued } = await callBulkUploadPayslips(entries);
+      const { results, queued } = await callBulkUploadPayslips(
+        entries,
+        (progress) => {
+          toast({
+            ...toast_mapper[ToastType.PAYSLIP_UPLOAD_PROGRESS](
+              progress.currentBatch,
+              progress.completedBatches,
+              progress.totalBatches,
+              progress.uploaded,
+              progress.total,
+            ),
+            id: PAYSLIP_PROGRESS_TOAST_ID,
+          });
+        },
+      );
 
+      dismissToast(PAYSLIP_PROGRESS_TOAST_ID);
       setShowPayslipModal(false);
       setPayslipFiles([]);
 
       const succeeded = results.filter((r) => r.success).length;
-      const failed = results.length - succeeded;
+      const duplicates = results.filter((r) => r.duplicate).length;
+      const failed = results.length - succeeded - duplicates;
+      const processed = succeeded + failed;
 
-      if (failed === 0) {
+      if (processed > 0) {
+        if (failed === 0) {
+          toast(
+            toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
+              succeeded,
+              processed,
+            ),
+          );
+        } else {
+          toast(
+            toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
+              succeeded,
+              processed,
+              failed,
+            ),
+          );
+        }
+      }
+
+      if (duplicates > 0) {
         toast(
-          toast_mapper[ToastType.PAYSLIP_UPLOAD_COMPLETE](
-            succeeded,
-            results.length,
-          ),
-        );
-      } else {
-        toast(
-          toast_mapper[ToastType.PAYSLIP_UPLOAD_PARTIAL](
-            succeeded,
-            results.length,
-            failed,
-          ),
+          toast_mapper[ToastType.PAYSLIP_UPLOAD_DUPLICATES_SKIPPED](duplicates),
         );
       }
 
       if (queued > 0) {
         toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
       }
-
-      setUploadingPayslips(false);
     } catch {
+      dismissToast(PAYSLIP_PROGRESS_TOAST_ID);
       toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
+    } finally {
       setUploadingPayslips(false);
     }
   };
@@ -372,7 +398,7 @@ export const Upload = () => {
     setUploadingStaff(true);
 
     toast(
-      toast_mapper[ToastType.PAYSLIP_UPLOAD_START](newRows.length),
+      toast_mapper[ToastType.STAFF_UPLOAD_START](newRows.length),
     );
 
     try {
@@ -734,6 +760,7 @@ export const Upload = () => {
         onUpload={handlePayslipUpload}
         displayTotal={payslipFiles.length - duplicateCount}
         loading={uploadingPayslips}
+        closeDisabled={false}
       />
 
       <MultipleFileUploadModal
