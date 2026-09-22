@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useAppStore } from "../../stores/appStore";
@@ -113,26 +107,20 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
 
     if (showLoginStatus) {
       const loginStatus = buildLoginStatusFilter(
-        filters.loginStatusFilter ?? "all",
+        filters.loginStatusFilter ?? "all"
       );
       if (loginStatus.facetFilters) ffs.push(...loginStatus.facetFilters);
     }
 
     return ffs;
-  }, [
-    filters,
-    filterKeys,
-    targetAgencyIds,
-    tagsEnabled,
-    showLoginStatus,
-  ]);
+  }, [filters, filterKeys, targetAgencyIds, tagsEnabled, showLoginStatus]);
 
   const combinedFilters = useMemo(() => {
     const parts: string[] = [];
     if (algoliaFilters) parts.push(`(${algoliaFilters})`);
     if (showLoginStatus) {
       const loginStatus = buildLoginStatusFilter(
-        filters.loginStatusFilter ?? "all",
+        filters.loginStatusFilter ?? "all"
       );
       if (loginStatus.filterExpr) parts.push(`(${loginStatus.filterExpr})`);
     }
@@ -141,7 +129,7 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
 
   const facets = useMemo(
     () => buildFacetRequestFields(filterKeys),
-    [filterKeys],
+    [filterKeys]
   );
 
   const searchParams = useMemo(
@@ -166,7 +154,7 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
       pageSize,
       appUser?.agencyId,
       namesLoading,
-    ],
+    ]
   );
 
   const { items, loading, refresh, totalPages, totalResults, facetCounts } =
@@ -200,31 +188,31 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
     loadTags().catch(() => {});
   }, [loadTags]);
 
-  const filterTagsMap = useMemo(() => {
-    if (!facetCounts?.tags) return tagsMap;
-    return Object.fromEntries(
-      Object.entries(tagsMap).filter(([id]) => (facetCounts.tags[id] ?? 0) > 0),
-    );
-  }, [facetCounts, tagsMap]);
+  // const filterTagsMap = useMemo(() => {
+  //   if (!facetCounts?.tags) return tagsMap;
+  //   return Object.fromEntries(
+  //     Object.entries(tagsMap).filter(([id]) => (facetCounts.tags[id] ?? 0) > 0),
+  //   );
+  // }, [facetCounts, tagsMap]);
 
-  const filterAgencies = useMemo(() => {
-    if (!agencies || !facetCounts?.[filterKeys.agency]) return agencies;
-    const counts = facetCounts[filterKeys.agency];
-    return agencies.filter((a) => (counts[a.id] ?? 0) > 0);
-  }, [agencies, facetCounts, filterKeys.agency]);
+  // const filterAgencies = useMemo(() => {
+  //   if (!agencies || !facetCounts?.[filterKeys.agency]) return agencies;
+  //   const counts = facetCounts[filterKeys.agency];
+  //   return agencies.filter((a) => (counts[a.id] ?? 0) > 0);
+  // }, [agencies, facetCounts, filterKeys.agency]);
 
-  const handleFiltersChange = useCallback(
-    (newFilters: StaffFilters) => {
-      setFilters(newFilters);
-      setRawSearchParams((prev) => {
-        const next = filtersToParams(new URLSearchParams(prev), newFilters);
-        next.set("page", "1");
-        next.set("size", String(pageSize));
-        return next;
-      }, { replace: true });
-    },
-    [pageSize, setRawSearchParams, setFilters],
-  );
+  // const handleFiltersChange = useCallback(
+  //   (newFilters: StaffFilters) => {
+  //     setFilters(newFilters);
+  //     setRawSearchParams((prev) => {
+  //       const next = filtersToParams(new URLSearchParams(prev), newFilters);
+  //       next.set("page", "1");
+  //       next.set("size", String(pageSize));
+  //       return next;
+  //     }, { replace: true });
+  //   },
+  //   [pageSize, setRawSearchParams, setFilters],
+  // );
 
   const sectionTitle =
     title ??
@@ -260,8 +248,8 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
         isClient
           ? "You've not been assigned any staff yet"
           : role === "admin"
-            ? "No staff assigned to your agencies"
-            : undefined
+          ? "No staff assigned to your agencies"
+          : undefined
       }
       action={!isClient ? action : undefined}
       renderItem={renderItem}
