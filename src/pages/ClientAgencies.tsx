@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileSignature, Loader2 } from "lucide-react";
 import { getUser, getClientByEmail } from "../services/firestore";
@@ -78,7 +78,7 @@ export const ClientAgencies = () => {
   const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
-  const [filters, setFilters] = useFilterParams();
+  const [filters] = useFilterParams();
 
   useEffect(() => {
     let cancelled = false;
@@ -169,14 +169,6 @@ export const ClientAgencies = () => {
     hitsPerPage: pageSize,
     enabled: ready,
   });
-
-  const handleFiltersChange = useCallback(
-    (newFilters: typeof filters) => {
-      setPage(0);
-      setFilters(newFilters);
-    },
-    [setFilters, setPage],
-  );
 
   if (!ready || (agencies.length === 0 && loading)) {
     return (
@@ -297,7 +289,6 @@ export const ClientAgencies = () => {
           onGoToPage={setPage}
           onPageSizeChange={setPageSize}
           filters={filters}
-          onFiltersChange={handleFiltersChange}
           enableNameFilter
           enableTagFilter={false}
         />

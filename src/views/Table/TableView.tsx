@@ -1,23 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { useAppStore } from "../../stores/appStore";
 import { PaginatedFilterSection } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
-import { useFilterParams, filtersToParams } from "../../hooks/useFilterParams";
+import { useFilterParams } from "../../hooks/useFilterParams";
 import { usePaginationParams } from "../../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
 import { Section } from "../../components/Section";
 import { buildLoginStatusFilter } from "../../utils/buildLoginStatusFilter";
-import type {
-  Agency,
-  BulkStaff,
-  FilterKeyMap,
-  StaffFilters,
-} from "../../types/domain";
+import type { Agency, BulkStaff, FilterKeyMap } from "../../types/domain";
 
-interface TableViewProps<T extends Record<string, unknown>> {
+interface TableViewProps<T extends object> {
   action?: ReactNode;
   title?: string;
   refreshTrigger?: number;
@@ -45,12 +39,11 @@ const defaultFilterKeys: FilterKeyMap = {
   agency: "metadata.assignedToId",
 };
 
-export const TableView = <T extends Record<string, unknown> = BulkStaff>({
+export const TableView = <T extends object = BulkStaff>({
   action,
   title,
   refreshTrigger,
   renderItem,
-  agencies,
   targetAgencyIds,
   namesLoading,
 
@@ -68,21 +61,11 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
   expandable = true,
 }: TableViewProps<T>) => {
   const { appUser, role } = useAuth();
-  const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
-  const [filters, setFilters] = useFilterParams();
+  const [filters] = useFilterParams();
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
-  const [, setRawSearchParams] = useSearchParams();
   const isClient = role === "client";
   const showLoginStatus = loginStatusEnabled ?? role === "super";
-
-  const tagsMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const tag of tags) {
-      map[tag.id] = tag.value;
-    }
-    return map;
-  }, [tags]);
 
   const facetFilters = useMemo(() => {
     const ffs: string[][] = [];
@@ -157,7 +140,7 @@ export const TableView = <T extends Record<string, unknown> = BulkStaff>({
     ]
   );
 
-  const { items, loading, refresh, totalPages, totalResults, facetCounts } =
+  const { items, loading, refresh, totalPages, totalResults } =
     usePaginatedRecords<T>(searchParams);
 
   const prevItems = useRef(items);

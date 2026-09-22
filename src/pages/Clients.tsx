@@ -249,7 +249,9 @@ export const Clients = () => {
                 "Unknown",
             )
           }
-          onDeleteSuccess={() => setTimeout(handleRefresh, 2000)}
+          onDeleteSuccess={async () => {
+            setTimeout(handleRefresh, 2000);
+          }}
         />
       )}
 

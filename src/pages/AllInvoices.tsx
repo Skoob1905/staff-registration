@@ -108,7 +108,7 @@ export const AllInvoices = () => {
         ) : flatInvoices.length === 0 ? (
           <p className="text-sm text-zinc-500">No invoices found.</p>
         ) : (
-          <TableView
+          <TableView<InvoiceEntry>
             title="Invoices"
             expandable={false}
             columnHeaders={["Name", "Amount", "Sent On", "Due On", "Status"]}
