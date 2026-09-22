@@ -2,6 +2,7 @@ import { httpsCallable } from "firebase/functions";
 import { getStaffByEmail, getPayslip } from "./firestore";
 import { functions } from "./firebase";
 import { editFileName } from "../utils/fileUpload/editFileName";
+import { chunkByBase64Size } from "../utils/chunkByBase64Size";
 import type { Payslip } from "../types/domain";
 
 export const callUploadPayslip = async (
@@ -28,18 +29,56 @@ interface BulkEntry {
 interface BulkResult {
   fileName: string;
   success: boolean;
+  duplicate?: boolean;
   error?: string;
 }
 
+export interface BulkUploadProgress {
+  currentBatch: number;
+  completedBatches: number;
+  totalBatches: number;
+  uploaded: number;
+  total: number;
+}
+
+const PAYSLIP_BATCH_SIZE = 50;
+
 export const callBulkUploadPayslips = async (
   entries: BulkEntry[],
+  onProgress?: (progress: BulkUploadProgress) => void,
 ): Promise<{ results: BulkResult[]; queued: number }> => {
   const callable = httpsCallable<
     { payslips: BulkEntry[] },
     { ok: boolean; results: BulkResult[]; queued: number }
   >(functions, "bulkUploadPayslips");
-  const result = await callable({ payslips: entries });
-  return result.data;
+
+  const batches = chunkByBase64Size(entries, undefined, PAYSLIP_BATCH_SIZE);
+  const results: BulkResult[] = [];
+  let queued = 0;
+
+  for (let i = 0; i < batches.length; i++) {
+    onProgress?.({
+      currentBatch: i + 1,
+      completedBatches: i,
+      totalBatches: batches.length,
+      uploaded: results.length,
+      total: entries.length,
+    });
+
+    const result = await callable({ payslips: batches[i] });
+    results.push(...result.data.results);
+    queued += result.data.queued ?? 0;
+
+    onProgress?.({
+      currentBatch: i + 1,
+      completedBatches: i + 1,
+      totalBatches: batches.length,
+      uploaded: results.length,
+      total: entries.length,
+    });
+  }
+
+  return { results, queued };
 };
 
 const blobToBase64 = (file: File): Promise<string> =>
