@@ -1,21 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileSignature, Loader2 } from "lucide-react";
 import { getUser, getClientByEmail } from "../services/firestore";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
 import { AssignedStaff } from "../components/Pills/AssignedStaff";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { AccordionTitle } from "../views/Accordion";
 import { Metadata } from "../components/Metadata";
 import { Section } from "../components/Section";
 import { Muted } from "../config/typography";
 import { useAuth } from "../context/AuthProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { toDate } from "../utils/date";
-import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
+import { PaginatedFilterSection } from "../views/Table";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 
 function getPrimaryLabel(agency: Record<string, unknown>): string {
@@ -79,9 +78,7 @@ export const ClientAgencies = () => {
   const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
-  const [filters, setFilters] = useFilterParams();
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
+  const [filters] = useFilterParams();
 
   useEffect(() => {
     let cancelled = false;
@@ -172,14 +169,6 @@ export const ClientAgencies = () => {
     hitsPerPage: pageSize,
     enabled: ready,
   });
-
-  const handleFiltersChange = useCallback(
-    (newFilters: typeof filters) => {
-      setPage(0);
-      setFilters(newFilters);
-    },
-    [setFilters, setPage],
-  );
 
   if (!ready || (agencies.length === 0 && loading)) {
     return (
@@ -300,13 +289,8 @@ export const ClientAgencies = () => {
           onGoToPage={setPage}
           onPageSizeChange={setPageSize}
           filters={filters}
-          onFiltersChange={handleFiltersChange}
           enableNameFilter
           enableTagFilter={false}
-          leftAccordionValue={leftValue}
-          onLeftAccordionChange={onLeftChange}
-          rightAccordionValue={rightValue}
-          onRightAccordionChange={onRightChange}
         />
       )}
     </div>

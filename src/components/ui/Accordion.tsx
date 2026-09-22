@@ -9,13 +9,15 @@ export const AccordionRoot = Accordion.Root;
 export const AccordionItem = ({
   value,
   title,
+  columns,
   children,
   actions,
   className,
   style,
 }: {
   value: string;
-  title: ReactNode;
+  title?: ReactNode;
+  columns?: ReactNode[];
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -28,7 +30,23 @@ export const AccordionItem = ({
   >
     <Accordion.Header className="group/header flex items-center">
       <Accordion.Trigger className="flex w-full items-center justify-between gap-3 px-3 py-2 min-h-[3rem] text-left text-sm font-semibold text-[var(--foreground)] sm:px-4 sm:text-sm">
-        <span className="min-w-0 flex-1 font-semibold">{title}</span>
+        {columns ? (
+          <>
+            <span className="w-8 shrink-0 text-[var(--muted-foreground)]">
+              {columns[0]}
+            </span>
+            {columns.slice(1).map((cell, i) => (
+              <span
+                key={i}
+                className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+              >
+                {cell}
+              </span>
+            ))}
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 font-semibold">{title}</span>
+        )}
         {actions && (
           <div
             className="hidden sm:flex shrink-0 items-center gap-2"

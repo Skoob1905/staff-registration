@@ -7,7 +7,7 @@ function hasParams(searchParams: URLSearchParams): boolean {
   return searchParams.has("page") || searchParams.has("size");
 }
 
-export function usePaginationParams(defaultPageSize = 10) {
+export function usePaginationParams(defaultPageSize = 25) {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
 

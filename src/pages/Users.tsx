@@ -22,9 +22,8 @@ import { formatInvitedAt } from "../utils/date";
 import { getAgencyName } from "../utils/agency";
 import { Muted } from "../config/typography";
 import { config } from "../config";
-import { AccordionTitle } from "../components/AccordionTitle";
-import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+import { AccordionTitle } from "../views/Accordion";
+import { PaginatedFilterSection } from "../views/Table";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
@@ -32,10 +31,7 @@ import {
   buildFacetFilters,
   buildFacetRequestFields,
 } from "../utils/loginsFilter";
-import {
-  type Agency,
-  type FilterKeyMap,
-} from "../types/domain";
+import { type FilterKeyMap } from "../types/domain";
 
 const STATUS_COLOR: Record<string, string> = {
   awaiting_login: "bg-amber-400",
@@ -91,9 +87,8 @@ export const Users = () => {
     hitsPerPage: 1000,
   });
 
-  const [loginsFilters, setLoginsFilters] = useFilterParams();
+  const [loginsFilters] = useFilterParams();
   const { page: loginsPage, pageSize: loginsPageSize, setPage: setLoginsPage, setPageSize: setLoginsPageSize } = usePaginationParams(50);
-  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   const loginsKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "assignedTo" }),
@@ -115,7 +110,6 @@ export const Users = () => {
     loading: loginsLoading,
     totalPages: loginsTotalPages,
     totalResults: loginsTotalResults,
-    facetCounts: loginsFacetCounts,
     refresh: refreshLogins,
   } = usePaginatedRecords({
     indexName: "logins_email_desc",
@@ -126,14 +120,6 @@ export const Users = () => {
     hitsPerPage: loginsPageSize,
     facets: loginsFacets,
   });
-
-  const loginsAgencyCounts = loginsFacetCounts?.assignedTo;
-  const filteredLoginsAgencies = useMemo(() => {
-    if (!loginsAgencyCounts) return companies;
-    return companies.filter(
-      (a) => (loginsAgencyCounts[a.id as string] ?? 0) > 0,
-    );
-  }, [loginsAgencyCounts, companies]);
 
   const fetchMissingCompanies = useCallback(async () => {
     if (!appUser?.agencyId) return;
@@ -267,14 +253,6 @@ export const Users = () => {
     }
   };
 
-  const handleLoginsFiltersChange = useCallback(
-    (filters: typeof loginsFilters) => {
-      setLoginsPage(0);
-      setLoginsFilters(filters);
-    },
-    [setLoginsFilters, setLoginsPage],
-  );
-
   return (
     <div className="mx-auto space-y-4">
       <PaginatedFilterSection
@@ -291,15 +269,8 @@ export const Users = () => {
         onPageSizeChange={setLoginsPageSize}
         filterKeys={loginsKeyMap}
         filters={loginsFilters}
-        onFiltersChange={handleLoginsFiltersChange}
         enableAgencyFilter
         enableTagFilter={false}
-        agencies={filteredLoginsAgencies as unknown as Agency[]}
-        agencyCounts={loginsAgencyCounts}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
         emptyMessage="No users created yet."
         action={
           <Button

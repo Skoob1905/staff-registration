@@ -6,17 +6,17 @@ import {
   DialogRoot,
   DialogTitle,
   Input,
-} from "./ui";
+} from "../../components/ui";
 import type {
   Agency,
   FilterKeyMap,
   LoginStatusValue,
   StaffFilters,
-} from "../types/domain";
-import { getAgencyName } from "../utils/agency";
-import { getTagName } from "../utils/getTagName";
-import { H1, H2, Muted } from "../config/typography";
-import { IsLoggedIn } from "./filters/IsLoggedIn";
+} from "../../types/domain";
+import { getAgencyName } from "../../utils/agency";
+import { getTagName } from "../../utils/getTagName";
+import { H1, H2, Muted } from "../../config/typography";
+import { IsLoggedIn } from "./IsLoggedIn";
 
 interface FilterModalProps {
   open: boolean;

@@ -1,33 +1,42 @@
-import { useState } from "react";
-import { useAccordionParams } from "../hooks/useAccordionParams";
-import { Check, Loader2 } from "lucide-react";
-import {
-  AccordionAction,
-  AccordionRoot,
-  AccordionItem,
-  Button,
-  DeleteButton,
-} from "../components/ui";
+import { useState, useMemo } from "react";
+import { Loader2 } from "lucide-react";
 import { Section } from "../components/Section";
 import {
   DialogContent,
   DialogRoot,
   DialogTitle,
 } from "../components/ui/dialog";
-import { InvoicePills } from "../components/InvoicePills";
-import { AccordionTitle } from "../components/AccordionTitle";
-import { InformationCard } from "../components/InformationCard";
-import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
-import { useToast } from "../context/ToastProvider";
+import { Button } from "../components/ui";
 import { useData } from "../context/DataProvider";
-import {
-  deleteInvoice,
-  markInvoicePaid,
-} from "../services/invoiceService";
+import { useToast } from "../context/ToastProvider";
+import { TableView } from "../views/Table/TableView";
+import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
+import { deleteInvoice, markInvoicePaid } from "../services/invoiceService";
+
+interface InvoiceEntry {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  dueDate: string;
+  amountPayable: string;
+  agencyName: string;
+  agencyId: string;
+  status: "unpaid" | "paid" | "review";
+  paidAt?: string;
+  paidBy?: string;
+  hasSeen?: boolean;
+  hasDownloaded?: boolean;
+}
 
 export const AllInvoices = () => {
   const { toast } = useToast();
-  const { invoices: agencies, invoicesLoading: loading, refreshInvoices, markDownloaded } = useData();
+  const {
+    invoices: agencies,
+    invoicesLoading: loading,
+    refreshInvoices,
+  } = useData();
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{
     agencyId: string;
@@ -42,8 +51,6 @@ export const AllInvoices = () => {
     clientName: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  const { openValues, handleAccordionChange } = useAccordionParams();
 
   const handleMarkPaid = async (agencyId: string, invoiceId: string) => {
     setPayingInvoice(invoiceId);
@@ -78,145 +85,73 @@ export const AllInvoices = () => {
     }
   };
 
+  // Flatten invoices from agency-grouped format to flat array
+  const flatInvoices = useMemo(() => {
+    const result: InvoiceEntry[] = [];
+    for (const agency of agencies) {
+      for (const inv of agency.invoices) {
+        result.push({
+          ...inv,
+        });
+      }
+    }
+    return result;
+  }, [agencies]);
+
   return (
     <div className="space-y-4">
       <Section title="Invoices">
-
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
           </div>
-        ) : agencies.length === 0 ? (
+        ) : flatInvoices.length === 0 ? (
           <p className="text-sm text-zinc-500">No invoices found.</p>
         ) : (
-          <div>
-            <AccordionRoot
-              type="multiple"
-              value={openValues}
-              onValueChange={handleAccordionChange}
-            >
-              {agencies.map((agency, idx) => {
-                const latestInvoice = agency.invoices.reduce((a, b) =>
-                  new Date(a.uploadedAt) > new Date(b.uploadedAt) ? a : b,
-                );
-                const latestDate = new Date(latestInvoice.uploadedAt).toLocaleDateString(
-                  "en-GB",
-                  { day: "numeric", month: "short", year: "numeric" },
-                );
-                return (
-                <AccordionItem
-                  key={agency.agencyId}
-                  value={agency.agencyId}
-                  className="animate-cascade"
-                  style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-                  title={
-                    <span className="flex items-center gap-2">
-                      <AccordionTitle>{agency.agencyName}</AccordionTitle>
-                      <InvoicePills invoices={agency.invoices} />
-                    </span>
-                  }
-                  actions={
-                    <AccordionAction>
-                      {"Latest upload: " + latestDate}
-                    </AccordionAction>
-                  }
-                >
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {agency.invoices.map((inv) => {
-                      const isPaid = inv.status === "paid";
-                      const amount = parseFloat(inv.amountPayable).toFixed(2);
+          <TableView<InvoiceEntry>
+            title="Invoices"
+            expandable={false}
+            columnHeaders={["Name", "Amount", "Sent On", "Due On", "Status"]}
+            renderItem={(invoice) => {
+              const isPaid = invoice.status === "paid";
+              const amount = parseFloat(invoice.amountPayable).toFixed(2);
 
-                      return (
-                        <InformationCard
-                          key={inv.id}
-                          variant="invoice"
-                          name={inv.fileName}
-                          isNew={inv.hasSeen === false}
-                          hasDownloaded={!!inv.hasDownloaded}
-                          uploadedAt={inv.uploadedAt}
-                          admin
-                          documentInfo={
-                            <span
-                              className="text-lg sm:text-xl font-bold tracking-tight"
-                              style={{ color: isPaid ? "var(--accent)" : "var(--primary)" }}
-                            >
-                              <span className="text-xs sm:text-sm">£</span>
-                              {amount}
-                            </span>
-                          }
-                          infoBottom={
-                            <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                              Due:{" "}
-                              {new Date(inv.dueDate).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </span>
-                          }
-                          actions={
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <Button
-                                  type="button"
-                                  onClick={() => {
-                                    window.open(inv.fileUrl, "_blank", "noopener,noreferrer");
-                                    markDownloaded("invoices", agency.agencyId, [inv.id]).catch(() => {});
-                                  }}
-                                >
-                                  Download
-                                </Button>
-                                <DeleteButton
-                                  onClick={() => {
-                                    setDeleteTarget({
-                                      agencyId: agency.agencyId,
-                                      invoiceId: inv.id,
-                                      fileName: inv.fileName,
-                                      clientName: agency.agencyName,
-                                    });
-                                  }}
-                                />
-                              </div>
-
-                              {isPaid ? (
-                                <span className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-green-500/80 text-white shadow-[0_2px_8px_rgba(34,197,94,0.25)]">
-                                  <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                </span>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  disabled={payingInvoice === inv.id}
-                                  onClick={() =>
-                                    setConfirmPaid({
-                                      agencyId: agency.agencyId,
-                                      invoiceId: inv.id,
-                                      fileName: inv.fileName,
-                                      clientName: agency.agencyName,
-                                    })
-                                  }
-                                  className="h-7 px-2.5 sm:h-8 sm:px-3 text-[10px] sm:text-[11px]"
-                                >
-                                  {payingInvoice === inv.id ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                      Paying...
-                                    </span>
-                                  ) : (
-                                    "Mark as Paid"
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          }
-                        />
-                      );
+              return (
+                <span className="flex items-center gap-2">
+                  <span className="tabular-nums">{/* index */}</span>
+                  <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {invoice.fileName}
+                  </span>
+                  <span className="text-right text-sm font-medium">
+                    £{amount}
+                  </span>
+                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
+                    {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
                     })}
-                  </div>
-                </AccordionItem>
+                  </span>
+                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
+                    {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <span
+                    className={
+                      isPaid
+                        ? "text-green-600 font-medium"
+                        : "text-red-600 font-medium"
+                    }
+                  >
+                    {isPaid ? "Paid" : "Not Paid"}
+                  </span>
+                </span>
               );
-            })}
-            </AccordionRoot>
-          </div>
+            }}
+          />
         )}
       </Section>
 

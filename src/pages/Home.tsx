@@ -4,14 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import { useAppStore } from "../stores/appStore";
 import { getUser, getAgency, getAgencyByEmail } from "../services/firestore";
-import { StaffListSection } from "../components/StaffListSection";
-import { AccordionAction, AccordionItem } from "../components/ui";
-import { StaffAccordionHeader } from "../components/StaffAccordionHeader";
+import { TableView } from "../views/Table";
+import { AccordionItem } from "../components/ui";
+import { StaffAccordionHeader } from "../views/Accordion";
 import { Pill } from "../components/Pill";
 import { Metadata } from "../components/Metadata";
 import { FileInteractionButtons } from "../components/FileInteractionButtons";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
-import { getStaffName } from "../utils/keyHeaderNormalisation";
+import { getStaffName, findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { formatInvitedAt } from "../utils/date";
 import { getTagName } from "../utils/getTagName";
 import { getAgencyName } from "../utils/agency";
@@ -26,8 +25,6 @@ export const Home = () => {
   const navigate = useNavigate();
   const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
 
   const [agencyIds, setAgencyIds] = useState<string[]>([]);
   const [agencyList, setAgencyList] = useState<Agency[]>([]);
@@ -101,13 +98,16 @@ export const Home = () => {
   const renderItem = useCallback(
     (member: BulkStaff, idx: number) => {
       const displayName = getStaffName(member);
+      const raw = member as unknown as Record<string, unknown>;
+      const niNumber = findValueByNormalizedKey(raw, "ni number");
       return (
         <AccordionItem
           key={member.id}
           value={member.id}
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-          title={
+          columns={[
+            <span className="tabular-nums">{idx + 1}</span>,
             <StaffAccordionHeader
               name={displayName}
               loginStatus={member.metadata?.loginStatus}
@@ -130,15 +130,17 @@ export const Home = () => {
                       }
                     />
                 )}
-            </StaffAccordionHeader>
-          }
-          actions={
-            member.metadata?.assignedToName ? (
-              <AccordionAction>
-                {member.metadata.assignedToName}
-              </AccordionAction>
-            ) : null
-          }
+            </StaffAccordionHeader>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {member.email || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {member.metadata?.assignedToName || "—"}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {niNumber || "—"}
+            </span>,
+          ]}
         >
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
             <Metadata
@@ -261,15 +263,11 @@ export const Home = () => {
 
   return (
     <div className="mx-auto space-y-4">
-      <StaffListSection
+      <TableView
         targetAgencyIds={targetAgencyIds}
         agencies={agencyList}
         namesLoading={!agencyNamesLoaded}
         renderItem={renderItem}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
       />
     </div>
   );

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { ActionButton, Button, Card, DialogContent, DialogRoot, DialogTitle, DownloadButton } from "./ui";
+import { ActionButton, Button, DialogContent, DialogRoot, DialogTitle, DownloadButton } from "./ui";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { functions } from "../services/firebase";
 import { formatInvitedAt } from "../utils/date";
 import { useAppStore, type CsvImport } from "../stores/appStore";
 import { useFileStaffStore } from "../stores/fileStaffStore";
-import { BodyMedium, Caption, Muted } from "../config/typography";
+import { Muted } from "../config/typography";
 
 type CsvRow = Record<string, string>;
 
@@ -198,23 +198,58 @@ export const ImportHistory = ({
 
   return (
     <>
-      <Card>
-        <h2 className="text-base sm:text-lg font-bold">Import History</h2>
-        {loading ? (
-          <Muted className="mt-3">
-            Loading...
-          </Muted>
-        ) : history.length === 0 ? (
-          <Muted className="mt-3">
-            No imports yet.
-          </Muted>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {history.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center rounded-xl border border-[var(--border)] bg-[color:rgba(0,95,87,0.04)] px-3 py-2"
-              >
+      <h2 className="px-4 text-base sm:text-lg font-bold text-[var(--foreground)]">Import History</h2>
+      {loading ? (
+        <Muted className="mt-3">
+          Loading...
+        </Muted>
+      ) : history.length === 0 ? (
+        <Muted className="mt-3">
+          No imports yet.
+        </Muted>
+      ) : (
+        <div className="mt-1.5 sm:mt-3 overflow-hidden border-y border-[var(--border)]">
+          <div className="flex items-center gap-3 border-b border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-foreground)] sm:px-4">
+            <span className="w-8 shrink-0">#</span>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">Filename</span>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">Date Added</span>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">Uploaded By</span>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">Records Added</span>
+            <span className="w-6 shrink-0" />
+            <span className="w-6 shrink-0" />
+          </div>
+          {history.map((entry, idx) => (
+            <div
+              key={entry.id}
+              className="flex items-center gap-3 border-b border-[var(--border)] px-3 py-2 last:border-b-0 sm:px-4"
+            >
+              <span className="w-8 shrink-0 tabular-nums text-[var(--muted-foreground)]">
+                {idx + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-semibold text-[var(--foreground)]">
+                {entry.fileName}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-[var(--muted-foreground)]">
+                {entry.importedAt
+                  ? formatInvitedAt(entry.importedAt)
+                  : "Unknown date"}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-[var(--muted-foreground)]">
+                {entry.importedByEmail ?? "Unknown"}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-[var(--muted-foreground)]">
+                {entry.recordCount}
+              </span>
+              <div className="flex w-6 shrink-0 justify-center">
+                {entry.fileUrl ? (
+                  <DownloadButton
+                    size="md"
+                    href={entry.fileUrl}
+                    ariaLabel="Download CSV"
+                  />
+                ) : null}
+              </div>
+              <div className="flex w-6 shrink-0 justify-center">
                 <ActionButton
                   variant="delete"
                   size="md"
@@ -222,31 +257,11 @@ export const ImportHistory = ({
                   disabled={deleteTarget?.id === entry.id && deleteLoading}
                   onClick={() => onDeleteClick(entry)}
                 />
-                {entry.fileUrl ? (
-                  <DownloadButton
-                    size="md"
-                    href={entry.fileUrl}
-                    ariaLabel="Download CSV"
-                    className="ml-1.5"
-                  />
-                ) : null}
-                <div className="ml-2 min-w-0 flex-1">
-                  <BodyMedium className="truncate">
-                    {entry.fileName}
-                  </BodyMedium>
-                  <Caption>
-                    {entry.recordCount} record(s) &middot;{" "}
-                    {entry.importedByEmail ?? "Unknown"} &middot;{" "}
-                    {entry.importedAt
-                      ? formatInvitedAt(entry.importedAt)
-                      : "Unknown date"}
-                  </Caption>
-                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            </div>
+          ))}
+        </div>
+      )}
 
       <DialogRoot
         open={deleteTarget !== null}
