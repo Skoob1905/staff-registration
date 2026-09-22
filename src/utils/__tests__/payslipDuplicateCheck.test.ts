@@ -63,6 +63,34 @@ describe("checkDuplicatePayslip", () => {
     ]);
   });
 
+  it("marks a repeated workerRef + displayName within the batch as duplicate", async () => {
+    const fetchExistingNames = async () => [];
+    const result = await checkDuplicatePayslip(
+      [
+        { workerRef: "ABC123", displayName: "Payslip for Week 10.pdf" },
+        { workerRef: "ABC123", displayName: "Payslip for Week 10.pdf" },
+        { workerRef: "ABC123", displayName: "Payslip for Week 11.pdf" },
+      ],
+      fetchExistingNames,
+    );
+    expect(result).toEqual([
+      { workerRef: "ABC123", displayName: "Payslip for Week 10.pdf", isDuplicate: false },
+      { workerRef: "ABC123", displayName: "Payslip for Week 10.pdf", isDuplicate: true },
+      { workerRef: "ABC123", displayName: "Payslip for Week 11.pdf", isDuplicate: false },
+    ]);
+  });
+
+  it("matches stored names that have a storage dedupe suffix", async () => {
+    const fetchExistingNames = async () => ["Payslip for Week 10_1.pdf"];
+    const result = await checkDuplicatePayslip(
+      [{ workerRef: "ABC123", displayName: "Payslip for Week 10.pdf" }],
+      fetchExistingNames,
+    );
+    expect(result).toEqual([
+      { workerRef: "ABC123", displayName: "Payslip for Week 10.pdf", isDuplicate: true },
+    ]);
+  });
+
   it("returns empty array for empty input", async () => {
     const fetchExistingNames = async () => [];
     const result = await checkDuplicatePayslip([], fetchExistingNames);

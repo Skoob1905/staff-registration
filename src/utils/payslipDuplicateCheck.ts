@@ -8,8 +8,21 @@ export interface DuplicateCheckResult extends DuplicateCheckItem {
 }
 
 /**
+ * Normalizes a payslip display name for comparison. Storage de-duplication can
+ * append a `_<n>` suffix to a stored filename, so that suffix is stripped before
+ * comparing. Matching is case-insensitive and whitespace-trimmed.
+ */
+export function normalizePayslipName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/(_\d+)(\.[^.]+)$/, "$2");
+}
+
+/**
  * Checks a list of payslip files against existing payslips for each staff
- * member to detect duplicate filenames.
+ * member to detect duplicate filenames. Also treats a repeated
+ * `workerRef` + `displayName` within the same list as a duplicate.
  *
  * Deduplicates Firestore calls per workerRef — if five files share the same
  * workerRef, only one fetch is made. Matches against `displayName`
@@ -39,12 +52,24 @@ export async function checkDuplicatePayslip(
     return promise;
   };
 
+  const seen = new Set<string>();
+  const duplicatedWithinBatch = items.map((item) => {
+    const key = `${item.workerRef}|${normalizePayslipName(item.displayName)}`;
+    if (seen.has(key)) return true;
+    seen.add(key);
+    return false;
+  });
+
   const results: DuplicateCheckResult[] = await Promise.all(
-    items.map(async (item) => {
+    items.map(async (item, index) => {
       const existing = await getNames(item.workerRef);
+      const normalized = normalizePayslipName(item.displayName);
+      const existsRemotely = existing.some(
+        (name) => normalizePayslipName(name) === normalized,
+      );
       return {
         ...item,
-        isDuplicate: existing.includes(item.displayName),
+        isDuplicate: duplicatedWithinBatch[index] || existsRemotely,
       };
     }),
   );

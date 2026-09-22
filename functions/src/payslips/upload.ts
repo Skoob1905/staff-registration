@@ -16,8 +16,35 @@ interface PayslipEntry {
 interface BulkPayslipResult {
   fileName: string;
   success: boolean;
+  duplicate?: boolean;
   error?: string;
 }
+
+/**
+ * Normalizes a payslip display name for duplicate comparison. Storage
+ * de-duplication can append a `_<n>` suffix to a stored filename, so that
+ * suffix is stripped before comparing. Matching is case-insensitive.
+ */
+function normalizePayslipName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/(_\d+)(\.[^.]+)$/, "$2");
+}
+
+/**
+ * Maximum number of user IDs per Firestore `in` query when looking up existing
+ * payslips for duplicate detection.
+ */
+const DUPLICATE_LOOKUP_CHUNK_SIZE = 10;
+
+/**
+ * Maximum number of recipient emails per published pub/sub job. Each job is
+ * processed sequentially by the single-instance email worker, so keeping the
+ * batch small ensures a large import (hundreds of payslips) is split across
+ * several jobs instead of one job exceeding the worker's timeout.
+ */
+const EMAIL_CHUNK_SIZE = 50;
 
 async function runWithConcurrency<T>(
   items: T[],
@@ -181,9 +208,50 @@ export const bulkUploadPayslips = onCall(
 
     const bucket = getStorage().bucket();
 
+    // Phase 0 — drop duplicates before uploading anything. A payslip is a
+    // duplicate when the same staff member already has a payslip with the same
+    // name, or when the same staff member + name appears twice in this request.
+    const userIds = Array.from(
+      new Set(payslips.map((p) => p.userId.toUpperCase())),
+    );
+    const existingByUser = new Map<string, Set<string>>();
+    for (let i = 0; i < userIds.length; i += DUPLICATE_LOOKUP_CHUNK_SIZE) {
+      const chunk = userIds.slice(i, i + DUPLICATE_LOOKUP_CHUNK_SIZE);
+      const snap = await db
+        .collection("payslips")
+        .where("userId", "in", chunk)
+        .get();
+      for (const doc of snap.docs) {
+        const data = doc.data() as { userId?: string; fileName?: string };
+        if (!data.userId || !data.fileName) continue;
+        const set = existingByUser.get(data.userId) ?? new Set<string>();
+        set.add(normalizePayslipName(data.fileName));
+        existingByUser.set(data.userId, set);
+      }
+    }
+
+    const seen = new Set<string>();
+    const toUpload: PayslipEntry[] = [];
+    for (const entry of payslips) {
+      const uid = entry.userId.toUpperCase();
+      const normalized = normalizePayslipName(entry.fileName);
+      const key = `${uid}|${normalized}`;
+      if (seen.has(key) || existingByUser.get(uid)?.has(normalized)) {
+        results.push({
+          fileName: entry.fileName,
+          success: false,
+          duplicate: true,
+          error: "Duplicate payslip",
+        });
+        continue;
+      }
+      seen.add(key);
+      toUpload.push(entry);
+    }
+
     // Phase 1 — upload all files to storage in parallel
     await runWithConcurrency(
-      payslips,
+      toUpload,
       async (entry) => {
         try {
           const uid = entry.userId.toUpperCase();
@@ -299,7 +367,12 @@ export const bulkUploadPayslips = onCall(
       }
     }
 
-    await publishBulkEmailJob("payslip", emails);
+    for (let i = 0; i < emails.length; i += EMAIL_CHUNK_SIZE) {
+      await publishBulkEmailJob(
+        "payslip",
+        emails.slice(i, i + EMAIL_CHUNK_SIZE),
+      );
+    }
 
     return { ok: true, results, queued: emails.length };
   },
