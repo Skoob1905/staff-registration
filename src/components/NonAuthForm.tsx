@@ -146,13 +146,11 @@ export const NonAuthForm = ({
             <Button
               type="submit"
               disabled={loading}
-              className="self-center"
+              className="self-center !bg-[#1f8d87] hover:!bg-[#1f8d87]/90 !text-white"
               style={{
                 width: 370,
                 maxWidth: "100%",
                 height: 50,
-                backgroundColor: palette.accentTeal[600],
-                color: "#ffffff",
                 fontSize: 18,
                 lineHeight: 1,
               }}
