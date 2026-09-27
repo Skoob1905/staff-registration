@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Button, Input, Label, SecondaryButton } from "../components/ui";
+import { useLocation } from "react-router-dom";
+import { Key, Mail } from "lucide-react";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { loginWithEmail } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
@@ -9,7 +9,6 @@ import { LoadingPage } from "../components/LoadingPage";
 
 export const Login = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [email, setEmail] = useState(location.state?.email ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,60 +76,29 @@ export const Login = () => {
 
   return (
     <NonAuthForm
-      title="Login"
-      subtitle="Enter your details below to sign in"
+      title="Enter your details below to log in"
+      submitTitle="Login"
       onSubmit={onSubmit}
-      footer={
-        <div className="flex justify-end">
-          <a
-            href="https://mds-ce.com"
-            className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            Back to mds-ce.com
-          </a>
-        </div>
-      }
-      actionButtons={[
-        <SecondaryButton
-          key="forgot"
-          type="button"
-          onClick={() => {
-            navigate("/forgot-password", { state: { email } });
-          }}
-        >
-          Forgot password?
-        </SecondaryButton>,
-        <Button
-          key="login"
-          type="submit"
-          disabled={loading}
-          className="h-auto py-2 text-sm"
-        >
-          Login
-        </Button>,
+      loading={loading}
+      forgotPasswordHref={`/forgot-password?email=${encodeURIComponent(email)}`}
+      inputs={[
+        {
+          id: "email",
+          value: email,
+          onChange: setEmail,
+          placeholder: "you@agency.com",
+          icon: <Mail className="h-4 w-4" />,
+        },
+        {
+          id: "password",
+          value: password,
+          onChange: setPassword,
+          type: "password",
+          placeholder: "********",
+          inputRef: passwordRef,
+          icon: <Key className="h-4 w-4" />,
+        },
       ]}
-    >
-      <div className="space-y-1">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@agency.com"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          ref={passwordRef}
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="********"
-        />
-      </div>
-    </NonAuthForm>
+    />
   );
 };

@@ -32,7 +32,8 @@
         "200": "#CCFBF1",
         "300": "#99F6E4",
         "400": "#5EEAD4",
-        "500": "#14B8A6"
+        "500": "#14B8A6",
+        "600": "#1F8D87"
       }
     },
     "secondary_slate": {
@@ -63,7 +64,9 @@
       "border": "#E2E8F0",
       "text_primary": "#0F172A",
       "text_secondary": "#475569",
-      "text_muted": "#94A3B8"
+      "text_muted": "#94A3B8",
+      "input_border_default": "#F2F2F2",
+      "input_border_selected": "#E7ECFE"
     }
   }
 }

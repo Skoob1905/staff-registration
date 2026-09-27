@@ -35,4 +35,5 @@ export type TypoProps = {
   children: ReactNode;
   className?: string;
   as?: keyof React.JSX.IntrinsicElements;
+  style?: React.CSSProperties;
 };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { Button, Input, Label, SecondaryButton } from "../components/ui";
+import { Mail } from "lucide-react";
 import { NonAuthForm } from "../components/NonAuthForm";
 import { sendForgotPassword } from "../services/authService";
 import { useToast } from "../context/ToastProvider";
@@ -40,8 +40,20 @@ export const ForgotPassword = () => {
   return (
     <NonAuthForm
       title="Forgot Password"
-      subtitle="Enter your email and we'll send you a reset link"
+      submitTitle="Send Reset Link"
+      loadingTitle="Sending..."
       onSubmit={onSubmit}
+      loading={loading}
+      minHeight="auto"
+      inputs={[
+        {
+          id: "email",
+          value: email,
+          onChange: setEmail,
+          placeholder: "you@agency.com",
+          icon: <Mail className="h-4 w-4" />,
+        },
+      ]}
       footer={
         <div className="flex justify-end">
           <a
@@ -52,35 +64,6 @@ export const ForgotPassword = () => {
           </a>
         </div>
       }
-      actionButtons={[
-        <SecondaryButton
-          key="cancel"
-          type="button"
-          onClick={() => {
-            navigate("/login", { state: { email } });
-          }}
-        >
-          Cancel
-        </SecondaryButton>,
-        <Button
-          key="send"
-          type="submit"
-          disabled={loading}
-          className="h-auto py-2 text-sm"
-        >
-          {loading ? "Sending..." : "Send Reset Link"}
-        </Button>,
-      ]}
-    >
-      <div className="space-y-1">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@agency.com"
-        />
-      </div>
-    </NonAuthForm>
+    />
   );
 };

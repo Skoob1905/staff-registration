@@ -17,7 +17,7 @@ export const darkTheme: Theme = {
   inputFocusBg: "#475569",
   placeholder: "#64748B",
   radius: "0.5rem",
-  typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
+  typeface: "'Outfit', 'Avenir Next', 'Segoe UI', sans-serif",
 };
 
 export const lightTheme: Theme = {
@@ -37,5 +37,5 @@ export const lightTheme: Theme = {
   inputFocusBg: "#FFFFFF",
   placeholder: "#94A3B8",
   radius: "0.5rem",
-  typeface: "'Manrope', 'Avenir Next', 'Segoe UI', sans-serif",
+  typeface: "'Outfit', 'Avenir Next', 'Segoe UI', sans-serif",
 };
