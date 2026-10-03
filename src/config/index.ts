@@ -26,7 +26,6 @@ export const config: Config = {
   login: "/logo.png",
   loading: "/logo.png",
   name: "MDS Consultancy & Engineering",
-  homepage: "",
   theme: unifiedTheme,
 };
 

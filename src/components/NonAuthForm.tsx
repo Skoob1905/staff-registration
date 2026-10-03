@@ -54,7 +54,7 @@ export const NonAuthForm = ({
   }, []);
 
   return (
-    <div className="flex min-h-dvh w-dvw items-center justify-center app-bg px-4 py-8">
+    <div className="flex min-h-dvh w-dvw items-center justify-center px-4 py-8">
       <Card
         className="w-full max-w-md"
         style={{

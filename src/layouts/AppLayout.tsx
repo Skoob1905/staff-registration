@@ -17,7 +17,7 @@ export const AppLayout = () => {
     ["/staff", "/agencies", "/clients"].includes(pathname);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden app-bg">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <GlobalBanner />
 
       <div className="flex flex-1 min-h-0 gap-1 p-1.5">

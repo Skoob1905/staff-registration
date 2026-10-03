@@ -22,12 +22,9 @@ export type Theme = {
 
 export type Config = {
   navbar: string;
-  // navbarDark: string;
-  // navbarLight: string;
   login: string;
   loading: string;
   name: string;
-  homepage: string;
   theme: Theme;
 };
 

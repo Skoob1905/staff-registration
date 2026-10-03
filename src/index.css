@@ -80,28 +80,10 @@ body {
   margin: 0;
   font-family: var(--font-family);
   color: var(--foreground);
-  background-color: var(--background);
-  background-image:
-    linear-gradient(rgba(31, 141, 135, 0.06), rgba(31, 141, 135, 0.06)),
-    url("/hex-bg.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
 }
 
 #root {
   min-height: 100vh;
-}
-
-.app-bg {
-  background-color: var(--background);
-  background-image:
-    linear-gradient(rgba(31, 141, 135, 0.06), rgba(31, 141, 135, 0.06)),
-    url("/hex-bg.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
 }
 
 @keyframes cascade-in {
