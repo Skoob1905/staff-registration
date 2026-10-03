@@ -110,28 +110,31 @@ export const Agencies = () => {
           filterKeys={{ tag: "tags", agency: "metadata.uploadedBy" }}
           enableTagFilter={false}
           nameFilterLabel="Name"
-          columnHeaders={[
-            "Agency Name",
-            "Assigned Staff",
-            "Contact Name",
-            "Email",
-          ]}
+          columnHeaders={["Agency Name", "Email", "Address", "Postcode"]}
           refreshTrigger={refreshTrigger}
           renderItem={(agency, idx) => {
             const meta = agency.metadata as Record<string, unknown> | undefined;
             const scName = meta?.signedContractName as string | undefined;
             const scUrl = meta?.signedContract as string | undefined;
             const scDate = meta?.signedContractAt as string | number | undefined;
-            const contactName = findValueByNormalizedKey(
-              agency,
-              "contact name",
-              "contactname",
-              "contact",
-            );
             const email = findValueByNormalizedKey(
               agency,
               "email",
               "emailaddress",
+            );
+            const address = findValueByNormalizedKey(
+              agency,
+              "address",
+              "addressline1",
+              "address1",
+              "firstlineofaddress",
+            );
+            const postcode = findValueByNormalizedKey(
+              agency,
+              "postcode",
+              "postalcode",
+              "zip",
+              "zipcode",
             );
             return (
               <AccordionItem
@@ -149,20 +152,23 @@ export const Agencies = () => {
                         label=""
                       />
                     )}
+                    <AssignedStaff
+                      record={agency}
+                      onClick={() =>
+                        navigate(
+                          `/staff?agencies=${encodeURIComponent(agency.id as string)}&page=1`,
+                        )
+                      }
+                    />
                   </StaffAccordionHeader>,
-                  <AssignedStaff
-                    record={agency}
-                    onClick={() =>
-                      navigate(
-                        `/staff?agencies=${encodeURIComponent(agency.id as string)}&page=1`,
-                      )
-                    }
-                  />,
-                  <span className="text-sm text-[var(--muted-foreground)]">
-                    {contactName || "—"}
-                  </span>,
                   <span className="text-sm text-[var(--muted-foreground)]">
                     {email || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {address || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {postcode || "—"}
                   </span>,
                 ]}
               >
