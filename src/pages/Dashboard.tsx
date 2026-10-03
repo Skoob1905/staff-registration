@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getStaffByEmail } from "../services/firestore";
 import { PageTitle } from "../components/PageTitle";
 import { Pill } from "../components/Pill";
 import { InformationCard } from "../components/InformationCard";
-import { Button } from "../components/ui";
+import { ActionButton, Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { getPayslipsForUser } from "../services/payslipService";
+import { PaginatedFilterSection } from "../views/Table";
+import { usePaginationParams } from "../hooks/usePaginationParams";
+import { emptyFilters } from "../types/domain";
+import { formatSentDate } from "../utils/date";
 import type { Payslip } from "../types/domain";
 import { Body, Muted } from "../config/typography";
 
@@ -50,8 +54,15 @@ export const Dashboard = () => {
     void run();
   }, [appUser]);
 
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const totalPages = Math.max(1, Math.ceil(payslips.length / pageSize));
+  const pagedPayslips = useMemo(
+    () => payslips.slice(page * pageSize, (page + 1) * pageSize),
+    [payslips, page, pageSize],
+  );
+
   return (
-    <div className="mx-auto w-full space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <PageTitle>
         <span className="flex items-center gap-2">
           Dashboard
@@ -100,45 +111,45 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div>
-        <PageTitle>Payslips ({payslips.length})</PageTitle>
-        <div className="px-4">
-          {payslips.length === 0 ? (
-            <Muted>No payslips available.</Muted>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {payslips.map((payslip, idx) => (
-                <InformationCard
-                  key={idx}
-                  variant="payslip"
-                  name={payslip.fileName}
-                  isNew={!payslip.hasDownloaded}
-                  hasDownloaded={!!payslip.hasDownloaded}
-                  uploadedAt={payslip.timestamp as unknown as string}
-                  admin={false}
-                  documentInfo={null}
-                  actions={
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          window.open(
-                            payslip.fileUrl,
-                            "_blank",
-                            "noopener,noreferrer",
-                          );
-                        }}
-                      >
-                        Download
-                      </Button>
-                    </div>
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <PaginatedFilterSection<Payslip>
+        title="Payslips"
+        items={pagedPayslips}
+        loading={false}
+        page={page}
+        totalPages={totalPages}
+        totalResults={payslips.length}
+        pageSize={pageSize}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
+        filters={emptyFilters}
+        onFiltersChange={() => {}}
+        enableNameFilter={false}
+        enableTagFilter={false}
+        expandable={false}
+        columnHeaders={["Payslip", "Sent On", "Actions"]}
+        emptyMessage="No payslips available."
+        renderItem={(payslip) => (
+          <>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              {payslip.fileName}
+            </span>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
+              {formatSentDate(payslip.timestamp)}
+            </span>
+            <span className="min-w-0 flex-1">
+              <ActionButton
+                variant="download"
+                ariaLabel="Download payslip"
+                onClick={() =>
+                  window.open(payslip.fileUrl, "_blank", "noopener,noreferrer")
+                }
+              />
+            </span>
+          </>
+        )}
+      />
     </div>
   );
 };
