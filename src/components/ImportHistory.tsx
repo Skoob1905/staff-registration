@@ -8,6 +8,7 @@ import { formatInvitedAt } from "../utils/date";
 import { useAppStore, type CsvImport } from "../stores/appStore";
 import { useFileStaffStore } from "../stores/fileStaffStore";
 import { Muted } from "../config/typography";
+import { PageTitle } from "./PageTitle";
 
 type CsvRow = Record<string, string>;
 
@@ -198,7 +199,7 @@ export const ImportHistory = ({
 
   return (
     <>
-      <h2 className="px-4 text-base sm:text-lg font-bold text-[var(--foreground)]">Import History</h2>
+      <PageTitle>Import History</PageTitle>
       {loading ? (
         <Muted className="mt-3">
           Loading...

@@ -83,18 +83,19 @@ export const toast_mapper = {
   [ToastType.INVALID_TOKEN]: {
     title: "Invalid Reset Link",
     description:
-      "The reset link you used is invalid. Please reset your password.",
+      "The reset link you used is invalid. Please reset your password via the forgot password page.",
     variant: "error",
   },
   [ToastType.TOKEN_ALREADY_USED]: {
     title: "Link Already Used",
     description:
-      "This reset link has already been used. Please reset your password.",
+      "This reset link has already been used. Please reset your password via the forgot password page.",
     variant: "error",
   },
   [ToastType.TOKEN_EXPIRED]: {
     title: "Link Expired",
-    description: "This reset link has expired. Please reset your password.",
+    description:
+      "This reset link has expired. Please reset your password via the forgot password page.",
     variant: "error",
   },
   [ToastType.INVALID_PASSWORD]: {
@@ -115,7 +116,7 @@ export const toast_mapper = {
   [ToastType.INVALID_RESET_TOKEN]: {
     title: "Invalid Reset Link",
     description:
-      "This reset link is invalid, already used, or has expired. Please request a new one.",
+      "This reset link is invalid, already used, or has expired. Please reset your password via the forgot password page.",
     variant: "error",
   },
   [ToastType.MISSING_CREDENTIALS]: {
@@ -239,7 +240,7 @@ export const toast_mapper = {
     existingCount: number,
     uploadCount: number,
     maxRecords: number,
-    label: string,
+    label: string
   ) => ({
     title: "Too Many Records",
     description: `You have ${existingCount} ${label} in the database. Uploading ${uploadCount} more would exceed the ${maxRecords} limit. Please delete some ${label} first.`,
@@ -255,7 +256,7 @@ export const toast_mapper = {
     added: number,
     itemLabel: string,
     itemLabelPlural: string,
-    duplicates: number,
+    duplicates: number
   ) => {
     const dupInfo =
       duplicates > 0
@@ -263,7 +264,9 @@ export const toast_mapper = {
         : "";
     return {
       title: "Import Complete",
-      description: `${added} ${added === 1 ? itemLabel : itemLabelPlural} added${dupInfo}. Logins will be sent shortly.`,
+      description: `${added} ${
+        added === 1 ? itemLabel : itemLabelPlural
+      } added${dupInfo}. Logins will be sent shortly.`,
       variant: "success",
       replaceToast: true,
     };
@@ -296,7 +299,9 @@ export const toast_mapper = {
   }),
   [ToastType.PAYSLIP_UPLOAD_START]: (count: number) => ({
     title: "Attempting Upload",
-    description: `Attempting to upload ${count} payslip${count === 1 ? "" : "s"}`,
+    description: `Attempting to upload ${count} payslip${
+      count === 1 ? "" : "s"
+    }`,
     variant: "info",
   }),
   [ToastType.STAFF_UPLOAD_START]: (count: number) => ({
@@ -325,16 +330,20 @@ export const toast_mapper = {
   },
   [ToastType.PAYSLIP_UPLOAD_COMPLETE]: (succeeded: number, total: number) => ({
     title: "Upload Complete",
-    description: `${succeeded}/${total} payslip${total === 1 ? "" : "s"} uploaded`,
+    description: `${succeeded}/${total} payslip${
+      total === 1 ? "" : "s"
+    } uploaded`,
     variant: "success",
   }),
   [ToastType.PAYSLIP_UPLOAD_PARTIAL]: (
     succeeded: number,
     total: number,
-    failed: number,
+    failed: number
   ) => ({
     title: "Failed Upload",
-    description: `${succeeded}/${total} uploaded — ${failed} payslip${failed === 1 ? "" : "s"} failed. Please re-upload them.`,
+    description: `${succeeded}/${total} uploaded — ${failed} payslip${
+      failed === 1 ? "" : "s"
+    } failed. Please re-upload them.`,
     variant: "error",
   }),
   [ToastType.PAYSLIP_UPLOAD_DUPLICATES_SKIPPED]: (count: number) => ({
@@ -346,7 +355,7 @@ export const toast_mapper = {
 
 export function parseResetError(error: FirebaseError): ToastType | null {
   const match = (Object.values(ToastType) as string[]).find((code) =>
-    error.message.startsWith(code),
+    error.message.startsWith(code)
   );
   return (match as ToastType) ?? null;
 }

@@ -14,7 +14,7 @@ interface PaginationBarProps {
   onPageSizeChange: (size: number) => void;
 }
 
-const PAGE_SIZES = [25, 50, 100];
+const PAGE_SIZES = [20, 50, 100];
 
 export const PaginationBar = ({
   currentPage,
@@ -67,8 +67,8 @@ export const PaginationBar = ({
   if (totalCount === 0 && !loading) return null;
 
   return (
-    <div className="mt-4 sm:grid sm:grid-cols-3 sm:items-center">
-      <div className="flex flex-col items-center gap-2 sm:col-start-2 sm:flex-row sm:flex-nowrap sm:justify-normal sm:gap-1 sm:justify-self-center">
+    <div className="flex items-center justify-between gap-2 sm:grid sm:grid-cols-3 sm:items-center">
+      <div className="flex min-w-0 items-center gap-1 sm:col-start-2 sm:flex-row sm:flex-nowrap sm:justify-self-center sm:gap-1">
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -135,15 +135,15 @@ export const PaginationBar = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 sm:col-start-3 sm:row-start-1 sm:justify-self-end">
-        <Caption as="span">
+      <div className="flex shrink-0 items-center gap-2 sm:col-start-3 sm:row-start-1 sm:justify-self-end sm:gap-3">
+        <Caption as="span" className="whitespace-nowrap">
           {startItem}–{endItem} of {totalCount}
         </Caption>
 
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="hidden sm:block h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
+          className="h-7 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-[11px] text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
         >
           {PAGE_SIZES.map((size) => (
             <option key={size} value={size}>

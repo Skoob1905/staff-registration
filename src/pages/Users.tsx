@@ -31,7 +31,7 @@ import {
   buildFacetFilters,
   buildFacetRequestFields,
 } from "../utils/loginsFilter";
-import { type FilterKeyMap } from "../types/domain";
+import { type Agency, type FilterKeyMap } from "../types/domain";
 
 const STATUS_COLOR: Record<string, string> = {
   awaiting_login: "bg-amber-400",
@@ -87,7 +87,7 @@ export const Users = () => {
     hitsPerPage: 1000,
   });
 
-  const [loginsFilters] = useFilterParams();
+  const [loginsFilters, setLoginsFilters] = useFilterParams();
   const { page: loginsPage, pageSize: loginsPageSize, setPage: setLoginsPage, setPageSize: setLoginsPageSize } = usePaginationParams(50);
 
   const loginsKeyMap = useMemo<FilterKeyMap>(
@@ -110,6 +110,7 @@ export const Users = () => {
     loading: loginsLoading,
     totalPages: loginsTotalPages,
     totalResults: loginsTotalResults,
+    facetCounts: loginsFacetCounts,
     refresh: refreshLogins,
   } = usePaginatedRecords({
     indexName: "logins_email_desc",
@@ -120,6 +121,14 @@ export const Users = () => {
     hitsPerPage: loginsPageSize,
     facets: loginsFacets,
   });
+
+  const loginsAgencyCounts = loginsFacetCounts?.assignedTo;
+  const filteredLoginsAgencies = useMemo(() => {
+    if (!loginsAgencyCounts) return companies;
+    return companies.filter(
+      (a) => (loginsAgencyCounts[a.id as string] ?? 0) > 0,
+    );
+  }, [loginsAgencyCounts, companies]);
 
   const fetchMissingCompanies = useCallback(async () => {
     if (!appUser?.agencyId) return;
@@ -253,8 +262,16 @@ export const Users = () => {
     }
   };
 
+  const handleLoginsFiltersChange = useCallback(
+    (filters: typeof loginsFilters) => {
+      setLoginsPage(0);
+      setLoginsFilters(filters);
+    },
+    [setLoginsFilters, setLoginsPage],
+  );
+
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <PaginatedFilterSection
         title="Users"
         items={logins}
@@ -269,8 +286,11 @@ export const Users = () => {
         onPageSizeChange={setLoginsPageSize}
         filterKeys={loginsKeyMap}
         filters={loginsFilters}
+        onFiltersChange={handleLoginsFiltersChange}
         enableAgencyFilter
         enableTagFilter={false}
+        agencies={filteredLoginsAgencies as unknown as Agency[]}
+        agencyCounts={loginsAgencyCounts}
         emptyMessage="No users created yet."
         action={
           <Button

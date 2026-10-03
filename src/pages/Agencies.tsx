@@ -102,21 +102,37 @@ export const Agencies = () => {
   };
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       {tab === "records" ? (
         <TableView<Record<string, unknown>>
           title="Agencies"
           indexName="agencies_name_desc"
           filterKeys={{ tag: "tags", agency: "metadata.uploadedBy" }}
           enableTagFilter={false}
-          enableLoginStatusFilter={false}
-          columnHeaders={["Agency Name", "Assigned Staff"]}
+          nameFilterLabel="Name"
+          columnHeaders={[
+            "Agency Name",
+            "Assigned Staff",
+            "Contact Name",
+            "Email",
+          ]}
           refreshTrigger={refreshTrigger}
           renderItem={(agency, idx) => {
             const meta = agency.metadata as Record<string, unknown> | undefined;
             const scName = meta?.signedContractName as string | undefined;
             const scUrl = meta?.signedContract as string | undefined;
             const scDate = meta?.signedContractAt as string | number | undefined;
+            const contactName = findValueByNormalizedKey(
+              agency,
+              "contact name",
+              "contactname",
+              "contact",
+            );
+            const email = findValueByNormalizedKey(
+              agency,
+              "email",
+              "emailaddress",
+            );
             return (
               <AccordionItem
                 key={agency.id as string}
@@ -142,6 +158,12 @@ export const Agencies = () => {
                       )
                     }
                   />,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {contactName || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {email || "—"}
+                  </span>,
                 ]}
               >
                 {scName && scUrl && (

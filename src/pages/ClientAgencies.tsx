@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileSignature, Loader2 } from "lucide-react";
 import { getUser, getClientByEmail } from "../services/firestore";
@@ -7,8 +7,8 @@ import { Pill } from "../components/Pill";
 import { AssignedStaff } from "../components/Pills/AssignedStaff";
 import { AccordionTitle } from "../views/Accordion";
 import { Metadata } from "../components/Metadata";
-import { Section } from "../components/Section";
 import { Muted } from "../config/typography";
+import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../context/AuthProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { toDate } from "../utils/date";
@@ -78,7 +78,15 @@ export const ClientAgencies = () => {
   const [assignedAgencyIds, setAssignedAgencyIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
-  const [filters] = useFilterParams();
+  const [filters, setFilters] = useFilterParams();
+
+  const handleFiltersChange = useCallback(
+    (newFilters: typeof filters) => {
+      setPage(0);
+      setFilters(newFilters);
+    },
+    [setFilters, setPage],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -172,22 +180,21 @@ export const ClientAgencies = () => {
 
   if (!ready || (agencies.length === 0 && loading)) {
     return (
-      <div className="mx-auto space-y-4">
-        <Section title="Agencies">
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
-          </div>
-        </Section>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       {agencies.length === 0 ? (
-        <Section title="Agencies">
-          <Muted>No agencies assigned yet.</Muted>
-        </Section>
+        <div>
+          <PageTitle>Agencies</PageTitle>
+          <Muted className="px-4">No agencies assigned yet.</Muted>
+        </div>
       ) : (
         <PaginatedFilterSection
           title="Agencies"
@@ -289,8 +296,10 @@ export const ClientAgencies = () => {
           onGoToPage={setPage}
           onPageSizeChange={setPageSize}
           filters={filters}
+          onFiltersChange={handleFiltersChange}
           enableNameFilter
           enableTagFilter={false}
+          nameFilterLabel="Name"
         />
       )}
     </div>

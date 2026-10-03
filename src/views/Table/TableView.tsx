@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { useAppStore } from "../../stores/appStore";
-import { PaginatedFilterSection } from "./PaginatedFilterSection";
+import { PaginatedFilterSection, type ColumnHeader } from "./PaginatedFilterSection";
 import { usePaginatedRecords } from "../../hooks/usePaginatedRecords";
 import { useFilterParams } from "../../hooks/useFilterParams";
 import { usePaginationParams } from "../../hooks/usePaginationParams";
 import { buildFacetRequestFields } from "../../utils/loginsFilter";
 import { Loader2 } from "lucide-react";
-import { Section } from "../../components/Section";
-import { buildLoginStatusFilter } from "../../utils/buildLoginStatusFilter";
-import type { Agency, BulkStaff, FilterKeyMap } from "../../types/domain";
+import type {
+  Agency,
+  BulkStaff,
+  FilterKeyMap,
+  StaffFilters,
+} from "../../types/domain";
 
 interface TableViewProps<T extends object> {
   action?: ReactNode;
@@ -29,9 +32,10 @@ interface TableViewProps<T extends object> {
   indexName?: string;
   filterKeys?: FilterKeyMap;
   enableTagFilter?: boolean;
-  enableLoginStatusFilter?: boolean;
-  columnHeaders?: string[];
+  columnHeaders?: ColumnHeader[];
   expandable?: boolean;
+  nameFilterLabel?: string;
+  showAllTags?: boolean;
 }
 
 const defaultFilterKeys: FilterKeyMap = {
@@ -44,6 +48,7 @@ export const TableView = <T extends object = BulkStaff>({
   title,
   refreshTrigger,
   renderItem,
+  agencies,
   targetAgencyIds,
   namesLoading,
 
@@ -56,16 +61,31 @@ export const TableView = <T extends object = BulkStaff>({
   indexName = "staff_name_desc",
   filterKeys = defaultFilterKeys,
   enableTagFilter: tagsEnabled = true,
-  enableLoginStatusFilter: loginStatusEnabled,
   columnHeaders = ["Name", "Email", "Assigned To", "NI Number"],
   expandable = true,
+  nameFilterLabel,
+  showAllTags,
 }: TableViewProps<T>) => {
   const { appUser, role } = useAuth();
+  const tags = useAppStore((s) => s.tags);
   const loadTags = useAppStore((s) => s.loadTags);
-  const [filters] = useFilterParams();
+  const [filters, setFilters] = useFilterParams();
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const isClient = role === "client";
-  const showLoginStatus = loginStatusEnabled ?? role === "super";
+
+  const tagsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const tag of tags) map[tag.id] = tag.value;
+    return map;
+  }, [tags]);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: StaffFilters) => {
+      setPage(0);
+      setFilters(newFilters);
+    },
+    [setPage, setFilters]
+  );
 
   const facetFilters = useMemo(() => {
     const ffs: string[][] = [];
@@ -88,27 +108,14 @@ export const TableView = <T extends object = BulkStaff>({
       }
     }
 
-    if (showLoginStatus) {
-      const loginStatus = buildLoginStatusFilter(
-        filters.loginStatusFilter ?? "all"
-      );
-      if (loginStatus.facetFilters) ffs.push(...loginStatus.facetFilters);
-    }
-
     return ffs;
-  }, [filters, filterKeys, targetAgencyIds, tagsEnabled, showLoginStatus]);
+  }, [filters, filterKeys, targetAgencyIds, tagsEnabled]);
 
   const combinedFilters = useMemo(() => {
     const parts: string[] = [];
     if (algoliaFilters) parts.push(`(${algoliaFilters})`);
-    if (showLoginStatus) {
-      const loginStatus = buildLoginStatusFilter(
-        filters.loginStatusFilter ?? "all"
-      );
-      if (loginStatus.filterExpr) parts.push(`(${loginStatus.filterExpr})`);
-    }
     return parts.length > 0 ? parts.join(" AND ") : undefined;
-  }, [algoliaFilters, filters.loginStatusFilter, showLoginStatus]);
+  }, [algoliaFilters]);
 
   const facets = useMemo(
     () => buildFacetRequestFields(filterKeys),
@@ -140,7 +147,7 @@ export const TableView = <T extends object = BulkStaff>({
     ]
   );
 
-  const { items, loading, refresh, totalPages, totalResults } =
+  const { items, loading, refresh, totalPages, totalResults, facetCounts } =
     usePaginatedRecords<T>(searchParams);
 
   const prevItems = useRef(items);
@@ -203,11 +210,9 @@ export const TableView = <T extends object = BulkStaff>({
 
   if (namesLoading) {
     return (
-      <Section title={sectionTitle}>
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
-        </div>
-      </Section>
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+      </div>
     );
   }
 
@@ -225,8 +230,13 @@ export const TableView = <T extends object = BulkStaff>({
       onGoToPage={setPage}
       onPageSizeChange={setPageSize}
       filters={filters}
+      onFiltersChange={handleFiltersChange}
+      filterKeys={filterKeys}
+      tags={tagsMap}
+      tagCounts={facetCounts?.tags}
+      agencies={agencies}
+      agencyCounts={facetCounts?.[filterKeys.agency]}
       enableTagFilter={tagsEnabled}
-      enableLoginStatusFilter={showLoginStatus}
       emptyMessage={
         isClient
           ? "You've not been assigned any staff yet"
@@ -241,6 +251,8 @@ export const TableView = <T extends object = BulkStaff>({
       multiAccordionValue={multiAccordionValue}
       onMultiAccordionChange={onMultiAccordionChange}
       expandable={expandable}
+      nameFilterLabel={nameFilterLabel}
+      showAllTags={showAllTags}
     />
   );
 };

@@ -9,7 +9,7 @@
 ## Global Typeface
 The font-family is set via the `typeface` property in the theme config (`src/config/theme.ts`). It maps to `--font-family` CSS variable and is applied to `body` in `index.css`.
 
-**Current value:** `'Manrope', 'Avenir Next', 'Segoe UI', sans-serif`
+**Current value:** `'Outfit', 'Avenir Next', 'Segoe UI', sans-serif` (loaded via Google Fonts in `index.html`)
 
 To change the app-wide typeface, edit the `typeface` property in `darkTheme` (and `lightTheme`) inside `src/config/theme.ts`. No other file changes needed.`
 

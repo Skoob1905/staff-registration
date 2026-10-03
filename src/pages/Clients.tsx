@@ -6,7 +6,6 @@ import { AssignAgenciesModal, DeleteClientModal } from "../components/modals";
 import { ImportHistory } from "../components/ImportHistory";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
-import { AgencyPill } from "../components/Pills/AgencyPill";
 import { StaffAccordionHeader } from "../views/Accordion";
 import { ActionButtonContainer } from "../components/ActionButtonContainer";
 import { RecordData } from "../components/RecordData";
@@ -154,21 +153,45 @@ export const Clients = () => {
   };
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       {tab === "records" ? (
         <TableView<Record<string, unknown>>
           title="Clients"
           indexName="clients_name_desc"
           filterKeys={{ tag: "tags", agency: "metadata.uploadedBy" }}
           enableTagFilter={false}
-          enableLoginStatusFilter={false}
-          columnHeaders={["Business Name", "Email", "Agencies"]}
+          nameFilterLabel="Name"
+          columnHeaders={[
+            "Company Name",
+            "Email Address",
+            "Address Line 1",
+            "Address Line 2",
+          ]}
           refreshTrigger={refreshTrigger}
           renderItem={(client, idx) => {
             const meta = client.metadata as Record<string, unknown> | undefined;
             const scName = meta?.signedContractName as string | undefined;
             const scUrl = meta?.signedContract as string | undefined;
             const scDate = meta?.signedContractAt as string | number | undefined;
+            const email = findValueByNormalizedKey(
+              client,
+              "email",
+              "emailaddress",
+            );
+            const addressLine1 = findValueByNormalizedKey(
+              client,
+              "address line 1",
+              "addressline1",
+              "address1",
+              "first line of address",
+            );
+            const addressLine2 = findValueByNormalizedKey(
+              client,
+              "address line 2",
+              "addressline2",
+              "address2",
+              "second line of address",
+            );
             return (
               <AccordionItem
                 key={client.id as string}
@@ -187,9 +210,14 @@ export const Clients = () => {
                     )}
                   </StaffAccordionHeader>,
                   <span className="text-sm text-[var(--muted-foreground)]">
-                    {(client.email as string) || "—"}
+                    {email || "—"}
                   </span>,
-                  <AgencyPill record={client} />,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {addressLine1 || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {addressLine2 || "—"}
+                  </span>,
                 ]}
               >
                 {scName && scUrl && (

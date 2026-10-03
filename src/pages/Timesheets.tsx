@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Section } from "../components/Section";
-import { InformationCard } from "../components/InformationCard";
 import { Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { useData } from "../context/DataProvider";
+import { PaginatedFilterSection } from "../views/Table";
+import { usePaginationParams } from "../hooks/usePaginationParams";
+import { emptyFilters } from "../types/domain";
+import {
+  formatTimesheetDate,
+  type TimesheetEntry,
+} from "../utils/timesheets";
 
 export const Timesheets = () => {
   const { appUser } = useAuth();
@@ -37,49 +42,61 @@ export const Timesheets = () => {
     };
   }, [loading, appUser?.agencyId, myTimesheets, markSeen]);
 
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const totalPages = Math.max(1, Math.ceil(myTimesheets.length / pageSize));
+  const pagedTimesheets = useMemo(
+    () => myTimesheets.slice(page * pageSize, (page + 1) * pageSize),
+    [myTimesheets, page, pageSize],
+  );
+
   return (
-    <div className="mx-auto space-y-4">
-      <Section title="Timesheets">
-        {loading ? (
-          <p className="text-sm text-zinc-500">Loading...</p>
-        ) : myTimesheets.length === 0 ? (
-          <p className="text-sm text-zinc-500">No timesheets uploaded yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {myTimesheets.map((entry, idx) => (
-              <InformationCard
-                key={idx}
-                variant="timesheet"
-                name={entry.fileName}
-                isNew={entry.hasSeen === false}
-                hasDownloaded={!!entry.hasDownloaded}
-                uploadedAt={entry.uploadedAt}
-                admin={false}
-                documentInfo={null}
-                actions={
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        window.open(
-                          entry.fileUrl,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
-                        markDownloaded("timesheets", appUser?.agencyId ?? "", [
-                          entry.fileName,
-                        ]).catch(() => {});
-                      }}
-                    >
-                      Download
-                    </Button>
-                  </div>
-                }
-              />
-            ))}
-          </div>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+      <PaginatedFilterSection<TimesheetEntry>
+        title="Timesheets"
+        items={pagedTimesheets}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        totalResults={myTimesheets.length}
+        pageSize={pageSize}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
+        filters={emptyFilters}
+        onFiltersChange={() => {}}
+        enableNameFilter={false}
+        enableTagFilter={false}
+        expandable={false}
+        columnHeaders={["File Name", "Date Sent", "Sent By", "Actions"]}
+        emptyMessage="No timesheets uploaded yet."
+        renderItem={(entry) => (
+          <>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              {entry.fileName}
+            </span>
+            <span className="min-w-0 flex-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
+              {formatTimesheetDate(entry.uploadedAt)}
+            </span>
+            <span className="min-w-0 flex-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
+              {entry.uploadedBy}
+            </span>
+            <span className="min-w-0 flex-1">
+              <Button
+                type="button"
+                onClick={() => {
+                  window.open(entry.fileUrl, "_blank", "noopener,noreferrer");
+                  markDownloaded("timesheets", appUser?.agencyId ?? "", [
+                    entry.fileName,
+                  ]).catch(() => {});
+                }}
+              >
+                Download
+              </Button>
+            </span>
+          </>
         )}
-      </Section>
+      />
     </div>
   );
 };

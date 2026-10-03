@@ -54,17 +54,12 @@ export const NonAuthForm = ({
   }, []);
 
   return (
-    <div
-      className="flex min-h-dvh w-dvw items-center justify-center bg-cover bg-center bg-no-repeat px-4 py-8"
-      style={{
-        backgroundImage: `linear-gradient(rgba(31, 141, 135, 0.05), rgba(31, 141, 135, 0.05)), url('/hex-bg.jpg')`,
-      }}
-    >
+    <div className="flex min-h-dvh w-dvw items-center justify-center app-bg px-4 py-8">
       <Card
         className="w-full max-w-md"
         style={{
           padding: 40,
-          border: `1px solid ${palette.neutrals.inputBorderDefault}`,
+          border: `2px solid ${palette.neutrals.inputBorderDefault}`,
           boxShadow: "none",
         }}
       >
@@ -146,7 +141,7 @@ export const NonAuthForm = ({
             <Button
               type="submit"
               disabled={loading}
-              className="self-center !bg-[#1f8d87] hover:!bg-[#1f8d87]/90 !text-white"
+              className="self-center"
               style={{
                 width: 370,
                 maxWidth: "100%",

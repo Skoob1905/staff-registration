@@ -17,44 +17,36 @@ export const AppLayout = () => {
     ["/staff", "/agencies", "/clients"].includes(pathname);
 
   return (
-    <div className="flex min-h-screen app-bg">
-      <Navbar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="flex h-dvh flex-col overflow-hidden app-bg">
+      <GlobalBanner />
 
-      <div
-        className="flex min-h-screen flex-1 flex-col md:ml-56"
-        style={{ backgroundColor: "var(--header-bg)" }}
-      >
-        <header
-          className="grid h-[72px] grid-cols-[1fr_auto_1fr] items-center border-b px-4 sm:px-6"
-          style={{
-            backgroundColor: "var(--header-bg)",
-            borderColor: "transparent",
-            borderImage: "linear-gradient(90deg, #99f6e4, #93c5fd, #99f6e4) 1",
-          }}
-        >
-          <div className="flex items-center">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="rounded-md p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--muted)] md:hidden"
-            >
-              <Menu className="size-5" />
-            </button>
-          </div>
+      <div className="flex flex-1 min-h-0 gap-1 p-1.5">
+        <Navbar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-          <div className="flex items-center justify-center">
-            {showSecondaryNavbar && <SecondaryNavbar />}
-          </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+          <header className="grid h-[72px] shrink-0 grid-cols-[1fr_auto_1fr] items-center rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-4 sm:px-6">
+            <div className="flex items-center">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-md p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--muted)] md:hidden"
+              >
+                <Menu className="size-5" />
+              </button>
+            </div>
 
-          <div className="flex items-center justify-end">
-            <ProfileDropdown />
-          </div>
-        </header>
+            <div className="flex items-center justify-center">
+              {showSecondaryNavbar && <SecondaryNavbar />}
+            </div>
 
-        <GlobalBanner />
+            <div className="flex items-center justify-end">
+              <ProfileDropdown />
+            </div>
+          </header>
 
-        <main className="flex-1 px-4 py-3 sm:py-6">
-          <Outlet />
-        </main>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--header-bg)] px-2 py-2 sm:py-4">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

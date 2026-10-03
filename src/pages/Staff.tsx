@@ -286,14 +286,22 @@ export const Staff = () => {
   };
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       {tab === "records" ? (
         <TableView
           refreshTrigger={staffRefreshTrigger}
           agencies={companies as unknown as Agency[]}
+          columnHeaders={[
+            "Name",
+            { label: "Email", className: "flex-[0.7]" },
+            { label: "Assigned To", className: "flex-[0.7]" },
+            "NI Number",
+            "Title",
+          ]}
           renderItem={(member, idx) => {
             const raw = member as unknown as Record<string, unknown>;
             const niNumber = findValueByNormalizedKey(raw, "ni number");
+            const jobTitle = findValueByNormalizedKey(raw, "job title");
             return (
               <AccordionItem
                 key={member.id}
@@ -333,14 +341,27 @@ export const Staff = () => {
                         />
                       )}
                   </StaffAccordionHeader>,
-                  <span className="text-sm text-[var(--muted-foreground)]">
-                    {member.email || "—"}
-                  </span>,
-                  <span className="text-sm text-[var(--muted-foreground)]">
-                    {member.metadata?.assignedToName || "—"}
-                  </span>,
+                  {
+                    node: (
+                      <span className="text-sm text-[var(--muted-foreground)]">
+                        {member.email || "—"}
+                      </span>
+                    ),
+                    className: "flex-[0.7]",
+                  },
+                  {
+                    node: (
+                      <span className="text-sm text-[var(--muted-foreground)]">
+                        {member.metadata?.assignedToName || "—"}
+                      </span>
+                    ),
+                    className: "flex-[0.7]",
+                  },
                   <span className="text-sm text-[var(--muted-foreground)]">
                     {niNumber || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {jobTitle || "—"}
                   </span>,
                 ]}
               >

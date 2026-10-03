@@ -4,6 +4,9 @@ import type { TypoProps } from "./types";
 export const H1 = (props: TypoProps) =>
   el("h2", "text-base sm:text-lg font-bold text-[var(--foreground)]", props);
 
+export const Title = (props: TypoProps) =>
+  el("p", "text-[20px] font-medium text-[#333333]", props);
+
 export const H2 = (props: TypoProps) =>
   el("h3", "text-sm sm:text-base font-bold text-[var(--foreground)]", props);
 

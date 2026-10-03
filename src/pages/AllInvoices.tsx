@@ -1,16 +1,16 @@
 import { useState, useMemo } from "react";
-import { Loader2 } from "lucide-react";
-import { Section } from "../components/Section";
 import {
   DialogContent,
   DialogRoot,
   DialogTitle,
 } from "../components/ui/dialog";
-import { Button } from "../components/ui";
+import { ActionButton, Button } from "../components/ui";
 import { useData } from "../context/DataProvider";
 import { useToast } from "../context/ToastProvider";
-import { TableView } from "../views/Table/TableView";
+import { PaginatedFilterSection } from "../views/Table";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
+import { usePaginationParams } from "../hooks/usePaginationParams";
+import { emptyFilters } from "../types/domain";
 import { deleteInvoice, markInvoicePaid } from "../services/invoiceService";
 
 interface InvoiceEntry {
@@ -98,62 +98,106 @@ export const AllInvoices = () => {
     return result;
   }, [agencies]);
 
-  return (
-    <div className="space-y-4">
-      <Section title="Invoices">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-          </div>
-        ) : flatInvoices.length === 0 ? (
-          <p className="text-sm text-zinc-500">No invoices found.</p>
-        ) : (
-          <TableView<InvoiceEntry>
-            title="Invoices"
-            expandable={false}
-            columnHeaders={["Name", "Amount", "Sent On", "Due On", "Status"]}
-            renderItem={(invoice) => {
-              const isPaid = invoice.status === "paid";
-              const amount = parseFloat(invoice.amountPayable).toFixed(2);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const totalPages = Math.max(1, Math.ceil(flatInvoices.length / pageSize));
+  const pagedInvoices = useMemo(
+    () => flatInvoices.slice(page * pageSize, (page + 1) * pageSize),
+    [flatInvoices, page, pageSize],
+  );
 
-              return (
-                <span className="flex items-center gap-2">
-                  <span className="tabular-nums">{/* index */}</span>
-                  <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {invoice.fileName}
-                  </span>
-                  <span className="text-right text-sm font-medium">
-                    £{amount}
-                  </span>
-                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
-                    {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
-                    {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <span
-                    className={
-                      isPaid
-                        ? "text-green-600 font-medium"
-                        : "text-red-600 font-medium"
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+      <PaginatedFilterSection<InvoiceEntry>
+        title="Invoices"
+        items={pagedInvoices}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        totalResults={flatInvoices.length}
+        pageSize={pageSize}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
+        filters={emptyFilters}
+        onFiltersChange={() => {}}
+        enableNameFilter={false}
+        enableTagFilter={false}
+        expandable={false}
+        columnHeaders={["Name", "Amount", "Sent On", "Due On", "Status", "Actions"]}
+        emptyMessage="No invoices found."
+        renderItem={(invoice) => {
+          const isPaid = invoice.status === "paid";
+          const amount = parseFloat(invoice.amountPayable).toFixed(2);
+
+          return (
+            <>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                {invoice.fileName}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium">
+                £{amount}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {new Date(invoice.uploadedAt).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {new Date(invoice.dueDate).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              <span
+                className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium ${
+                  isPaid ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {isPaid ? "Paid" : "Not Paid"}
+              </span>
+              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <ActionButton
+                  variant="download"
+                  ariaLabel="Download invoice"
+                  onClick={() =>
+                    window.open(invoice.fileUrl, "_blank", "noopener,noreferrer")
+                  }
+                />
+                {!isPaid && (
+                  <ActionButton
+                    variant="paid"
+                    ariaLabel="Mark invoice as paid"
+                    onClick={() =>
+                      setConfirmPaid({
+                        agencyId: invoice.agencyId,
+                        invoiceId: invoice.id,
+                        fileName: invoice.fileName,
+                        clientName: invoice.agencyName,
+                      })
                     }
-                  >
-                    {isPaid ? "Paid" : "Not Paid"}
-                  </span>
-                </span>
-              );
-            }}
-          />
-        )}
-      </Section>
+                  />
+                )}
+                <ActionButton
+                  variant="delete"
+                  ariaLabel="Delete invoice"
+                  onClick={() =>
+                    setDeleteTarget({
+                      agencyId: invoice.agencyId,
+                      invoiceId: invoice.id,
+                      fileName: invoice.fileName,
+                      clientName: invoice.agencyName,
+                    })
+                  }
+                />
+              </span>
+            </>
+          );
+        }}
+      />
 
       <DialogRoot
         open={confirmPaid !== null}

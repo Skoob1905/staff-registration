@@ -22,15 +22,9 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
       />
 
       <aside
-        className={`fixed left-0 top-0 z-30 flex h-full w-56 flex-col transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-30 flex h-full w-56 flex-col bg-[var(--header-bg)] transition-transform duration-200 md:static md:translate-x-0 md:overflow-hidden md:rounded-xl md:border md:border-[var(--border)] ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{
-          backgroundColor: "var(--header-bg)",
-          borderColor: "transparent",
-          borderRight: "1px solid",
-          borderImage: "linear-gradient(180deg, #99f6e4, #93c5fd, #99f6e4) 1",
-        }}
       >
         <button
           onClick={onClose}
@@ -39,23 +33,22 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
           <X className="size-5" />
         </button>
 
-        <div className="flex justify-center px-4 pt-6 pb-4">
-          <a href={config.homepage} target="_blank" rel="noopener noreferrer">
-            <img
-              src={config.navbar}
-              alt={config.name}
-              className="max-h-10 w-auto object-contain"
-            />
-          </a>
+        <div className="flex justify-center px-2 pt-3 pb-2">
+          <img
+            src={config.navbar}
+            alt={config.name}
+            className="max-h-16 w-auto object-contain"
+          />
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1.5 px-2">
+        <nav className="flex flex-1 flex-col gap-3 px-2">
           <NavbarItems
+            onNavigate={onClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              `flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-[var(--primary-100)] text-[var(--primary)]"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                  : "text-[var(--muted-foreground)] hover:border-[var(--primary)]"
               }`
             }
           />
@@ -67,7 +60,7 @@ export const Navbar = ({ open, onClose }: NavbarProps) => {
             className="w-full rounded-lg"
             onClick={() => void logoutUser()}
           >
-            Logout
+            <span className="text-sm sm:text-[11px] md:text-sm">Logout</span>
           </Button>
           <p className="mt-1.5 text-center text-[11px] text-[var(--muted-foreground)]">
             v{__APP_VERSION__}

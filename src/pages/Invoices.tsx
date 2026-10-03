@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check } from "lucide-react";
-import { Section } from "../components/Section";
-import { InformationCard } from "../components/InformationCard";
-import { Button } from "../components/ui";
+import { ActionButton } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
 import { useData } from "../context/DataProvider";
 import { getClientByEmail } from "../services/firestore";
+import { PaginatedFilterSection } from "../views/Table";
+import { usePaginationParams } from "../hooks/usePaginationParams";
+import { emptyFilters } from "../types/domain";
+import type { InvoiceEntry } from "../services/invoiceService";
 
 export const Invoices = () => {
   const { appUser } = useAuth();
@@ -46,79 +47,92 @@ export const Invoices = () => {
     };
   }, [loading, clientId, myInvoices, markSeen]);
 
-  return (
-    <div className="space-y-4">
-      <Section title="Invoices">
-        {loading ? (
-          <p className="text-sm text-zinc-500">Loading invoices...</p>
-        ) : myInvoices.length === 0 ? (
-          <p className="text-sm text-zinc-500">No invoices found.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {myInvoices.map((inv) => {
-              const isPaid = inv.status === "paid";
-              const amount = parseFloat(inv.amountPayable).toFixed(2);
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const totalPages = Math.max(1, Math.ceil(myInvoices.length / pageSize));
+  const pagedInvoices = useMemo(
+    () => myInvoices.slice(page * pageSize, (page + 1) * pageSize),
+    [myInvoices, page, pageSize],
+  );
 
-              return (
-                <InformationCard
-                  key={inv.id}
-                  variant="invoice"
-                  name={inv.fileName}
-                  isNew={inv.hasSeen === false}
-                  hasDownloaded={!!inv.hasDownloaded}
-                  uploadedAt={inv.uploadedAt}
-                  admin={false}
-                  documentInfo={
-                    <span
-                      className="text-lg sm:text-xl font-bold tracking-tight"
-                      style={{
-                        color: isPaid ? "var(--accent)" : "var(--primary)",
-                      }}
-                    >
-                      <span className="text-xs sm:text-sm">£</span>
-                      {amount}
-                    </span>
-                  }
-                  infoBottom={
-                    <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-                      Due:{" "}
-                      {new Date(inv.dueDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  }
-                  actions={
-                    <div className="flex items-center justify-between gap-2">
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          window.open(
-                            inv.fileUrl,
-                            "_blank",
-                            "noopener,noreferrer",
-                          );
-                          markDownloaded("invoices", clientId || inv.agencyId, [
-                            inv.id,
-                          ]).catch(() => {});
-                        }}
-                      >
-                        Download
-                      </Button>
-                      {isPaid && (
-                        <span className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-green-500/80 text-white shadow-[0_2px_8px_rgba(34,197,94,0.25)]">
-                          <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </span>
-                      )}
-                    </div>
-                  }
+  const downloadInvoice = (inv: InvoiceEntry) => {
+    window.open(inv.fileUrl, "_blank", "noopener,noreferrer");
+    markDownloaded("invoices", clientId || inv.agencyId, [inv.id]).catch(
+      () => {},
+    );
+  };
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+      <PaginatedFilterSection<InvoiceEntry>
+        title="Invoices"
+        items={pagedInvoices}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        totalResults={myInvoices.length}
+        pageSize={pageSize}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
+        filters={emptyFilters}
+        onFiltersChange={() => {}}
+        enableNameFilter={false}
+        enableTagFilter={false}
+        expandable={false}
+        columnHeaders={[
+          "Name",
+          "Amount",
+          "Sent On",
+          "Due On",
+          "Status",
+          "Actions",
+        ]}
+        emptyMessage="No invoices found."
+        renderItem={(inv) => {
+          const isPaid = inv.status === "paid";
+          const amount = parseFloat(inv.amountPayable).toFixed(2);
+
+          return (
+            <>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                {inv.fileName}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium">
+                £{amount}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {new Date(inv.uploadedAt).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted-foreground)] sm:text-sm">
+                {new Date(inv.dueDate).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              <span
+                className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium ${
+                  isPaid ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {isPaid ? "Paid" : "Not Paid"}
+              </span>
+              <span className="min-w-0 flex-1">
+                <ActionButton
+                  variant="download"
+                  ariaLabel="Download invoice"
+                  onClick={() => downloadInvoice(inv)}
                 />
-              );
-            })}
-          </div>
-        )}
-      </Section>
+              </span>
+            </>
+          );
+        }}
+      />
     </div>
   );
 };

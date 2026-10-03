@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { httpsCallable } from "firebase/functions";
-import { Section } from "../components/Section";
 import { useData } from "../context/DataProvider";
 import { useToast } from "../context/ToastProvider";
-import { TableView } from "../views/Table/TableView";
+import { PaginatedFilterSection } from "../views/Table";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
+import { usePaginationParams } from "../hooks/usePaginationParams";
+import { emptyFilters } from "../types/domain";
 import { functions } from "../services/firebase";
 import { formatTimesheetDate, type TimesheetEntry } from "../utils/timesheets";
 
@@ -102,35 +103,48 @@ export const AllTimesheets = () => {
     return result;
   }, [agencies]);
 
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const totalPages = Math.max(1, Math.ceil(flatTimesheets.length / pageSize));
+  const pagedTimesheets = useMemo(
+    () => flatTimesheets.slice(page * pageSize, (page + 1) * pageSize),
+    [flatTimesheets, page, pageSize],
+  );
+
   return (
-    <div className="mx-auto space-y-4">
-      <Section title="Timesheets">
-        {loading ? (
-          <p className="text-sm text-zinc-500">Loading...</p>
-        ) : flatTimesheets.length === 0 ? (
-          <p className="text-sm text-zinc-500">No timesheets uploaded yet.</p>
-        ) : (
-<TableView<TimesheetEntry>
-              title="Timesheets"
-              expandable={false}
-              columnHeaders={["Columns", "File Name", "Date Sent", "Sent By"]}
-              renderItem={(entry, idx) => (
-                <span className="flex items-center gap-2">
-                  <span className="tabular-nums">{idx + 1}</span>
-                  <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {entry.fileName}
-                  </span>
-                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
-                    {formatTimesheetDate(entry.uploadedAt)}
-                  </span>
-                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)] flex-1">
-                    {entry.uploadedBy}
-                  </span>
-                </span>
-              )}
-            />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+      <PaginatedFilterSection<TimesheetEntry>
+        title="Timesheets"
+        items={pagedTimesheets}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        totalResults={flatTimesheets.length}
+        pageSize={pageSize}
+        onPrevPage={() => setPage(Math.max(0, page - 1))}
+        onNextPage={() => setPage(page + 1)}
+        onGoToPage={setPage}
+        onPageSizeChange={setPageSize}
+        filters={emptyFilters}
+        onFiltersChange={() => {}}
+        enableNameFilter={false}
+        enableTagFilter={false}
+        expandable={false}
+        columnHeaders={["File Name", "Date Sent", "Sent By"]}
+        emptyMessage="No timesheets uploaded yet."
+        renderItem={(entry) => (
+          <>
+            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              {entry.fileName}
+            </span>
+            <span className="min-w-0 flex-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
+              {formatTimesheetDate(entry.uploadedAt)}
+            </span>
+            <span className="min-w-0 flex-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
+              {entry.uploadedBy}
+            </span>
+          </>
         )}
-      </Section>
+      />
 
       <DeleteConfirmModal
         open={deleteTarget !== null}
