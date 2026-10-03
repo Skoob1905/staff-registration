@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import {
-  AccordionAction,
   AccordionItem,
   Button,
   DeleteButton,
@@ -249,16 +248,16 @@ export const Payslips = () => {
           value={payslipEntry.staffId}
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-          title={
-            <span className="flex items-center gap-2">
-              <AccordionTitle>{payslipEntry.staffName}</AccordionTitle>
-            </span>
-          }
-          actions={
-            <AccordionAction>
-              {"Latest: " + formatSentDate(latestPayslip.timestamp)}
-            </AccordionAction>
-          }
+          columns={[
+            <span className="tabular-nums">{idx + 1}</span>,
+            <AccordionTitle>{payslipEntry.staffName}</AccordionTitle>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {formatSentDate(latestPayslip.timestamp)}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {payslipEntry.payslips.length}
+            </span>,
+          ]}
         >
           <div className={`grid grid-flow-col gap-3 overflow-x-auto pb-2 auto-cols-[20rem] ${payslipEntry.payslips.length >= 2 ? "grid-rows-2" : "grid-rows-1"}`}>
             {payslipEntry.payslips.map((payslip) => (
@@ -309,11 +308,12 @@ export const Payslips = () => {
   );
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <TableView
         title="Payslips"
         accordionType="multiple"
         algoliaFilters="metadata.payslipsCount > 0"
+        columnHeaders={["Name", "Last Payslip Sent", "Number of Payslips"]}
         renderItem={renderItem}
         multiAccordionValue={openValues}
         onMultiAccordionChange={handleAccordionChange}

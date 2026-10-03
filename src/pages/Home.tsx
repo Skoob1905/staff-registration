@@ -262,7 +262,7 @@ export const Home = () => {
   );
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <TableView
         targetAgencyIds={targetAgencyIds}
         agencies={agencyList}

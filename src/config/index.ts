@@ -7,7 +7,7 @@ const unifiedTheme: Theme = {
   cardForeground: "#0F172A",
   muted: "#F1F5F9",
   mutedForeground: "#64748B",
-  primary: "#2563EB",
+  primary: "#1F8D87",
   primaryForeground: "#FFFFFF",
   border: "#E2E8F0",
   destructive: "#DC2626",

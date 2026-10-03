@@ -67,15 +67,17 @@ function NavItem({
   icon: Icon,
   count,
   className,
+  onNavigate,
 }: {
   label: string;
   to: string;
   icon: LucideIcon;
   count: number;
   className: (props: { isActive: boolean }) => string;
+  onNavigate?: () => void;
 }) {
   return (
-    <NavLink to={to} className={className} end>
+    <NavLink to={to} className={className} end onClick={onNavigate}>
       <Icon className="size-4 shrink-0" />
       <span className="flex-1">{label}</span>
       {count > 0 && (
@@ -89,8 +91,10 @@ function NavItem({
 
 export function NavbarItems({
   className,
+  onNavigate,
 }: {
   className: (props: { isActive: boolean }) => string;
+  onNavigate?: () => void;
 }) {
   const { appUser } = useAuth();
   const { counts } = useData();
@@ -122,6 +126,7 @@ export function NavbarItems({
       icon={route.icon}
       count={badgeMap[route.label] != null ? counts[badgeMap[route.label]] : 0}
       className={className}
+      onNavigate={onNavigate}
     />
   ));
 }
