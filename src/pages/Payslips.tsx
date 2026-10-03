@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import {
-  AccordionItem,
-  Button,
-  DeleteButton,
-} from "../components/ui";
+import { AccordionItem } from "../components/ui";
 import { AccordionTitle } from "../views/Accordion";
-import { InformationCard } from "../components/InformationCard";
+import { PayslipsTable } from "../components/PayslipsTable";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { TableView } from "../views/Table";
 import { useToast } from "../context/ToastProvider";
@@ -259,48 +255,20 @@ export const Payslips = () => {
             </span>,
           ]}
         >
-          <div className={`grid grid-flow-col gap-3 overflow-x-auto pb-2 auto-cols-[20rem] ${payslipEntry.payslips.length >= 2 ? "grid-rows-2" : "grid-rows-1"}`}>
-            {payslipEntry.payslips.map((payslip) => (
-              <InformationCard
-                key={payslip.id}
-                variant="payslip"
-                name={payslip.fileName}
-                isNew={!payslip.hasDownloaded}
-                hasDownloaded={!!payslip.hasDownloaded}
-                uploadedAt={payslip.timestamp}
-                admin
-                documentInfo={null}
-                actions={
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        window.open(
-                          payslip.fileUrl,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
-                      }}
-                    >
-                      Download
-                    </Button>
-                    {role === "super" && (
-                      <DeleteButton
-                        onClick={() => {
-                          setDeleteTarget({
-                            staffId: payslipEntry.staffId,
-                            staffName: payslipEntry.staffName,
-                            payslipId: payslip.id,
-                            payslipName: payslip.fileName,
-                          });
-                        }}
-                      />
-                    )}
-                  </div>
-                }
-              />
-            ))}
-          </div>
+          <PayslipsTable
+            payslips={payslipEntry.payslips}
+            onDelete={
+              role === "super"
+                ? (payslip) =>
+                    setDeleteTarget({
+                      staffId: payslipEntry.staffId,
+                      staffName: payslipEntry.staffName,
+                      payslipId: payslip.id,
+                      payslipName: payslip.fileName,
+                    })
+                : undefined
+            }
+          />
         </AccordionItem>
       );
     },
