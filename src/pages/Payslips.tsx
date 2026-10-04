@@ -20,6 +20,7 @@ import { formatSentDate } from "../utils/date";
 import { getAgencyName } from "../utils/agency";
 import type { Agency, BulkStaff, Payslip } from "../types/domain";
 import type { StaffPayslips } from "../utils/payslips";
+import { filterDownloadedPayslips } from "../utils/payslips";
 
 interface DeleteTarget {
   staffId: string;
@@ -253,6 +254,9 @@ export const Payslips = () => {
             <span className="text-sm text-[var(--muted-foreground)]">
               {payslipEntry.payslips.length}
             </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {filterDownloadedPayslips(payslipEntry.payslips).length}
+            </span>,
           ]}
         >
           <PayslipsTable
@@ -281,7 +285,12 @@ export const Payslips = () => {
         title="Payslips"
         accordionType="multiple"
         algoliaFilters="metadata.payslipsCount > 0"
-        columnHeaders={["Name", "Last Payslip Sent", "Number of Payslips"]}
+        columnHeaders={[
+          "Name",
+          "Last Payslip Sent",
+          "Number of Payslips",
+          "Downloaded",
+        ]}
         renderItem={renderItem}
         multiAccordionValue={openValues}
         onMultiAccordionChange={handleAccordionChange}

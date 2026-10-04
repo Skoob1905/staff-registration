@@ -5,7 +5,7 @@ import { Pill } from "../components/Pill";
 import { InformationCard } from "../components/InformationCard";
 import { ActionButton, Button } from "../components/ui";
 import { useAuth } from "../context/AuthProvider";
-import { getPayslipsForUser } from "../services/payslipService";
+import { getPayslipsForUser, markPayslipDownloaded } from "../services/payslipService";
 import { PaginatedFilterSection } from "../views/Table";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 import { emptyFilters } from "../types/domain";
@@ -60,6 +60,13 @@ export const Dashboard = () => {
     () => payslips.slice(page * pageSize, (page + 1) * pageSize),
     [payslips, page, pageSize],
   );
+
+  const downloadPayslip = (payslip: Payslip) => {
+    window.open(payslip.fileUrl, "_blank", "noopener,noreferrer");
+    markPayslipDownloaded(payslip.id).catch((err) => {
+      console.error("Failed to mark payslip as downloaded", err);
+    });
+  };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
@@ -142,9 +149,7 @@ export const Dashboard = () => {
               <ActionButton
                 variant="download"
                 ariaLabel="Download payslip"
-                onClick={() =>
-                  window.open(payslip.fileUrl, "_blank", "noopener,noreferrer")
-                }
+                onClick={() => downloadPayslip(payslip)}
               />
             </span>
           </>

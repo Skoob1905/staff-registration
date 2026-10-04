@@ -5,3 +5,6 @@ export interface StaffPayslips {
   staffName: string;
   payslips: Payslip[];
 }
+
+export const filterDownloadedPayslips = (payslips: Payslip[]): Payslip[] =>
+  payslips.filter((payslip) => payslip.hasDownloaded === true);
