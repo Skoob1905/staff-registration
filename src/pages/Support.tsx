@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Section } from "../components/Section";
+import { PageTitle } from "../components/PageTitle";
 import { Body, Caption } from "../config/typography";
 
 const MAX_CHARS = 500;
@@ -44,8 +44,10 @@ export const Support = () => {
   const remaining = MAX_CHARS - message.length;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Section title="Got a question?">
+    <div className="mx-auto w-full max-w-2xl space-y-4">
+      <PageTitle>Got a question?</PageTitle>
+
+      <div className="px-4">
         <div className="mb-2">
           <Body>Send us a message and we'll get back to you.</Body>
         </div>
@@ -83,7 +85,7 @@ export const Support = () => {
             Send on WhatsApp
           </button>
         </div>
-      </Section>
+      </div>
     </div>
   );
 };

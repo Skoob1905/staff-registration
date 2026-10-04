@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { AddModal } from "../components/AddModal";
+import { PageTitle } from "../components/PageTitle";
 import { AgenciesDropdown } from "../components/AgenciesDropdown";
 import { FileDrop } from "../components/FileDrop";
 import {
@@ -15,7 +16,6 @@ import {
   PreviewModal,
   type SummaryItem,
 } from "../components/modals";
-import { Section } from "../components/Section";
 import { useAuth } from "../context/AuthProvider";
 import { useToast } from "../context/ToastProvider";
 import { callBulkUploadPayslips } from "../services/payslipService";
@@ -35,6 +35,7 @@ import {
   hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
 import { readPayslipFile } from "../utils/readPayslipFile";
+import { extractPdfFilesFromZip } from "../utils/extractPayslipsFromZip";
 import { getColumns, staffColumns } from "../utils/fileUpload/columns";
 import { matchStaffRow } from "../utils/fileUpload/staffMatch";
 import { FileCleaner, type CleanedFile } from "../utils/cleanFile";
@@ -141,9 +142,9 @@ const SUPER_TYPES: UploadType[] = [
     id: "payslips",
     icon: ScrollText,
     title: "Payslips",
-    description: "Upload payslip(s) for staff",
+    description: "Upload payslips as PDFs or a .zip",
     color: "#E65100",
-    acceptedFiles: ".pdf",
+    acceptedFiles: ".pdf,.zip",
     fileLimit: "Max 2MB each",
     multiple: true,
   },
@@ -199,8 +200,38 @@ export const Upload = () => {
 
   const handlePayslips = useCallback(
     async (files: File[]) => {
-      if (files.length === 1) {
-        const file = files[0];
+      // Expand any .zip archives into their contained PDFs first, so the rest
+      // of the flow behaves exactly as if those files were selected directly.
+      const expanded: File[] = [];
+      for (const file of files) {
+        if (file.name.toLowerCase().endsWith(".zip")) {
+          try {
+            const extracted = await extractPdfFilesFromZip(file);
+            if (extracted.length === 0) {
+              toast({
+                title: "No payslips found",
+                description: `${file.name} does not contain any PDF files.`,
+                variant: "error",
+              });
+              continue;
+            }
+            expanded.push(...extracted);
+          } catch {
+            toast({
+              title: "Invalid zip file",
+              description: `${file.name} could not be read.`,
+              variant: "error",
+            });
+          }
+        } else {
+          expanded.push(file);
+        }
+      }
+
+      if (expanded.length === 0) return;
+
+      if (expanded.length === 1) {
+        const file = expanded[0];
         if (file.size > MAX_FILE_SIZE) {
           toast({
             title: "File too large",
@@ -215,7 +246,7 @@ export const Upload = () => {
         return;
       }
 
-      const results = await Promise.all(files.map((f) => readPayslipFile(f)));
+      const results = await Promise.all(expanded.map((f) => readPayslipFile(f)));
 
       const fetchExistingNames = async (
         workerRef: string,
@@ -651,41 +682,41 @@ export const Upload = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Section title="Upload">
-        <div className="flex flex-wrap justify-center gap-3">
-          {types.map((type) => (
-            <div
-              key={type.id}
-              className="w-[calc(50%-0.375rem)] md:w-[calc(33.333%-0.5rem)] max-w-[200px]"
-            >
-              <FileDrop
-                icon={type.icon}
-                title={type.title}
-                description={type.description}
-                color={type.color}
-                acceptedFiles={type.acceptedFiles}
-                fileLimit={type.fileLimit}
-                multiple={type.multiple}
-                feint={type.id === "timesheets"}
-                noScale={type.id === "timesheets"}
-                onFileSelect={
-                  type.multiple
-                    ? undefined
-                    : (file) => handleFileSelect(file, type.id)
-                }
-                onFilesSelect={
-                  type.id === "payslips"
-                    ? handlePayslips
-                    : type.multiple
-                      ? (_files: File[]) => undefined
-                      : undefined
-                }
-              />
-            </div>
-          ))}
-        </div>
-      </Section>
+    <div className="w-full space-y-4">
+      <PageTitle>Upload</PageTitle>
+
+      <div
+        className="grid gap-3 px-4"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+      >
+        {types.map((type) => (
+          <div key={type.id} className="mx-auto w-full max-w-[280px]">
+            <FileDrop
+              icon={type.icon}
+              title={type.title}
+              description={type.description}
+              color={type.color}
+              acceptedFiles={type.acceptedFiles}
+              fileLimit={type.fileLimit}
+              multiple={type.multiple}
+              feint={type.id === "timesheets"}
+              noScale={type.id === "timesheets"}
+              onFileSelect={
+                type.multiple
+                  ? undefined
+                  : (file) => handleFileSelect(file, type.id)
+              }
+              onFilesSelect={
+                type.id === "payslips"
+                  ? handlePayslips
+                  : type.multiple
+                    ? (_files: File[]) => undefined
+                    : undefined
+              }
+            />
+          </div>
+        ))}
+      </div>
 
       <AddModal
         open={showAddModal}

@@ -1,7 +1,7 @@
 # Component Glossary
 
 ## Section
-A generic card container with an optional title, count badge, and CTA action. Wraps children in the base Card component.
+A generic card container with an optional title, count badge, and CTA action.
 
 - `title` — heading text
 - `count` — optional number shown as `"Title (count)"`

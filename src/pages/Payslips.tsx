@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import {
-  AccordionAction,
-  AccordionItem,
-  Button,
-  DeleteButton,
-} from "../components/ui";
-import { AccordionTitle } from "../components/AccordionTitle";
-import { InformationCard } from "../components/InformationCard";
+import { AccordionItem } from "../components/ui";
+import { AccordionTitle } from "../views/Accordion";
+import { PayslipsTable } from "../components/PayslipsTable";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
-import { StaffListSection } from "../components/StaffListSection";
+import { TableView } from "../views/Table";
 import { useToast } from "../context/ToastProvider";
 import { useAuth } from "../context/AuthProvider";
 import { useAccordionParams } from "../hooks/useAccordionParams";
@@ -25,6 +20,7 @@ import { formatSentDate } from "../utils/date";
 import { getAgencyName } from "../utils/agency";
 import type { Agency, BulkStaff, Payslip } from "../types/domain";
 import type { StaffPayslips } from "../utils/payslips";
+import { filterDownloadedPayslips } from "../utils/payslips";
 
 interface DeleteTarget {
   staffId: string;
@@ -249,59 +245,34 @@ export const Payslips = () => {
           value={payslipEntry.staffId}
           className="animate-cascade"
           style={{ animationDelay: `${idx * 5}ms` } as React.CSSProperties}
-          title={
-            <span className="flex items-center gap-2">
-              <AccordionTitle>{payslipEntry.staffName}</AccordionTitle>
-            </span>
-          }
-          actions={
-            <AccordionAction>
-              {"Latest: " + formatSentDate(latestPayslip.timestamp)}
-            </AccordionAction>
-          }
+          columns={[
+            <span className="tabular-nums">{idx + 1}</span>,
+            <AccordionTitle>{payslipEntry.staffName}</AccordionTitle>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {formatSentDate(latestPayslip.timestamp)}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {payslipEntry.payslips.length}
+            </span>,
+            <span className="text-sm text-[var(--muted-foreground)]">
+              {filterDownloadedPayslips(payslipEntry.payslips).length}
+            </span>,
+          ]}
         >
-          <div className={`grid grid-flow-col gap-3 overflow-x-auto pb-2 auto-cols-[20rem] ${payslipEntry.payslips.length >= 2 ? "grid-rows-2" : "grid-rows-1"}`}>
-            {payslipEntry.payslips.map((payslip) => (
-              <InformationCard
-                key={payslip.id}
-                variant="payslip"
-                name={payslip.fileName}
-                isNew={!payslip.hasDownloaded}
-                hasDownloaded={!!payslip.hasDownloaded}
-                uploadedAt={payslip.timestamp}
-                admin
-                documentInfo={null}
-                actions={
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        window.open(
-                          payslip.fileUrl,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
-                      }}
-                    >
-                      Download
-                    </Button>
-                    {role === "super" && (
-                      <DeleteButton
-                        onClick={() => {
-                          setDeleteTarget({
-                            staffId: payslipEntry.staffId,
-                            staffName: payslipEntry.staffName,
-                            payslipId: payslip.id,
-                            payslipName: payslip.fileName,
-                          });
-                        }}
-                      />
-                    )}
-                  </div>
-                }
-              />
-            ))}
-          </div>
+          <PayslipsTable
+            payslips={payslipEntry.payslips}
+            onDelete={
+              role === "super"
+                ? (payslip) =>
+                    setDeleteTarget({
+                      staffId: payslipEntry.staffId,
+                      staffName: payslipEntry.staffName,
+                      payslipId: payslip.id,
+                      payslipName: payslip.fileName,
+                    })
+                : undefined
+            }
+          />
         </AccordionItem>
       );
     },
@@ -309,12 +280,17 @@ export const Payslips = () => {
   );
 
   return (
-    <div className="mx-auto space-y-4">
-      <StaffListSection
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+      <TableView
         title="Payslips"
-        accordionLayout="single"
         accordionType="multiple"
         algoliaFilters="metadata.payslipsCount > 0"
+        columnHeaders={[
+          "Name",
+          "Last Payslip Sent",
+          "Number of Payslips",
+          "Downloaded",
+        ]}
         renderItem={renderItem}
         multiAccordionValue={openValues}
         onMultiAccordionChange={handleAccordionChange}

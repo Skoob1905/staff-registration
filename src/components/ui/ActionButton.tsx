@@ -1,4 +1,4 @@
-import { Download, X } from "lucide-react";
+import { Check, Download, X } from "lucide-react";
 
 const cls = (...parts: Array<string | false | null | undefined>) =>
   parts.filter(Boolean).join(" ");
@@ -10,7 +10,7 @@ const sizeMap = {
 } as const;
 
 type ActionButtonProps = {
-  variant: "delete" | "download";
+  variant: "delete" | "download" | "paid";
   size?: keyof typeof sizeMap;
   onClick?: (e: React.MouseEvent) => void;
   href?: string;
@@ -35,7 +35,9 @@ export const ActionButton = ({
     btn,
     variant === "delete"
       ? "bg-red-500/80 text-white hover:bg-red-600 shadow-[0_2px_8px_rgba(220,38,38,0.25)]"
-      : "bg-[var(--primary)]/80 text-white hover:bg-[var(--primary)] shadow-[0_2px_8px_rgba(79,125,170,0.25)]",
+      : variant === "paid"
+        ? "bg-green-500/80 text-white hover:bg-green-600 shadow-[0_2px_8px_rgba(34,197,94,0.25)]"
+        : "bg-[var(--primary)]/80 text-white hover:bg-[var(--primary)] shadow-[0_2px_8px_rgba(31,141,135,0.25)]",
     disabled && "cursor-not-allowed opacity-40",
     className,
   );
@@ -43,6 +45,8 @@ export const ActionButton = ({
   const iconEl =
     variant === "delete" ? (
       <X className={icon} />
+    ) : variant === "paid" ? (
+      <Check className={icon} />
     ) : (
       <Download className={icon} />
     );

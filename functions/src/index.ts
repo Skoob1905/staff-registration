@@ -38,6 +38,7 @@ import { getStaffRef, getAgencyRef, getClientRef } from "./utils/getFileRef";
 import { dedupRecords } from "./utils/dedup";
 import { createAuthUsers } from "./utils/createAuthUsers";
 import { removeAuthUser } from "./utils/removeAuthUser";
+import { isPayslipOwner } from "./utils/payslipOwnership";
 import type { LoginDoc } from "./types";
 import { EmailProvider } from "./services/EmailService";
 import { publishBulkEmailJob } from "./emails/publishEmails";
@@ -932,7 +933,16 @@ export const updatePayslipDownloadedStatus = onCall(async (request) => {
   }
 
   const payslip = payslipSnap.data() as { userId?: string };
-  if (payslip.userId !== callerUid) {
+
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  const callerEmail = String(callerSnap.data()?.email ?? "").toLowerCase();
+
+  const staffSnap = callerEmail
+    ? await db.collection("staff").where("email", "==", callerEmail).get()
+    : null;
+  const staffDocIds = staffSnap?.docs.map((staffDoc) => staffDoc.id) ?? [];
+
+  if (!isPayslipOwner(staffDocIds, payslip.userId ?? "")) {
     throw new HttpsError("permission-denied", "Not your payslip.");
   }
 

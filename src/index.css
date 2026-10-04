@@ -7,19 +7,23 @@
   --card-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --primary: #3b82f6;
+  --primary: #1f8d87;
   --primary-foreground: #ffffff;
-  --primary-100: #eff6ff;
-  --primary-200: #dbeafe;
-  --primary-300: #93c5fd;
-  --primary-400: #60a5fa;
-  --primary-500: #2563eb;
-  --primary-dark: #1e3a8a;
+  --primary-100: #e7f4f3;
+  --primary-200: #c2e6e3;
+  --primary-300: #99f6e4;
+  --primary-400: #5eead4;
+  --primary-500: #1f8d87;
+  --primary-hover: #1a7a75;
+  --primary-tint: rgba(31, 141, 135, 0.1);
+  --primary-border: rgba(31, 141, 135, 0.2);
+  --primary-shadow: rgba(31, 141, 135, 0.25);
+  --primary-dark: #0f5f5b;
   --primary-dark-foreground: #f1f5f9;
-  --primary-dark-100: #eef2ff;
-  --primary-dark-200: #cbd5e1;
-  --primary-dark-300: #94a3b8;
-  --primary-dark-400: #475569;
+  --primary-dark-100: #e7f4f3;
+  --primary-dark-200: #c2e6e3;
+  --primary-dark-300: #8fd0cc;
+  --primary-dark-400: #4fb1a9;
   --accent: #14b8a6;
   --accent-foreground: #ffffff;
   --accent-100: #ecfdf5;
@@ -80,31 +84,6 @@ body {
 
 #root {
   min-height: 100vh;
-}
-
-.app-bg {
-  background-color: var(--background);
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 20px,
-      rgba(20, 185, 166, 0.03) 20px,
-      rgba(20, 185, 166, 0.03) 21px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 20px,
-      rgba(20, 185, 166, 0.03) 20px,
-      rgba(20, 185, 166, 0.03) 21px
-    ),
-    radial-gradient(
-      circle at top right,
-      color-mix(in srgb, var(--background) 85%, white 15%) 0%,
-      var(--background) 60%,
-      color-mix(in srgb, var(--background) 92%, #1e3a8a 8%) 100%
-    );
 }
 
 @keyframes cascade-in {

@@ -2,16 +2,16 @@
 
 ## Files
 - `src/config/typography.ts` — React component primitives
-- `src/config/theme.ts` — `typeface` property (font-family stack)
 - `src/config/types.ts` — `Theme.typeface` definition
+- `src/config/index.ts` — `unifiedTheme.typeface` (the active theme)
 - `src/index.css` — uses `var(--font-family)` on `body`
 
 ## Global Typeface
-The font-family is set via the `typeface` property in the theme config (`src/config/theme.ts`). It maps to `--font-family` CSS variable and is applied to `body` in `index.css`.
+The font-family is set via the `typeface` property on `unifiedTheme` in `src/config/index.ts`. It maps to the `--font-family` CSS variable and is applied to `body` in `index.css`.
 
-**Current value:** `'Manrope', 'Avenir Next', 'Segoe UI', sans-serif`
+**Current value:** `'Outfit', 'Avenir Next', 'Segoe UI', sans-serif` (loaded via Google Fonts in `index.html`)
 
-To change the app-wide typeface, edit the `typeface` property in `darkTheme` (and `lightTheme`) inside `src/config/theme.ts`. No other file changes needed.`
+To change the app-wide typeface, edit the `typeface` property on `unifiedTheme` in `src/config/index.ts`.
 
 ## Overview
 All text styling in the app is managed via reusable React components. Every component accepts `children`, optional `className` (appended to the base), and optional `as` to override the rendered HTML tag.
@@ -85,7 +85,6 @@ All text styling in the app is managed via reusable React components. Every comp
 ### Caption (8 occurrences)
 - `PaginationBar.tsx:84,141` — page info text (span)
 - `ImportHistory.tsx:239` — import timestamp
-- `ProfilePage.tsx:47,57,67` — field labels (Email, Role, Company)
 - `AddModal.tsx:436` — caption below file picker
 - `AddModal.tsx:502` — upload status caption
 

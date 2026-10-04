@@ -3,7 +3,6 @@ export { Input } from "./Input";
 export { ActionButton } from "./ActionButton";
 export { DeleteButton } from "./DeleteButton";
 export { DownloadButton } from "./DownloadButton";
-export { Card } from "./Card";
 export { Label } from "./Label";
 export { Alert } from "./Alert";
 export { Separator } from "./Separator";
@@ -24,5 +23,4 @@ export {
   ToastItem,
   ToastRegion,
 } from "./toast";
-export { Navbar } from "./Navbar";
 export { SendLinkButton } from "./SendLinkButton";

@@ -22,9 +22,8 @@ import { formatInvitedAt } from "../utils/date";
 import { getAgencyName } from "../utils/agency";
 import { Muted } from "../config/typography";
 import { config } from "../config";
-import { AccordionTitle } from "../components/AccordionTitle";
-import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
+import { AccordionTitle } from "../views/Accordion";
+import { PaginatedFilterSection } from "../views/Table";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
@@ -32,10 +31,7 @@ import {
   buildFacetFilters,
   buildFacetRequestFields,
 } from "../utils/loginsFilter";
-import {
-  type Agency,
-  type FilterKeyMap,
-} from "../types/domain";
+import { type Agency, type FilterKeyMap } from "../types/domain";
 
 const STATUS_COLOR: Record<string, string> = {
   awaiting_login: "bg-amber-400",
@@ -93,7 +89,6 @@ export const Users = () => {
 
   const [loginsFilters, setLoginsFilters] = useFilterParams();
   const { page: loginsPage, pageSize: loginsPageSize, setPage: setLoginsPage, setPageSize: setLoginsPageSize } = usePaginationParams(50);
-  const { leftValue, rightValue, onLeftChange, onRightChange } = useDualAccordionParams();
 
   const loginsKeyMap = useMemo<FilterKeyMap>(
     () => ({ tag: "tags", agency: "assignedTo" }),
@@ -276,7 +271,7 @@ export const Users = () => {
   );
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       <PaginatedFilterSection
         title="Users"
         items={logins}
@@ -296,10 +291,6 @@ export const Users = () => {
         enableTagFilter={false}
         agencies={filteredLoginsAgencies as unknown as Agency[]}
         agencyCounts={loginsAgencyCounts}
-        leftAccordionValue={leftValue}
-        onLeftAccordionChange={onLeftChange}
-        rightAccordionValue={rightValue}
-        onRightAccordionChange={onRightChange}
         emptyMessage="No users created yet."
         action={
           <Button

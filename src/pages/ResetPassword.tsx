@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import type { FirebaseError } from "firebase/app";
-import { Button, Input, Label } from "../components/ui";
+import { Key } from "lucide-react";
 import { NonAuthForm } from "../components/NonAuthForm";
 import {
   extractResetTokenFromUrl,
@@ -35,7 +35,7 @@ export const ResetPassword = () => {
 
     console.log(
       "[ResetPassword] extracted token (first 8 chars):",
-      `${token.substring(0, 8)}...`,
+      `${token.substring(0, 8)}...`
     );
 
     callValidateToken(token)
@@ -88,7 +88,7 @@ export const ResetPassword = () => {
         toast(
           toast_mapper[code as keyof typeof toast_mapper] as Parameters<
             typeof toast
-          >[0],
+          >[0]
         );
       } else {
         toast(toast_mapper[ToastType.RESET_FAILED]);
@@ -101,40 +101,29 @@ export const ResetPassword = () => {
   return (
     <NonAuthForm
       title="Reset Password"
-      subtitle="Choose a new password for your account"
+      submitTitle="Set Password"
+      loadingTitle="Resetting..."
       onSubmit={onSubmit}
-      actionButtons={[
-        <Button
-          key="submit"
-          type="submit"
-          disabled={loading}
-          className="h-auto py-2 text-sm"
-        >
-          {loading ? "Resetting..." : "Set Password"}
-        </Button>,
+      loading={loading}
+      minHeight="auto"
+      inputs={[
+        {
+          id: "password",
+          value: password,
+          onChange: setPassword,
+          type: "password",
+          placeholder: "Min. 6 characters",
+          icon: <Key className="h-4 w-4" />,
+        },
+        {
+          id: "confirm-password",
+          value: confirmPassword,
+          onChange: setConfirmPassword,
+          type: "password",
+          placeholder: "Re-enter password",
+          icon: <Key className="h-4 w-4" />,
+        },
       ]}
-    >
-      <div className="space-y-1">
-        <Label htmlFor="password">New Password</Label>
-        <Input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Min. 6 characters"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="confirm-password">Confirm Password</Label>
-        <Input
-          id="confirm-password"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Re-enter password"
-        />
-      </div>
-    </NonAuthForm>
+    />
   );
 };

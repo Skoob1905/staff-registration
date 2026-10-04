@@ -5,17 +5,18 @@ import { getUser, getClientByEmail } from "../services/firestore";
 import { AccordionItem, DownloadButton } from "../components/ui";
 import { Pill } from "../components/Pill";
 import { AssignedStaff } from "../components/Pills/AssignedStaff";
-import { AccordionTitle } from "../components/AccordionTitle";
+import { StaffAccordionHeader } from "../views/Accordion";
 import { Metadata } from "../components/Metadata";
-import { Section } from "../components/Section";
+import { RecordData } from "../components/RecordData";
+import { cleanRecordData } from "../utils/cleanRecordData";
 import { Muted } from "../config/typography";
+import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../context/AuthProvider";
 import { findValueByNormalizedKey } from "../utils/keyHeaderNormalisation";
 import { toDate } from "../utils/date";
-import { PaginatedFilterSection } from "../components/PaginatedFilterSection";
+import { PaginatedFilterSection } from "../views/Table";
 import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
 import { useFilterParams } from "../hooks/useFilterParams";
-import { useDualAccordionParams } from "../hooks/useDualAccordionParams";
 import { usePaginationParams } from "../hooks/usePaginationParams";
 
 function getPrimaryLabel(agency: Record<string, unknown>): string {
@@ -39,36 +40,6 @@ function getPrimaryLabel(agency: Record<string, unknown>): string {
   );
 }
 
-function getDisplayFields(
-  agency: Record<string, unknown>,
-): Array<{ label: string; value: string }> {
-  const skipFields = new Set([
-    "id",
-    "objectID",
-    "metadata",
-    "uploadedInFile",
-    "importedByUid",
-    "importedByAgencyId",
-    "importedAt",
-    "business_name",
-    "sortableName",
-    "slug",
-    "email",
-  ]);
-  const result: Array<{ label: string; value: string }> = [];
-  for (const [key, value] of Object.entries(agency)) {
-    if (skipFields.has(key)) continue;
-    if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      result.push({ label: key, value: String(value) });
-    }
-  }
-  return result;
-}
-
 export const ClientAgencies = () => {
   useEffect(() => {
     document.title = "Agencies";
@@ -80,8 +51,14 @@ export const ClientAgencies = () => {
   const [ready, setReady] = useState(false);
   const { page, pageSize, setPage, setPageSize } = usePaginationParams();
   const [filters, setFilters] = useFilterParams();
-  const { leftValue, rightValue, onLeftChange, onRightChange } =
-    useDualAccordionParams();
+
+  const handleFiltersChange = useCallback(
+    (newFilters: typeof filters) => {
+      setPage(0);
+      setFilters(newFilters);
+    },
+    [setFilters, setPage],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -173,38 +150,30 @@ export const ClientAgencies = () => {
     enabled: ready,
   });
 
-  const handleFiltersChange = useCallback(
-    (newFilters: typeof filters) => {
-      setPage(0);
-      setFilters(newFilters);
-    },
-    [setFilters, setPage],
-  );
-
   if (!ready || (agencies.length === 0 && loading)) {
     return (
-      <div className="mx-auto space-y-4">
-        <Section title="Agencies">
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
-          </div>
-        </Section>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4">
       {agencies.length === 0 ? (
-        <Section title="Agencies">
-          <Muted>No agencies assigned yet.</Muted>
-        </Section>
+        <div>
+          <PageTitle>Agencies</PageTitle>
+          <Muted className="px-4">No agencies assigned yet.</Muted>
+        </div>
       ) : (
         <PaginatedFilterSection
           title="Agencies"
           items={agencies}
           loading={loading}
           totalResults={totalResults}
+          columnHeaders={["Agency Name", "Email", "Address", "Postcode"]}
           renderItem={(agency, idx) => {
             const record = agency as unknown as Record<string, unknown>;
             const meta = record.metadata as Record<string, unknown> | undefined;
@@ -214,6 +183,25 @@ export const ClientAgencies = () => {
               | string
               | number
               | undefined;
+            const email = findValueByNormalizedKey(
+              record,
+              "email",
+              "emailaddress",
+            );
+            const address = findValueByNormalizedKey(
+              record,
+              "address",
+              "addressline1",
+              "address1",
+              "firstlineofaddress",
+            );
+            const postcode = findValueByNormalizedKey(
+              record,
+              "postcode",
+              "postalcode",
+              "zip",
+              "zipcode",
+            );
             return (
               <AccordionItem
                 key={agency.id as string}
@@ -222,11 +210,9 @@ export const ClientAgencies = () => {
                 style={
                   { animationDelay: `${idx * 5}ms` } as React.CSSProperties
                 }
-                title={
-                  <div className="flex min-w-0 w-full items-center gap-2">
-                    <AccordionTitle className="leading-none">
-                      {getPrimaryLabel(record)}
-                    </AccordionTitle>
+                columns={[
+                  <span className="tabular-nums">{idx + 1}</span>,
+                  <StaffAccordionHeader name={getPrimaryLabel(record)}>
                     {scName && (
                       <Pill
                         status="signed"
@@ -242,8 +228,17 @@ export const ClientAgencies = () => {
                         )
                       }
                     />
-                  </div>
-                }
+                  </StaffAccordionHeader>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {email || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {address || "—"}
+                  </span>,
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {postcode || "—"}
+                  </span>,
+                ]}
               >
                 {scName && scUrl && (
                   <div className="mb-2 flex items-center gap-2">
@@ -269,26 +264,7 @@ export const ClientAgencies = () => {
                     />
                   </div>
                 )}
-                <div className="overflow-x-auto">
-                  <div className="w-max grid grid-rows-[repeat(6,auto)] grid-flow-col auto-cols-min gap-x-6 gap-y-1 text-xs sm:text-sm text-zinc-600">
-                    {getDisplayFields(record).map((field, i) => (
-                      <p
-                        key={field.label}
-                        className="whitespace-nowrap px-1 animate-cascade"
-                        style={
-                          {
-                            animationDelay: `${i * 12}ms`,
-                          } as React.CSSProperties
-                        }
-                      >
-                        <span className="font-medium text-[var(--foreground)]">
-                          {field.label}
-                        </span>
-                        : {field.value}
-                      </p>
-                    ))}
-                  </div>
-                </div>
+                <RecordData data={cleanRecordData(record)} />
               </AccordionItem>
             );
           }}
@@ -303,10 +279,7 @@ export const ClientAgencies = () => {
           onFiltersChange={handleFiltersChange}
           enableNameFilter
           enableTagFilter={false}
-          leftAccordionValue={leftValue}
-          onLeftAccordionChange={onLeftChange}
-          rightAccordionValue={rightValue}
-          onRightAccordionChange={onRightChange}
+          nameFilterLabel="Name"
         />
       )}
     </div>
