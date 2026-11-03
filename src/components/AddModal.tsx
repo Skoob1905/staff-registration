@@ -17,6 +17,9 @@ import {
   hasClientRefColumn,
 } from "../utils/keyHeaderNormalisation";
 import { FileCleaner } from "../utils/cleanFile";
+import { parseImportFile } from "../utils/fileUpload/parseImportFile";
+import { inferAgencyFromFileName } from "../utils/fileUpload/inferAgency";
+import { useAgencies } from "../hooks/useAgencies";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
 const DEV_FILE_SIZE_LIMIT = 102400;
@@ -35,56 +38,6 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return { headers: [], rows: [] };
-
-  const parseLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  };
-
-  const rawHeaders = parseLine(lines[0]);
-  const seen = new Set<string>();
-  const headers: string[] = [];
-  const headerIndices: number[] = [];
-  rawHeaders.forEach((h, idx) => {
-    if (!seen.has(h)) {
-      seen.add(h);
-      headers.push(h);
-      headerIndices.push(idx);
-    }
-  });
-
-  const rows: CsvRow[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseLine(lines[i]);
-    if (values.length === 1 && values[0] === "") continue;
-    const row: CsvRow = {};
-    headerIndices.forEach((rawIdx, mappedIdx) => {
-      row[headers[mappedIdx]] = values[rawIdx] ?? "";
-    });
-    rows.push(row);
-  }
-
-  return { headers, rows };
 }
 
 interface AddModalProps {
@@ -131,8 +84,32 @@ export const AddModal = ({
   const [processing, setProcessing] = useState(false);
   const [selectedAgencyId, setSelectedAgencyId] = useState("");
   const [selectedAgencyName, setSelectedAgencyName] = useState("");
+  const { agencies, loading: agenciesLoading } = useAgencies({
+    enabled: csvType === "staff",
+  });
 
-  const handleFile = (file: File | undefined) => {
+  const agencyFileName = csvData?.fileName;
+  const agencyInference =
+    csvType === "staff" && agencyFileName && !agenciesLoading
+      ? inferAgencyFromFileName(agencyFileName, agencies)
+      : null;
+
+  const inferredAgency =
+    agencyInference?.status === "matched" ? agencyInference.agency : null;
+  const activeAgencyId = selectedAgencyId || inferredAgency?.id || "";
+  const activeAgencyName = selectedAgencyId
+    ? selectedAgencyName
+    : (inferredAgency?.name ?? "");
+  const agencyHint = selectedAgencyId
+    ? null
+    : (agencyInference?.status ?? null);
+
+  const resetAgencySelection = () => {
+    setSelectedAgencyId("");
+    setSelectedAgencyName("");
+  };
+
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
     if (
       !file.name.toLowerCase().endsWith(".csv") &&
@@ -149,14 +126,11 @@ export const AddModal = ({
       toast(toast_mapper[ToastType.FILE_TOO_LARGE]);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      if (!text) return;
 
-      let headers: string[];
-      let rows: CsvRow[];
+    let headers: string[];
+    let rows: CsvRow[];
 
+    try {
       if (csvType === "staff") {
         const cleaned = await new FileCleaner().cleanFile(file);
         if (!cleaned.hasHeaders) {
@@ -182,7 +156,7 @@ export const AddModal = ({
         headers = cleaned.headers;
         rows = cleaned.rows;
       } else {
-        const parsed = parseCsv(text);
+        const parsed = await parseImportFile(file);
         headers = parsed.headers;
         rows = parsed.rows;
         if (!parsed.headers.length) {
@@ -207,14 +181,16 @@ export const AddModal = ({
           }
         }
       }
+    } catch {
+      toast(toast_mapper[ToastType.INVALID_FILE]);
+      return;
+    }
 
-      setCsvData({ headers, rows, fileName: file.name, rawFile: file });
-    };
-    reader.readAsText(file);
+    setCsvData({ headers, rows, fileName: file.name, rawFile: file });
   };
 
   const fileProcessedRef = useRef(false);
-  const handleFileRef = useRef<(file: File) => void>(() => {});
+  const handleFileRef = useRef<(file: File) => void | Promise<void>>(() => {});
 
   useEffect(() => {
     handleFileRef.current = handleFile;
@@ -241,6 +217,7 @@ export const AddModal = ({
 
   const onUpload = async () => {
     if (!csvData || !appUser) return;
+    if (csvType === "staff" && !activeAgencyId) return;
     setLoading(true);
     setUploadProgress(0);
     setProcessing(false);
@@ -261,8 +238,7 @@ export const AddModal = ({
         toast(toast_mapper[ToastType.TIMESHEET_UPLOADED]);
         setUploadProgress(0);
         setCsvData(null);
-        setSelectedAgencyId("");
-        setSelectedAgencyName("");
+        resetAgencySelection();
         onOpenChange(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
@@ -323,10 +299,10 @@ export const AddModal = ({
         totalRecords: csvData.rows.length,
         fileName: csvData.fileName,
         fileUrl,
-        ...(selectedAgencyId
+        ...(activeAgencyId
           ? {
-              assignedToId: selectedAgencyId,
-              assignedToName: selectedAgencyName,
+              assignedToId: activeAgencyId,
+              assignedToName: activeAgencyName,
             }
           : {}),
       });
@@ -362,8 +338,7 @@ export const AddModal = ({
         toast(toast_mapper[ToastType.IMPORT_ALL_DUPLICATES](data.duplicates));
         setUploadProgress(0);
         setCsvData(null);
-        setSelectedAgencyId("");
-        setSelectedAgencyName("");
+        resetAgencySelection();
         onOpenChange(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
@@ -379,8 +354,7 @@ export const AddModal = ({
       );
       setUploadProgress(0);
       setCsvData(null);
-      setSelectedAgencyId("");
-      setSelectedAgencyName("");
+      resetAgencySelection();
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
@@ -392,7 +366,7 @@ export const AddModal = ({
 
       if (Array.isArray(data.emails) && data.emails.length > 0) {
         const emailCallable = httpsCallable(functions, "sendImportEmails");
-        const emailResult = await emailCallable({
+        await emailCallable({
           emails: data.emails,
           type:
             csvType === "staff"
@@ -401,8 +375,6 @@ export const AddModal = ({
                 ? "agency"
                 : "client",
         });
-        const { queued } = emailResult.data as { queued: number };
-        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
       }
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
@@ -449,8 +421,7 @@ export const AddModal = ({
             onOpenChange(false);
             setCsvData(null);
             setUploadProgress(0);
-            setSelectedAgencyId("");
-            setSelectedAgencyName("");
+            resetAgencySelection();
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
           className={`max-w-none flex flex-col overflow-hidden ${
@@ -497,12 +468,25 @@ export const AddModal = ({
 
           {csvData ? (
             <div className="mt-4 flex flex-1 min-h-0 flex-col">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold">{csvData.fileName}</h3>
+              <div className="flex items-center justify-between gap-3">
                 <Muted as="span">
                   {csvDupInfo.total}{" "}
                   {csvType === "timesheet" ? "records" : itemLabelPlural}
                 </Muted>
+                <div className="min-w-0 text-right">
+                  <h3 className="truncate text-base font-bold">
+                    {csvData.fileName}
+                  </h3>
+                  {csvType === "staff" && agencyHint ? (
+                    <Caption>
+                      {agencyHint === "none"
+                        ? "No agency matched from filename"
+                        : agencyHint === "ambiguous"
+                          ? "Multiple agencies matched from filename"
+                          : `Auto-assigned: ${activeAgencyName}`}
+                    </Caption>
+                  ) : null}
+                </div>
               </div>
 
               <div className="mt-2 flex-1 min-h-0 overflow-auto rounded-xl border border-[var(--border)]">
@@ -561,11 +545,13 @@ export const AddModal = ({
                     <>
                       <BodyMedium>Auto Assign</BodyMedium>
                       <AgenciesDropdown
-                        value={selectedAgencyId}
+                        value={activeAgencyId}
                         onChange={(value, name) => {
                           setSelectedAgencyId(value);
                           setSelectedAgencyName(name);
                         }}
+                        agencies={agencies}
+                        loading={agenciesLoading}
                         disabled={loading}
                         className="h-9 w-48 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs sm:text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--primary)]"
                         placeholder="Select an agency..."
@@ -574,7 +560,9 @@ export const AddModal = ({
                   )}
                   <Button
                     type="button"
-                    disabled={loading}
+                    disabled={
+                      loading || (csvType === "staff" && !activeAgencyId)
+                    }
                     onClick={() => void onUpload()}
                   >
                     {loading ? (
