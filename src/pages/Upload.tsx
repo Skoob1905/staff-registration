@@ -38,7 +38,9 @@ import { readPayslipFile } from "../utils/readPayslipFile";
 import { extractPdfFilesFromZip } from "../utils/extractPayslipsFromZip";
 import { getColumns, staffColumns } from "../utils/fileUpload/columns";
 import { matchStaffRow } from "../utils/fileUpload/staffMatch";
+import { inferAgencyFromFileName } from "../utils/fileUpload/inferAgency";
 import { FileCleaner, type CleanedFile } from "../utils/cleanFile";
+import { useAgencies } from "../hooks/useAgencies";
 import * as XLSX from "xlsx";
 
 const ALGOLIA_INDEX_PREFIX = import.meta.env.VITE_ALGOLIA_INDEX_PREFIX ?? "";
@@ -72,9 +74,11 @@ async function readXlsxHeaders(file: File): Promise<string[]> {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!sheet) return [];
-  const firstRow = XLSX.utils.sheet_to_json<
-    Array<string | number | boolean | null | undefined>
-  >(sheet, { header: 1, blankrows: false }).flatMap((r) => (Array.isArray(r) ? r : []))[0];
+  const firstRow = XLSX.utils
+    .sheet_to_json<
+      Array<string | number | boolean | null | undefined>
+    >(sheet, { header: 1, blankrows: false })
+    .flatMap((r) => (Array.isArray(r) ? r : []))[0];
   if (!Array.isArray(firstRow)) return [];
   return firstRow.map((c) =>
     c === null || c === undefined ? "" : String(c).trim(),
@@ -197,6 +201,26 @@ export const Upload = () => {
   const [uploadingStaff, setUploadingStaff] = useState(false);
   const [staffAssignedToId, setStaffAssignedToId] = useState("");
   const [staffAssignedToName, setStaffAssignedToName] = useState("");
+  const { agencies: staffAgencies, loading: staffAgenciesLoading } =
+    useAgencies();
+
+  const staffAgencyInference =
+    staffFile?.fileName && !staffAgenciesLoading
+      ? inferAgencyFromFileName(staffFile.fileName, staffAgencies)
+      : null;
+
+  const inferredStaffAgency =
+    staffAgencyInference?.status === "matched"
+      ? staffAgencyInference.agency
+      : null;
+  const staffAgencyHint = staffAssignedToId
+    ? null
+    : (staffAgencyInference?.status ?? null);
+  const activeStaffAssignedToId =
+    staffAssignedToId || inferredStaffAgency?.id || "";
+  const activeStaffAssignedToName = staffAssignedToId
+    ? staffAssignedToName
+    : (inferredStaffAgency?.name ?? "");
 
   const handlePayslips = useCallback(
     async (files: File[]) => {
@@ -246,7 +270,9 @@ export const Upload = () => {
         return;
       }
 
-      const results = await Promise.all(expanded.map((f) => readPayslipFile(f)));
+      const results = await Promise.all(
+        expanded.map((f) => readPayslipFile(f)),
+      );
 
       const fetchExistingNames = async (
         workerRef: string,
@@ -314,6 +340,9 @@ export const Upload = () => {
         return;
       }
 
+      setStaffAssignedToId("");
+      setStaffAssignedToName("");
+
       const matchedRows: StaffCsvRow[] = await Promise.all(
         cleaned.rows.map(async (row) => {
           const match = await matchStaffRow(
@@ -359,7 +388,7 @@ export const Upload = () => {
     }));
 
     try {
-      const { results, queued } = await callBulkUploadPayslips(
+      const { results } = await callBulkUploadPayslips(
         entries,
         (progress) => {
           toast({
@@ -408,10 +437,6 @@ export const Upload = () => {
           toast_mapper[ToastType.PAYSLIP_UPLOAD_DUPLICATES_SKIPPED](duplicates),
         );
       }
-
-      if (queued > 0) {
-        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
-      }
     } catch {
       dismissToast(PAYSLIP_PROGRESS_TOAST_ID);
       toast(toast_mapper[ToastType.UPLOAD_FAILED]("Bulk upload failed."));
@@ -422,15 +447,14 @@ export const Upload = () => {
 
   const handleStaffUpload = async () => {
     if (!staffFile || !appUser) return;
+    if (!activeStaffAssignedToId) return;
 
     const newRows = staffRows.filter((r) => r.status === "New");
     if (newRows.length === 0) return;
 
     setUploadingStaff(true);
 
-    toast(
-      toast_mapper[ToastType.STAFF_UPLOAD_START](newRows.length),
-    );
+    toast(toast_mapper[ToastType.STAFF_UPLOAD_START](newRows.length));
 
     try {
       const { downloadUrl } = await uploadCsvToStorage(
@@ -442,8 +466,8 @@ export const Upload = () => {
         newRows.map((r) => r.data),
         staffFile.fileName,
         downloadUrl,
-        staffAssignedToId || undefined,
-        staffAssignedToName || undefined,
+        activeStaffAssignedToId || undefined,
+        activeStaffAssignedToName || undefined,
       );
 
       setShowStaffModal(false);
@@ -467,12 +491,10 @@ export const Upload = () => {
 
       if (Array.isArray(data.emails) && data.emails.length > 0) {
         const emailCallable = httpsCallable(functions, "sendImportEmails");
-        const emailResult = await emailCallable({
+        await emailCallable({
           emails: data.emails,
           type: "worker",
         });
-        const { queued } = emailResult.data as { queued: number };
-        toast(toast_mapper[ToastType.EMAILS_QUEUED](queued));
       }
 
       setUploadingStaff(false);
@@ -807,15 +829,28 @@ export const Upload = () => {
         isError={() => false}
         onUpload={handleStaffUpload}
         loading={uploadingStaff}
+        uploadDisabled={!activeStaffAssignedToId}
+        fileName={staffFile?.fileName}
+        headerNote={
+          staffAgencyHint === "none"
+            ? "No agency matched from filename"
+            : staffAgencyHint === "ambiguous"
+              ? "Multiple agencies matched from filename"
+              : staffAgencyHint === "matched" && activeStaffAssignedToName
+                ? `Auto-assigned: ${activeStaffAssignedToName}`
+                : undefined
+        }
         footerExtra={
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium sm:text-sm">Auto-assign</span>
             <AgenciesDropdown
-              value={staffAssignedToId}
+              value={activeStaffAssignedToId}
               onChange={(id, name) => {
                 setStaffAssignedToId(id);
                 setStaffAssignedToName(name);
               }}
+              agencies={staffAgencies}
+              loading={staffAgenciesLoading}
               disabled={uploadingStaff}
               placeholder="No Assigned Agency"
               className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs sm:text-sm"

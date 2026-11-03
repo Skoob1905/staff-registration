@@ -39,6 +39,9 @@ interface MultipleFileUploadModalProps<T> {
   loading?: boolean;
   closeDisabled?: boolean;
   footerExtra?: ReactNode;
+  fileName?: string;
+  headerNote?: string;
+  uploadDisabled?: boolean;
 }
 
 export function MultipleFileUploadModal<T>({
@@ -57,6 +60,9 @@ export function MultipleFileUploadModal<T>({
   loading = false,
   closeDisabled = loading,
   footerExtra,
+  fileName,
+  headerNote,
+  uploadDisabled = false,
 }: MultipleFileUploadModalProps<T>) {
   const totalCount = displayTotalProp ?? files.length;
 
@@ -71,7 +77,7 @@ export function MultipleFileUploadModal<T>({
           {title}
         </DialogTitle>
 
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between gap-3">
           <span className="text-sm font-semibold">
             {totalCount} {itemLabel}
             {totalCount !== 1 ? "s" : ""}
@@ -91,6 +97,18 @@ export function MultipleFileUploadModal<T>({
               );
             })}
           </span>
+          {fileName && (
+            <div className="min-w-0 text-right">
+              <span className="block truncate text-sm font-medium text-[var(--foreground)]">
+                {fileName}
+              </span>
+              {headerNote && (
+                <span className="block text-xs text-[var(--muted-foreground)]">
+                  {headerNote}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--border)]">
@@ -135,7 +153,7 @@ export function MultipleFileUploadModal<T>({
           )}
           <Button
             type="button"
-            disabled={loading || uploadableCount === 0}
+            disabled={loading || uploadDisabled || uploadableCount === 0}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

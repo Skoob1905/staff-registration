@@ -1,7 +1,4 @@
-import { useMemo } from "react";
-import { useAuth } from "../context/AuthProvider";
-import { usePaginatedRecords } from "../hooks/usePaginatedRecords";
-import { getAgencyName } from "../utils/agency";
+import { useAgencies, type AgencyOption } from "../hooks/useAgencies";
 
 interface AgenciesDropdownProps {
   value: string;
@@ -12,9 +9,9 @@ interface AgenciesDropdownProps {
   id?: string;
   autoFocus?: boolean;
   onBlur?: () => void;
+  agencies?: AgencyOption[];
+  loading?: boolean;
 }
-
-const AGENCIES_INDEX = "agencies_name_desc";
 
 export const AgenciesDropdown = ({
   value,
@@ -25,21 +22,13 @@ export const AgenciesDropdown = ({
   id,
   autoFocus,
   onBlur,
+  agencies: agenciesProp,
+  loading: loadingProp,
 }: AgenciesDropdownProps) => {
-  const { appUser } = useAuth();
-  const isAdmin = appUser?.role === "admin" || appUser?.role === "super";
-
-  const agencyFacetFilters = useMemo(
-    () => (isAdmin ? [] : [[`metadata.uploadedBy:${appUser?.agencyId ?? ""}`]]),
-    [isAdmin, appUser?.agencyId],
-  );
-
-  const { items: agencies, loading } = usePaginatedRecords({
-    indexName: AGENCIES_INDEX,
-    agencyId: isAdmin ? "all" : (appUser?.agencyId ?? ""),
-    facetFilters: agencyFacetFilters,
-    hitsPerPage: 1000,
-  });
+  const external = agenciesProp !== undefined;
+  const internal = useAgencies({ enabled: !external });
+  const agencies = agenciesProp ?? internal.agencies;
+  const loading = loadingProp ?? (external ? false : internal.loading);
 
   return (
     <select
@@ -60,8 +49,8 @@ export const AgenciesDropdown = ({
         <option disabled>No agencies</option>
       )}
       {agencies.map((a) => (
-        <option key={a.id as string} value={a.id as string}>
-          {getAgencyName(a)}
+        <option key={a.id} value={a.id}>
+          {a.name}
         </option>
       ))}
     </select>
